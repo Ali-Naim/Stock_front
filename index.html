@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 المخزون</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #f3f6fa;
+    color: #1f2937;
+}
+
+.container {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 18px 16px 24px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.card {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
+}
+
+.card input,
+.card button {
+    box-sizing: border-box;
+}
+
+input, button {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 1rem;
+}
+
+input:focus {
+    outline: 3px solid #60a5fa;
+    border-color: #60a5fa;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.add { background: #10b981; color: white; }
+.delete { background: #ef4444; color: white; }
+.update { background: #2563eb; color: white; }
+
+.add:hover { background: #059669; }
+.delete:hover { background: #dc2626; }
+.update:hover { background: #1d4ed8; }
+
+.item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.item > div:first-child {
+    min-width: 170px;
+}
+
+.item .qty-btn,
+.item .delete,
+.item .update {
+    width: auto;
+    padding: 8px 12px;
+    margin-left: 6px;
+}
+
+.item .qty-btn {
+    background: #f8fafc;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    font-weight: 700;
+}
+
+.item .qty-btn:hover {
+    background: #e2e8f0;
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 14px 12px 20px;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    .item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .item > div:first-child {
+        min-width: auto;
+    }
+
+    .item > div:last-child {
+        display: flex;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .item .delete,
+    .item .update {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>📦 إدارة المخزون</h1>
+
+    <div class="card">
+        <input id="name" placeholder="اسم المنتج">
+        <input id="qty" type="number" placeholder="الكمية">
+        <button class="add" onclick="addItem()">➕ إضافة</button>
+    </div>
+
+    <div id="list"></div>
+</div>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://hrejmgfrcyiflhreokkl.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWptZ2ZyY3lpZmxocmVva2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDIyNDIsImV4cCI6MjA5MDAxODI0Mn0.RaIQfRKufKOfDcZxKmnjaKiZpOjIC6cZhVC1qJuSyr0";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// load items
+async function loadItems() {
+    const { data, error } = await supabaseClient
+        .from("inventory")
+        .select("*")
+        .order("id", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        alert("خطأ في تحميل البيانات");
+        return;
+    }
+
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    (data || []).forEach(item => {
+        list.innerHTML += `
+            <div class="card item">
+                <div>
+                    <b>${item.name}</b><br>
+                    الكمية: ${item.quantity}
+                </div>
+                <div>
+                    <button class="qty-btn" onclick="decrementItem(${item.id}, ${item.quantity})">-</button>
+                    <button class="qty-btn" onclick="incrementItem(${item.id}, ${item.quantity})">+</button>
+                    <button class="update" onclick="updateItem(${item.id})">تعديل</button>
+                    <button class="delete" onclick="deleteItem(${item.id})">حذف</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// add
+async function addItem() {
+    const name = document.getElementById("name").value;
+    const qty = document.getElementById("qty").value;
+
+    if (!name || !qty) return alert("أدخل البيانات");
+
+    const { error } = await supabaseClient.from("inventory").insert([
+        { name, quantity: Number(qty) }
+    ]);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    document.getElementById("name").value = "";
+    document.getElementById("qty").value = "";
+
+    await loadItems();
+}
+
+// delete
+async function deleteItem(id) {
+    const { error } = await supabaseClient
+        .from("inventory")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    await loadItems();
+}
+
+// update
+async function updateItem(id) {
+    let qty = prompt("الكمية الجديدة:");
+    if (!qty) return;
+
+    const { error } = await supabaseClient
+        .from("inventory")
+        .update({ quantity: Number(qty) })
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    await loadItems();
+}
+
+async function incrementItem(id, currentQty) {
+    const newQty = Number(currentQty) + 1;
+    const { error } = await supabaseClient
+        .from("inventory")
+        .update({ quantity: newQty })
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    await loadItems();
+}
+
+async function decrementItem(id, currentQty) {
+    if (Number(currentQty) <= 0) return; // prevent negative
+    const newQty = Number(currentQty) - 1;
+    const { error } = await supabaseClient
+        .from("inventory")
+        .update({ quantity: newQty })
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    await loadItems();
+}
+
+// realtime
+supabaseClient
+  .channel('inventory-changes')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'inventory' },
+    () => {
+        loadItems();
+    }
+  )
+  .subscribe(status => {
+      console.log("Realtime:", status);
+  });
+
+// init
+loadItems();
+</script>
+
+</body>
+</html> 
