@@ -3,294 +3,433 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📦 المخزون</title>
+<title>📦 إدارة المخزون</title>
 
 <style>
 body {
     margin: 0;
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background: #f3f6fa;
+    background: linear-gradient(135deg, #eaf2ff 0%, #f4f7fd 100%);
+    min-height: 100vh;
     color: #1f2937;
 }
 
 .container {
-    max-width: 560px;
-    margin: 0 auto;
-    padding: 18px 16px 24px;
+    max-width: 780px;
+    margin: 25px auto;
+    padding: 18px;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 16px 30px rgba(0,0,0,0.08);
 }
 
 h1 {
     text-align: center;
-    margin-bottom: 16px;
-    font-size: clamp(1.5rem, 4vw, 2rem);
+    margin-bottom: 18px;
+    font-size: 1.9rem;
+    color: #1b4ad1;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    background: #f9fafb;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 18px;
+    border: 1px solid #e2e8f0;
+}
+
+.tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background .25s ease, color .25s ease;
+    color: #475569;
+}
+
+.tab:hover {
+    background: #e2e8f0;
+}
+
+.tab.active {
+    background: #2563eb;
+    color: white;
+}
+
+.section {
+    display: none;
+}
+
+.section.active {
+    display: block;
 }
 
 .card {
     background: #ffffff;
     padding: 16px;
-    border-radius: 14px;
+    border-radius: 12px;
     margin-bottom: 12px;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
+    box-shadow: 0 2px 12px rgba(15,23,42,0.075);
+    border: 1px solid #e2e8f0;
 }
 
-.card input,
-.card button {
-    box-sizing: border-box;
+.card small {
+    color: #64748b;
 }
 
-input, button {
-    width: 100%;
-    padding: 14px;
+.order-history-item {
+    border-left-width: 4px;
+    border-left-style: solid;
+    padding: 10px 12px;
     margin-bottom: 10px;
+    transition: background-color 0.2s ease, border-left-color 0.2s ease;
+}
+
+.order-history-item.done {
+    background: linear-gradient(90deg, #dcfce7 0%, #bbf7d0 100%);
+    border-left-color: #0ea25f;
+    color: #064e3b;
+}
+
+.order-history-item.done strong {
+    color: #047857;
+}
+
+.order-history-item.pending {
+    background: linear-gradient(90deg, #fff7ed 0%, #ffedd5 100%);
+    border-left-color: #ea580c;
+    color: #9a3412;
+}
+
+input, select, button {
+    width: 100%;
+    padding: 14px 14px;
+    margin-top: 10px;
     border-radius: 10px;
     border: 1px solid #cbd5e1;
     font-size: 1rem;
+    line-height: 1.5;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-input:focus {
-    outline: 3px solid #60a5fa;
-    border-color: #60a5fa;
+input:focus, select:focus, button:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 button {
     border: none;
     cursor: pointer;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-weight: 700;
+    min-height: 48px;
+}
+
+select {
+    min-height: 48px;
 }
 
 .add { background: #10b981; color: white; }
 .delete { background: #ef4444; color: white; }
-.update { background: #2563eb; color: white; }
-
-.add:hover { background: #059669; }
-.delete:hover { background: #dc2626; }
-.update:hover { background: #1d4ed8; }
+.done { background: #2563eb; color: white; }
 
 .item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.item > div:first-child {
-    min-width: 170px;
-}
-
-.item .qty-btn,
-.item .delete,
-.item .update {
-    width: auto;
-    padding: 8px 12px;
-    margin-left: 6px;
-}
-
-.item .qty-btn {
-    background: #f8fafc;
-    color: #0f172a;
-    border: 1px solid #cbd5e1;
-    font-weight: 700;
-}
-
-.item .qty-btn:hover {
-    background: #e2e8f0;
-}
-
-@media (max-width: 600px) {
-    .container {
-        padding: 14px 12px 20px;
-    }
-
-    .card {
-        padding: 14px;
-    }
-
-    .item {
+@media(max-width:600px){
+    .item{
         flex-direction: column;
         align-items: stretch;
-    }
-
-    .item > div:first-child {
-        min-width: auto;
-    }
-
-    .item > div:last-child {
-        display: flex;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-
-    .item .delete,
-    .item .update {
-        width: 100%;
-        margin-left: 0;
     }
 }
 </style>
 </head>
 
 <body>
-
 <div class="container">
-    <h1>📦 إدارة المخزون</h1>
 
+<h1>📦 النظام</h1>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchTab('inventory', event)">المخزون</div>
+    <div class="tab" onclick="switchTab('orders', event)">الطلبات</div>
+</div>
+
+<!-- INVENTORY -->
+<div id="inventory" class="section active">
     <div class="card">
         <input id="name" placeholder="اسم المنتج">
         <input id="qty" type="number" placeholder="الكمية">
         <button class="add" onclick="addItem()">➕ إضافة</button>
     </div>
 
-    <div id="list"></div>
+    <div id="inventoryList"></div>
 </div>
 
-<!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ORDERS -->
+<div id="orders" class="section">
+    <div class="card">
+        <input id="orderName" placeholder="اسم الطلب أو العميل">
+        <select id="orderItem"></select>
+        <input id="orderQty" type="number" placeholder="الكمية">
+        <button class="add" onclick="addToOrder()">➕ إضافة للطلب</button>
+    </div>
 
+    <div id="orderList"></div>
+
+    <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
+
+    <h3 style="margin-top: 20px;">سجل الطلبات</h3>
+    <div id="orderHistory"></div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = "https://hrejmgfrcyiflhreokkl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWptZ2ZyY3lpZmxocmVva2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDIyNDIsImV4cCI6MjA5MDAxODI0Mn0.RaIQfRKufKOfDcZxKmnjaKiZpOjIC6cZhVC1qJuSyr0";
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// load items
-async function loadItems() {
-    const { data, error } = await supabaseClient
-        .from("inventory")
-        .select("*")
-        .order("id", { ascending: false });
+let inventory = [];
+let currentOrder = [];
 
-    if (error) {
-        console.error(error);
-        alert("خطأ في تحميل البيانات");
-        return;
+function switchTab(tabName, evt){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+
+    if (evt && evt.target) evt.target.classList.add('active');
+    document.getElementById(tabName).classList.add('active');
+}
+
+async function loadItems(){
+    try {
+        const { data, error } = await supabaseClient.from("inventory").select("*");
+        if (error) throw error;
+
+        inventory = data || [];
+
+        const list = document.getElementById("inventoryList");
+        const select = document.getElementById("orderItem");
+
+        list.innerHTML = "";
+        select.innerHTML = "";
+
+        if (inventory.length === 0) {
+            list.innerHTML = `<div class="card">لا توجد عناصر في المخزون</div>`;
+            select.innerHTML = `<option value="">لا يوجد</option>`;
+            return;
+        }
+
+        inventory.forEach(item=>{
+            list.innerHTML += `
+            <div class="card item">
+                <div>${item.name} (${item.quantity})</div>
+                <button class="delete" onclick="deleteItem(${item.id})">حذف</button>
+            </div>`;
+
+            select.innerHTML += `
+            <option value="${item.id}">
+            ${item.name} (متوفر: ${item.quantity})
+            </option>`;
+        });
+    } catch (err) {
+        console.error("Error loading inventory:", err);
+        document.getElementById("inventoryList").innerHTML = `<div class="card" style="background:#fee">فشل تحميل المخزون (تحقق من الاتصال والمفاتيح)</div>`;
     }
+}
 
-    const list = document.getElementById("list");
+async function addItem(){
+    const name = String(document.getElementById("name").value).trim();
+    const qty = Number(document.getElementById("qty").value);
+
+    if (!name || !qty || qty <= 0) return alert("أدخل اسمًا وكمية صحيحة");
+
+    try {
+        const { error } = await supabaseClient.from("inventory").insert([{name, quantity: qty}]);
+        if (error) throw error;
+        document.getElementById("name").value = "";
+        document.getElementById("qty").value = "";
+        loadItems();
+    } catch (err) {
+        console.error("Error adding item:", err);
+        alert("فشل إضافة العنصر. تحقق من الإعدادات.");
+    }
+}
+
+async function deleteItem(id){
+    try {
+        const { error } = await supabaseClient.from("inventory").delete().eq("id", id);
+        if (error) throw error;
+        loadItems();
+    } catch (err) {
+        console.error("Error deleting item:", err);
+        alert("فشل حذف العنصر.");
+    }
+}
+
+function addToOrder(){
+    const orderName = String(document.getElementById("orderName").value).trim();
+    const select = document.getElementById("orderItem");
+    const itemId = select.value;
+    const qty = Number(document.getElementById("orderQty").value);
+
+    if (!orderName) return alert("أدخل اسم الطلب أو العميل");
+    if (!itemId) return alert("اختر عنصرًا من القائمة");
+    if (!qty || qty <= 0) return alert("أدخل كمية صالحة أكبر من صفر");
+
+    const item = inventory.find(i => String(i.id) === String(itemId));
+    if (!item) return alert("العنصر غير متوفر في المخزون");
+
+    if (qty > item.quantity) return alert(`الكمية المطلوبة أكبر من المتوفر (${item.quantity})`);
+
+    currentOrder.push({id: item.id, name: item.name, qty});
+    renderOrder();
+}
+
+function renderOrder(){
+    const list = document.getElementById("orderList");
     list.innerHTML = "";
 
-    (data || []).forEach(item => {
+    currentOrder.forEach((item,index)=>{
         list.innerHTML += `
-            <div class="card item">
-                <div>
-                    <b>${item.name}</b><br>
-                    الكمية: ${item.quantity}
-                </div>
-                <div>
-                    <button class="qty-btn" onclick="decrementItem(${item.id}, ${item.quantity})">-</button>
-                    <button class="qty-btn" onclick="incrementItem(${item.id}, ${item.quantity})">+</button>
-                    <button class="update" onclick="updateItem(${item.id})">تعديل</button>
-                    <button class="delete" onclick="deleteItem(${item.id})">حذف</button>
-                </div>
-            </div>
-        `;
+        <div class="card item">
+            <div>${item.name} - ${item.qty}</div>
+            <button class="delete" onclick="removeItem(${index})">حذف</button>
+        </div>`;
     });
 }
 
-// add
-async function addItem() {
-    const name = document.getElementById("name").value;
-    const qty = document.getElementById("qty").value;
-
-    if (!name || !qty) return alert("أدخل البيانات");
-
-    const { error } = await supabaseClient.from("inventory").insert([
-        { name, quantity: Number(qty) }
-    ]);
-
-    if (error) {
-        console.error(error);
-        return;
-    }
-
-    document.getElementById("name").value = "";
-    document.getElementById("qty").value = "";
-
-    await loadItems();
+function removeItem(index){
+    currentOrder.splice(index,1);
+    renderOrder();
 }
 
-// delete
-async function deleteItem(id) {
-    const { error } = await supabaseClient
-        .from("inventory")
-        .delete()
-        .eq("id", id);
+async function submitOrder(){
+    if (currentOrder.length === 0) return alert("لا يوجد عناصر في الطلب");
 
-    if (error) {
-        console.error(error);
-        return;
-    }
+    try {
+        for(let o of currentOrder){
+            const stock = inventory.find(i=>i.id==o.id);
+            if (!stock) {
+                alert(`العنصر ${o.name} غير متوفر بعد الآن`);
+                return;
+            }
 
-    await loadItems();
-}
+            const newQty = stock.quantity - o.qty;
 
-// update
-async function updateItem(id) {
-    let qty = prompt("الكمية الجديدة:");
-    if (!qty) return;
+            if(newQty < 0){
+                alert(`الكمية غير كافية لـ ${stock.name}`);
+                return;
+            }
 
-    const { error } = await supabaseClient
-        .from("inventory")
-        .update({ quantity: Number(qty) })
-        .eq("id", id);
+            const { error: invErr } = await supabaseClient.from("inventory")
+                .update({quantity:newQty})
+                .eq("id", o.id);
 
-    if (error) {
-        console.error(error);
-        return;
-    }
+            if (invErr) throw invErr;
+        }
 
-    await loadItems();
-}
+        const orderName = String(document.getElementById("orderName").value).trim();
+        if (!orderName) return alert("أدخل اسم الطلب أو العميل قبل تأكيد الطلب");
 
-async function incrementItem(id, currentQty) {
-    const newQty = Number(currentQty) + 1;
-    const { error } = await supabaseClient
-        .from("inventory")
-        .update({ quantity: newQty })
-        .eq("id", id);
+        const orderRecord = {
+            order_name: orderName,
+            items: currentOrder.map(item => ({ id: item.id, name: item.name, qty: item.qty })),
+            status: "pending",
+            created_at: new Date().toISOString()
+        };
 
-    if (error) {
-        console.error(error);
-        return;
-    }
+        const { error: orderErr } = await supabaseClient.from("orders").insert([orderRecord]);
+        if (orderErr) throw orderErr;
 
-    await loadItems();
-}
-
-async function decrementItem(id, currentQty) {
-    if (Number(currentQty) <= 0) return; // prevent negative
-    const newQty = Number(currentQty) - 1;
-    const { error } = await supabaseClient
-        .from("inventory")
-        .update({ quantity: newQty })
-        .eq("id", id);
-
-    if (error) {
-        console.error(error);
-        return;
-    }
-
-    await loadItems();
-}
-
-// realtime
-supabaseClient
-  .channel('inventory-changes')
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'inventory' },
-    () => {
+        alert("تم تنفيذ الطلب وحفظه في السجل");
+        currentOrder = [];
+        document.getElementById("orderName").value = "";
+        document.getElementById("orderQty").value = "";
+        renderOrder();
         loadItems();
+        loadOrderHistory();
+    } catch (err) {
+        console.error("Error submitting order:", err);
+        alert("فشل تنفيذ الطلب. حاول لاحقًا.");
     }
-  )
-  .subscribe(status => {
-      console.log("Realtime:", status);
-  });
+}
 
-// init
-loadItems();
+async function setOrderStatus(orderId, status){
+    try {
+        const { error } = await supabaseClient.from("orders").update({ status }).eq("id", orderId);
+        if (error) throw error;
+        loadOrderHistory();
+    } catch (err) {
+        console.error("Error updating order status:", err);
+        alert("فشل تحديث حالة الطلب.");
+    }
+}
+
+function formatDate(iso){
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+async function loadOrderHistory(){
+    try {
+        const { data, error } = await supabaseClient.from("orders").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+
+        const history = data || [];
+        const container = document.getElementById("orderHistory");
+        container.innerHTML = "";
+
+        if (history.length === 0) {
+            container.innerHTML = `<div class="card">لا توجد سجلات طلبات بعد</div>`;
+            return;
+        }
+
+        history.forEach(order=>{
+            let itemsHtml = "";
+            (order.items || []).forEach(i => {
+                itemsHtml += `<div style="padding:2px 0;">• ${i.name} - ${i.qty}</div>`;
+            });
+
+            const done = order.status === "done";
+            container.innerHTML += `
+                <div class="order-history-item ${done ? 'done' : 'pending'}" style="border-left-color: ${done ? '#10b981' : '#2563eb'};">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <strong>${order.order_name ? order.order_name : `الطلب #${order.id || ''}`}</strong><br>
+                            <small>${formatDate(order.created_at)}</small>
+                        </div>
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#334155;">
+                            <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')">
+                            مكتمل
+                        </label>
+                    </div>
+                    <div style="margin-top:10px;">${itemsHtml || 'لا توجد عناصر'}</div>
+                    <div style="margin-top:8px;color:${done ? '#10b981' : '#1e3a8a'};"><small>الحالة: ${done ? 'مكتمل' : 'قيد التنفيذ'}</small></div>
+                </div>`;
+        });
+    } catch (err) {
+        console.error("Error loading order history:", err);
+        document.getElementById("orderHistory").innerHTML = `<div class="card" style="background:#fee">فشل تحميل سجل الطلبات</div>`;
+    }
+}
+
+async function initialize(){
+    await loadItems();
+    await loadOrderHistory();
+}
+
+initialize();
 </script>
-
 </body>
-</html> 
+</html>
