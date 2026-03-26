@@ -6,6 +6,10 @@
 <title>📦 إدارة المخزون</title>
 
 <style>
+* , *::before, *::after {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -106,13 +110,22 @@ h1 {
 
 input, select, button {
     width: 100%;
-    padding: 14px 14px;
+    padding: 12px 14px;
     margin-top: 10px;
     border-radius: 10px;
     border: 1px solid #cbd5e1;
-    font-size: 1rem;
-    line-height: 1.5;
+    font-size: 0.95rem;
+    line-height: 1.4;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+input, select {
+    min-height: 44px;
+}
+
+button {
+    min-height: 46px;
 }
 
 input:focus, select:focus, button:focus {
@@ -409,9 +422,9 @@ async function loadOrderHistory(){
                             <strong>${order.order_name ? order.order_name : `الطلب #${order.id || ''}`}</strong><br>
                             <small>${formatDate(order.created_at)}</small>
                         </div>
-                        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#334155;">
-                            <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')">
-                            مكتمل
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#334155;white-space:nowrap;">
+                            <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')" style="transform: scale(1.1); margin:0;" />
+                            <span>مكتمل</span>
                         </label>
                     </div>
                     <div style="margin-top:10px;">${itemsHtml || 'لا توجد عناصر'}</div>
