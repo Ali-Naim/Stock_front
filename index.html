@@ -173,6 +173,7 @@ select {
 <div class="tabs">
     <div class="tab active" onclick="switchTab('inventory', event)">المخزون</div>
     <div class="tab" onclick="switchTab('orders', event)">الطلبات</div>
+    <div class="tab" onclick="switchTab('reports', event)">التقارير</div>
 </div>
 
 <!-- INVENTORY -->
@@ -190,6 +191,17 @@ select {
 <div id="orders" class="section">
     <div class="card">
         <input id="orderName" placeholder="اسم الطلب أو العميل">
+        <select id="orderVillage">
+            <option value="">اختر القرية</option>
+            <option value="البساتين">البساتين</option>
+            <option value="البنية">البنية</option>
+            <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
+            <option value="كفرمتى">كفرمتى</option>
+            <option value="عبيه">عبيه</option>
+            <option value="دقون">دقون</option>
+            <option value="دفون">دفون</option>
+            <option value="بعورته">بعورته</option>
+        </select>
         <select id="orderItem"></select>
         <input id="orderQty" type="number" placeholder="الكمية">
         <button class="add" onclick="addToOrder()">➕ إضافة للطلب</button>
@@ -200,7 +212,51 @@ select {
     <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
 
     <h3 style="margin-top: 20px;">سجل الطلبات</h3>
+    
+    <!-- Filters -->
+    <div class="card">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 200px;">
+                <input id="nameFilter" placeholder="البحث بالاسم" oninput="applyFilters()">
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <select id="villageFilter" onchange="applyFilters()">
+                    <option value="">جميع القرى</option>
+                    <option value="البساتين">البساتين</option>
+                    <option value="البنية">البنية</option>
+                    <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
+                    <option value="كفرمتى">كفرمتى</option>
+                    <option value="عبيه">عبيه</option>
+                    <option value="دقون">دقون</option>
+                    <option value="دفون">دفون</option>
+                    <option value="بعورته">بعورته</option>
+                </select>
+                <small style="color: #64748b; display: block; margin-top: 2px;">القرية</small>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <input id="dateFrom" type="date" onchange="applyFilters()">
+                <small style="color: #64748b; display: block; margin-top: 2px;">من تاريخ</small>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <input id="dateTo" type="date" onchange="applyFilters()">
+                <small style="color: #64748b; display: block; margin-top: 2px;">إلى تاريخ</small>
+            </div>
+            <button onclick="clearFilters()" style="background: #6b7280; color: white; padding: 12px 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700;">مسح الفلاتر</button>
+        </div>
+    </div>
+    
     <div id="orderHistory"></div>
+</div>
+
+<!-- REPORTS -->
+<div id="reports" class="section">
+    <div class="card">
+        <h3>التقرير اليومي</h3>
+        <input id="reportDate" type="date" value="${new Date().toISOString().split('T')[0]}">
+        <button class="done" onclick="generateDailyReport()">إنشاء التقرير</button>
+    </div>
+    
+    <div id="reportContainer"></div>
 </div>
 
 </div>
@@ -214,6 +270,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let inventory = [];
 let currentOrder = [];
+let currentFilters = { name: '', village: '', dateFrom: '', dateTo: '' };
 
 function switchTab(tabName, evt){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -291,11 +348,13 @@ async function deleteItem(id){
 
 function addToOrder(){
     const orderName = String(document.getElementById("orderName").value).trim();
+    const village = document.getElementById("orderVillage").value;
     const select = document.getElementById("orderItem");
     const itemId = select.value;
     const qty = Number(document.getElementById("orderQty").value);
 
     if (!orderName) return alert("أدخل اسم الطلب أو العميل");
+    if (!village) return alert("اختر القرية");
     if (!itemId) return alert("اختر عنصرًا من القائمة");
     if (!qty || qty <= 0) return alert("أدخل كمية صالحة أكبر من صفر");
 
@@ -352,10 +411,13 @@ async function submitOrder(){
         }
 
         const orderName = String(document.getElementById("orderName").value).trim();
+        const village = document.getElementById("orderVillage").value;
         if (!orderName) return alert("أدخل اسم الطلب أو العميل قبل تأكيد الطلب");
+        if (!village) return alert("اختر القرية قبل تأكيد الطلب");
 
         const orderRecord = {
             order_name: orderName,
+            village: village,
             items: currentOrder.map(item => ({ id: item.id, name: item.name, qty: item.qty })),
             status: "pending",
             created_at: new Date().toISOString()
@@ -367,10 +429,11 @@ async function submitOrder(){
         alert("تم تنفيذ الطلب وحفظه في السجل");
         currentOrder = [];
         document.getElementById("orderName").value = "";
+        document.getElementById("orderVillage").value = "";
         document.getElementById("orderQty").value = "";
         renderOrder();
         loadItems();
-        loadOrderHistory();
+        loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error submitting order:", err);
         alert("فشل تنفيذ الطلب. حاول لاحقًا.");
@@ -381,7 +444,7 @@ async function setOrderStatus(orderId, status){
     try {
         const { error } = await supabaseClient.from("orders").update({ status }).eq("id", orderId);
         if (error) throw error;
-        loadOrderHistory();
+        loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error updating order status:", err);
         alert("فشل تحديث حالة الطلب.");
@@ -394,9 +457,32 @@ function formatDate(iso){
     return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-async function loadOrderHistory(){
+async function loadOrderHistory(nameFilter = '', villageFilter = '', dateFrom = '', dateTo = ''){
     try {
-        const { data, error } = await supabaseClient.from("orders").select("*").order("created_at", { ascending: false });
+        let query = supabaseClient.from("orders").select("*").order("created_at", { ascending: false });
+        
+        // Apply name filter
+        if (nameFilter.trim()) {
+            query = query.ilike("order_name", `%${nameFilter.trim()}%`);
+        }
+        
+        // Apply village filter
+        if (villageFilter) {
+            query = query.eq("village", villageFilter);
+        }
+        
+        // Apply date filters
+        if (dateFrom) {
+            query = query.gte("created_at", dateFrom + "T00:00:00.000Z");
+        }
+        if (dateTo) {
+            // Add one day to include the end date fully
+            const endDate = new Date(dateTo);
+            endDate.setDate(endDate.getDate() + 1);
+            query = query.lt("created_at", endDate.toISOString().split('T')[0] + "T00:00:00.000Z");
+        }
+        
+        const { data, error } = await query;
         if (error) throw error;
 
         const history = data || [];
@@ -420,7 +506,7 @@ async function loadOrderHistory(){
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
                         <div>
                             <strong>${order.order_name ? order.order_name : `الطلب #${order.id || ''}`}</strong><br>
-                            <small>${formatDate(order.created_at)}</small>
+                            <small>${order.village ? `القرية: ${order.village} - ` : ''}${formatDate(order.created_at)}</small>
                         </div>
                         <label style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#334155;white-space:nowrap;">
                             <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')" style="transform: scale(1.1); margin:0;" />
@@ -434,6 +520,98 @@ async function loadOrderHistory(){
     } catch (err) {
         console.error("Error loading order history:", err);
         document.getElementById("orderHistory").innerHTML = `<div class="card" style="background:#fee">فشل تحميل سجل الطلبات</div>`;
+    }
+}
+
+function applyFilters(){
+    const nameFilter = document.getElementById("nameFilter").value;
+    const villageFilter = document.getElementById("villageFilter").value;
+    const dateFrom = document.getElementById("dateFrom").value;
+    const dateTo = document.getElementById("dateTo").value;
+    
+    currentFilters = { name: nameFilter, village: villageFilter, dateFrom, dateTo };
+    loadOrderHistory(nameFilter, villageFilter, dateFrom, dateTo);
+}
+
+function clearFilters(){
+    document.getElementById("nameFilter").value = "";
+    document.getElementById("villageFilter").value = "";
+    document.getElementById("dateFrom").value = "";
+    document.getElementById("dateTo").value = "";
+    currentFilters = { name: '', village: '', dateFrom: '', dateTo: '' };
+    loadOrderHistory();
+}
+
+async function generateDailyReport(){
+    const reportDate = document.getElementById("reportDate").value;
+    if (!reportDate) return alert("اختر تاريخ التقرير");
+    
+    try {
+        // Get start and end of the day
+        const startDate = reportDate + "T00:00:00.000Z";
+        const endDate = reportDate + "T23:59:59.999Z";
+        
+        const { data, error } = await supabaseClient
+            .from("orders")
+            .select("*")
+            .gte("created_at", startDate)
+            .lte("created_at", endDate);
+            
+        if (error) throw error;
+        
+        // Process data to create report
+        const reportData = {};
+        const allItems = new Set();
+        
+        data.forEach(order => {
+            const village = order.village || "غير محدد";
+            if (!reportData[village]) {
+                reportData[village] = {};
+            }
+            
+            (order.items || []).forEach(item => {
+                allItems.add(item.name);
+                if (!reportData[village][item.name]) {
+                    reportData[village][item.name] = 0;
+                }
+                reportData[village][item.name] += item.qty;
+            });
+        });
+        
+        // Generate HTML table
+        let tableHtml = `<div class="card">
+            <h4>تقرير يوم ${new Date(reportDate).toLocaleDateString('ar-EG')}</h4>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f9fafb;">
+                            <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">القرية</th>`;
+        
+        Array.from(allItems).sort().forEach(itemName => {
+            tableHtml += `<th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${itemName}</th>`;
+        });
+        
+        tableHtml += `</tr></thead><tbody>`;
+        
+        Object.keys(reportData).sort().forEach(village => {
+            tableHtml += `<tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">${village}</td>`;
+            
+            Array.from(allItems).sort().forEach(itemName => {
+                const qty = reportData[village][itemName] || 0;
+                tableHtml += `<td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${qty}</td>`;
+            });
+            
+            tableHtml += `</tr>`;
+        });
+        
+        tableHtml += `</tbody></table></div></div>`;
+        
+        document.getElementById("reportContainer").innerHTML = tableHtml;
+        
+    } catch (err) {
+        console.error("Error generating report:", err);
+        document.getElementById("reportContainer").innerHTML = `<div class="card" style="background:#fee">فشل إنشاء التقرير</div>`;
     }
 }
 
