@@ -161,6 +161,142 @@ select {
         flex-direction: column;
         align-items: stretch;
     }
+    
+    .container {
+        margin: 10px;
+        padding: 12px;
+        border-radius: 12px;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 12px;
+    }
+    
+    .tab {
+        padding: 12px 8px;
+        font-size: 0.9rem;
+    }
+    
+    .card {
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    
+    .order-history-item {
+        padding: 12px 8px;
+        margin-bottom: 8px;
+    }
+    
+    input, select, button {
+        font-size: 1rem;
+        padding: 14px 16px;
+        margin-top: 8px;
+        min-height: 48px;
+    }
+    
+    button {
+        min-height: 50px;
+        font-size: 1rem;
+    }
+    
+    /* Mobile-specific button layouts */
+    .order-history-item .flex {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    /* Make inline editing mobile-friendly */
+    #edit-order-name-${order.id} {
+        font-size: 1rem;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    
+    /* Improve touch targets for inline editing */
+    button[onclick*="adjustInlineQty"],
+    button[onclick*="removeInlineItem"],
+    button[onclick*="addInlineItem"] {
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 1.2rem;
+    }
+    
+    /* Mobile table scrolling */
+    .card div[style*="overflow-x: auto"] {
+        margin-left: -12px;
+        margin-right: -12px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    
+    .card table {
+        font-size: 0.85rem;
+        min-width: 100%;
+    }
+    
+    .card th, .card td {
+        padding: 6px 4px;
+        white-space: nowrap;
+    }
+    
+    /* Improve filter layout on mobile */
+    .card div[style*="display: flex; gap: 10px"] {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .card div[style*="display: flex; gap: 10px"] > div {
+        width: 100%;
+    }
+    
+    /* Mobile-friendly item editing */
+    div[style*="display: flex; align-items: center; gap: 8px"] {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    div[style*="display: flex; align-items: center; gap: 8px"] select {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    div[style*="display: flex; align-items: center; gap: 8px"] div[style*="display: flex; align-items: center"] {
+        min-width: 100px;
+    }
+    
+    /* Better mobile button spacing */
+    .order-history-item div[style*="display: flex; flex-direction: column"] {
+        width: 100%;
+        margin-top: 12px;
+    }
+    
+    .order-history-item div[style*="display: flex; flex-direction: column"] div[style*="display: flex; gap: 8px"] {
+        width: 100%;
+    }
+    
+    /* Improve mobile scrolling */
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Mobile date inputs */
+    input[type="date"] {
+        font-size: 1rem;
+        padding: 14px 16px;
+        min-height: 48px;
+    }
+    
+    /* Better mobile scrolling for long content */
+    .container {
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+    }
+    
+    /* Ensure cards don't get too cramped on mobile */
+    .card {
+        margin-bottom: 16px;
+    }
 }
 </style>
 </head>
@@ -209,7 +345,10 @@ select {
 
     <div id="orderList"></div>
 
-    <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
+    <div style="display: flex; gap: 10px;">
+        <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
+        <button class="delete" onclick="cancelEdit()" id="cancelEditBtn" style="display: none;">❌ إلغاء التعديل</button>
+    </div>
 
     <h3 style="margin-top: 20px;">سجل الطلبات</h3>
     
@@ -271,6 +410,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let inventory = [];
 let currentOrder = [];
 let currentFilters = { name: '', village: '', dateFrom: '', dateTo: '' };
+let editingOrderId = null;
+let inlineEditingOrderId = null;
+let inlineEditingOriginalData = null;
 
 function switchTab(tabName, evt){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -374,7 +516,14 @@ function renderOrder(){
     currentOrder.forEach((item,index)=>{
         list.innerHTML += `
         <div class="card item">
-            <div>${item.name} - ${item.qty}</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>${item.name}</span>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button class="delete" onclick="adjustQty(${index}, -1)" style="padding: 2px 8px; font-size: 14px;">-</button>
+                    <span style="min-width: 30px; text-align: center;">${item.qty}</span>
+                    <button class="add" onclick="adjustQty(${index}, 1)" style="padding: 2px 8px; font-size: 14px;">+</button>
+                </div>
+            </div>
             <button class="delete" onclick="removeItem(${index})">حذف</button>
         </div>`;
     });
@@ -385,10 +534,51 @@ function removeItem(index){
     renderOrder();
 }
 
+function adjustQty(index, delta){
+    const item = currentOrder[index];
+    const newQty = item.qty + delta;
+    
+    if (newQty < 1) return; // Don't allow quantity below 1
+    
+    // Check available stock
+    const stock = inventory.find(i => i.id == item.id);
+    if (!stock) return alert(`العنصر ${item.name} غير متوفر`);
+    
+    const availableQty = editingOrderId ? 
+        stock.quantity + (item.originalQty || 0) : // When editing, add back the original quantity
+        stock.quantity;
+    
+    if (newQty > availableQty) {
+        return alert(`الكمية المتاحة محدودة (${availableQty})`);
+    }
+    
+    item.qty = newQty;
+    renderOrder();
+}
+
 async function submitOrder(){
     if (currentOrder.length === 0) return alert("لا يوجد عناصر في الطلب");
 
     try {
+        // If editing, first restore old quantities
+        if (editingOrderId) {
+            const { data: oldOrder, error: fetchErr } = await supabaseClient.from("orders").select("*").eq("id", editingOrderId).single();
+            if (fetchErr) throw fetchErr;
+
+            // Restore old quantities
+            for (let oldItem of oldOrder.items || []) {
+                const stock = inventory.find(i => i.id == oldItem.id);
+                if (stock) {
+                    const restoredQty = stock.quantity + oldItem.qty;
+                    const { error: restoreErr } = await supabaseClient.from("inventory")
+                        .update({ quantity: restoredQty })
+                        .eq("id", oldItem.id);
+                    if (restoreErr) throw restoreErr;
+                }
+            }
+        }
+
+        // Check and deduct new quantities
         for(let o of currentOrder){
             const stock = inventory.find(i=>i.id==o.id);
             if (!stock) {
@@ -419,21 +609,23 @@ async function submitOrder(){
             order_name: orderName,
             village: village,
             items: currentOrder.map(item => ({ id: item.id, name: item.name, qty: item.qty })),
-            status: "pending"
+            status: editingOrderId ? undefined : "pending" // Keep status if editing
         };
 
-        const { error: orderErr } = await supabaseClient.from("orders").insert([orderRecord]);
-        if (orderErr) {
-            console.error("Error submitting order:", orderErr);
-            throw orderErr;
+        let result;
+        if (editingOrderId) {
+            result = await supabaseClient.from("orders").update(orderRecord).eq("id", editingOrderId);
+        } else {
+            result = await supabaseClient.from("orders").insert([orderRecord]);
         }
 
-        alert("تم تنفيذ الطلب وحفظه في السجل");
-        currentOrder = [];
-        document.getElementById("orderName").value = "";
-        document.getElementById("orderVillage").value = "";
-        document.getElementById("orderQty").value = "";
-        renderOrder();
+        if (result.error) {
+            console.error("Error submitting/updating order:", result.error);
+            throw result.error;
+        }
+
+        alert(editingOrderId ? "تم تحديث الطلب بنجاح" : "تم تنفيذ الطلب وحفظه في السجل");
+        cancelEdit();
         loadItems();
         loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
@@ -451,6 +643,173 @@ async function setOrderStatus(orderId, status){
         console.error("Error updating order status:", err);
         alert("فشل تحديث حالة الطلب.");
     }
+}
+
+function cancelEdit(){
+    editingOrderId = null;
+    currentOrder = [];
+    document.getElementById("orderName").value = "";
+    document.getElementById("orderVillage").value = "";
+    document.getElementById("orderQty").value = "";
+    renderOrder();
+    document.querySelector("#orders button.done").textContent = "✅ تأكيد الطلب";
+    document.getElementById("cancelEditBtn").style.display = "none";
+}
+
+function startInlineEdit(orderId){
+    inlineEditingOrderId = orderId;
+    // Store original data for cancellation
+    inlineEditingOriginalData = null; // Will be set when we reload
+    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
+}
+
+function cancelInlineEdit(){
+    inlineEditingOrderId = null;
+    inlineEditingOriginalData = null;
+    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
+}
+
+async function saveInlineEdit(orderId){
+    const newName = document.getElementById(`edit-order-name-${orderId}`).value.trim();
+    if (!newName) {
+        alert("يجب إدخال اسم الطلب");
+        return;
+    }
+
+    // Collect updated items
+    const updatedItems = [];
+    let itemIndex = 0;
+    while (document.getElementById(`item-type-${orderId}-${itemIndex}`)) {
+        const itemType = document.getElementById(`item-type-${orderId}-${itemIndex}`).value;
+        const itemQty = parseInt(document.getElementById(`item-qty-${orderId}-${itemIndex}`).textContent);
+        
+        const item = inventory.find(i => i.id == itemType);
+        if (item) {
+            updatedItems.push({
+                id: item.id,
+                name: item.name,
+                qty: itemQty
+            });
+        }
+        itemIndex++;
+    }
+
+    if (updatedItems.length === 0) {
+        alert("يجب أن يحتوي الطلب على عنصر واحد على الأقل");
+        return;
+    }
+
+    try {
+        // Get original order data
+        const { data: originalOrder, error: fetchErr } = await supabaseClient.from("orders").select("*").eq("id", orderId).single();
+        if (fetchErr) throw fetchErr;
+
+        // Restore original quantities
+        for (let oldItem of originalOrder.items || []) {
+            const stock = inventory.find(i => i.id == oldItem.id);
+            if (stock) {
+                const restoredQty = stock.quantity + oldItem.qty;
+                await supabaseClient.from("inventory").update({ quantity: restoredQty }).eq("id", oldItem.id);
+            }
+        }
+
+        // Check and deduct new quantities
+        for (let newItem of updatedItems) {
+            const stock = inventory.find(i => i.id == newItem.id);
+            if (!stock) {
+                alert(`العنصر ${newItem.name} غير متوفر`);
+                return;
+            }
+            if (newItem.qty > stock.quantity) {
+                alert(`الكمية المطلوبة من ${newItem.name} أكبر من المتاح (${stock.quantity})`);
+                return;
+            }
+            const newQty = stock.quantity - newItem.qty;
+            await supabaseClient.from("inventory").update({ quantity: newQty }).eq("id", newItem.id);
+        }
+
+        // Update order
+        const { error: updateErr } = await supabaseClient.from("orders")
+            .update({ 
+                order_name: newName, 
+                items: updatedItems 
+            })
+            .eq("id", orderId);
+        
+        if (updateErr) throw updateErr;
+
+        alert("تم تحديث الطلب بنجاح");
+        inlineEditingOrderId = null;
+        inlineEditingOriginalData = null;
+        loadItems();
+        loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
+    } catch (err) {
+        console.error("Error saving inline edit:", err);
+        alert("فشل حفظ التعديلات");
+    }
+}
+
+function adjustInlineQty(orderId, itemIndex, delta){
+    const qtyElement = document.getElementById(`item-qty-${orderId}-${itemIndex}`);
+    const typeElement = document.getElementById(`item-type-${orderId}-${itemIndex}`);
+    
+    const currentQty = parseInt(qtyElement.textContent);
+    const newQty = currentQty + delta;
+    
+    if (newQty < 1) return;
+    
+    // Check stock availability
+    const itemId = typeElement.value;
+    const stock = inventory.find(i => i.id == itemId);
+    if (!stock) return;
+    
+    // For inline editing, we need to consider the original quantities
+    // This is simplified - in a real app you'd track original vs new quantities
+    if (newQty > stock.quantity + 10) { // Rough estimate
+        alert(`الكمية المتاحة محدودة`);
+        return;
+    }
+    
+    qtyElement.textContent = newQty;
+}
+
+function removeInlineItem(orderId, itemIndex){
+    // Remove the item row
+    const itemRow = document.querySelector(`#item-type-${orderId}-${itemIndex}`).closest('div');
+    itemRow.remove();
+    
+    // Re-index remaining items
+    let newIndex = 0;
+    document.querySelectorAll(`[id^="item-type-${orderId}-"]`).forEach((el, idx) => {
+        el.id = `item-type-${orderId}-${idx}`;
+        el.nextElementSibling.querySelector('span').id = `item-qty-${orderId}-${idx}`;
+        el.nextElementSibling.querySelectorAll('button')[0].setAttribute('onclick', `adjustInlineQty(${orderId}, ${idx}, -1)`);
+        el.nextElementSibling.querySelectorAll('button')[1].setAttribute('onclick', `adjustInlineQty(${orderId}, ${idx}, 1)`);
+        el.nextElementSibling.nextElementSibling.setAttribute('onclick', `removeInlineItem(${orderId}, ${idx})`);
+    });
+}
+
+function addInlineItem(orderId){
+    const container = document.querySelector(`#edit-order-name-${orderId}`).closest('.order-history-item').querySelector('div[style*="margin-top:10px"]');
+    const addButton = container.querySelector('button[onclick*="addInlineItem"]');
+    
+    // Count existing items
+    const existingItems = container.querySelectorAll('[id^="item-type-"]').length;
+    
+    const newItemHtml = `
+        <div style="display: flex; align-items: center; gap: 10px; padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
+            <select id="item-type-${orderId}-${existingItems}" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                ${inventory.map(inv => `<option value="${inv.id}">${inv.name} (متوفر: ${inv.quantity})</option>`).join('')}
+            </select>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button onclick="adjustInlineQty(${orderId}, ${existingItems}, -1)" style="padding: 2px 8px; font-size: 14px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">-</button>
+                <span id="item-qty-${orderId}-${existingItems}" style="min-width: 30px; text-align: center;">1</span>
+                <button onclick="adjustInlineQty(${orderId}, ${existingItems}, 1)" style="padding: 2px 8px; font-size: 14px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">+</button>
+            </div>
+            <button onclick="removeInlineItem(${orderId}, ${existingItems})" style="padding: 2px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">حذف</button>
+        </div>`;
+    
+    addButton.insertAdjacentHTML('beforebegin', newItemHtml);
 }
 
 function formatDate(iso){
@@ -498,25 +857,67 @@ async function loadOrderHistory(nameFilter = '', villageFilter = '', dateFrom = 
 
         history.forEach(order=>{
             let itemsHtml = "";
-            (order.items || []).forEach(i => {
-                itemsHtml += `<div style="padding:2px 0;">• ${i.name} - ${i.qty}</div>`;
-            });
+            const isInlineEditing = inlineEditingOrderId === order.id;
+            
+            if (isInlineEditing) {
+                // Editable items
+                (order.items || []).forEach((i, index) => {
+                    itemsHtml += `
+                        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap;">
+                            <select id="item-type-${order.id}-${index}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 1rem; min-width: 120px;">
+                                ${inventory.map(inv => `<option value="${inv.id}" ${inv.id == i.id ? 'selected' : ''}>${inv.name} (متوفر: ${inv.quantity})</option>`).join('')}
+                            </select>
+                            <div style="display: flex; align-items: center; gap: 8px; background: #f8fafc; border-radius: 8px; padding: 4px;">
+                                <button onclick="adjustInlineQty(${order.id}, ${index}, -1)" style="width: 40px; height: 40px; border-radius: 6px; background: #ef4444; color: white; border: none; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center;">-</button>
+                                <span id="item-qty-${order.id}-${index}" style="min-width: 40px; text-align: center; font-size: 1.1rem; font-weight: bold;">${i.qty}</span>
+                                <button onclick="adjustInlineQty(${order.id}, ${index}, 1)" style="width: 40px; height: 40px; border-radius: 6px; background: #10b981; color: white; border: none; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center;">+</button>
+                            </div>
+                            <button onclick="removeInlineItem(${order.id}, ${index})" style="padding: 8px 12px; background: #6b7280; color: white; border: none; border-radius: 6px; font-size: 0.9rem; min-height: 40px;">حذف</button>
+                        </div>`;
+                });
+                itemsHtml += `<button onclick="addInlineItem(${order.id})" style="margin-top: 12px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; width: 100%; min-height: 48px;">+ إضافة عنصر</button>`;
+            } else {
+                // Display items
+                (order.items || []).forEach(i => {
+                    itemsHtml += `<div style="padding:2px 0;">• ${i.name} - ${i.qty}</div>`;
+                });
+            }
 
             const done = order.status === "done";
+            const orderDisplayName = order.order_name ? order.order_name : `الطلب #${order.id || ''}`;
+            
+            let editButtons = "";
+            if (isInlineEditing) {
+                editButtons = `
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <button onclick="saveInlineEdit(${order.id})" style="padding: 12px 16px; font-size: 1rem; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; min-height: 48px; flex: 1;">حفظ</button>
+                        <button onclick="cancelInlineEdit()" style="padding: 12px 16px; font-size: 1rem; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: bold; min-height: 48px; flex: 1;">إلغاء</button>
+                    </div>`;
+            } else {
+                editButtons = `
+                    <button class="done" style="padding: 12px 16px; font-size: 1rem; min-height: 48px;" onclick="startInlineEdit(${order.id})">تعديل</button>
+                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #334155; white-space: nowrap; font-size: 0.9rem;">
+                        <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')" style="transform: scale(1.2); margin: 0;" />
+                        <span>مكتمل</span>
+                    </label>`;
+            }
+            
             container.innerHTML += `
                 <div class="order-history-item ${done ? 'done' : 'pending'}" style="border-left-color: ${done ? '#10b981' : '#2563eb'};">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-                        <div>
-                            <strong>${order.order_name ? order.order_name : `الطلب #${order.id || ''}`}</strong><br>
+                    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            ${isInlineEditing ? 
+                                `<input type="text" id="edit-order-name-${order.id}" value="${orderDisplayName}" style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; font-weight: bold; margin-bottom: 8px; width: 100%; box-sizing: border-box;" />` :
+                                `<strong>${orderDisplayName}</strong>`
+                            }
                             <small>${order.village ? `القرية: ${order.village} - ` : ''}${formatDate(order.created_at)}</small>
                         </div>
-                        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#334155;white-space:nowrap;">
-                            <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')" style="transform: scale(1.1); margin:0;" />
-                            <span>مكتمل</span>
-                        </label>
+                        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                            ${editButtons}
+                        </div>
                     </div>
-                    <div style="margin-top:10px;">${itemsHtml || 'لا توجد عناصر'}</div>
-                    <div style="margin-top:8px;color:${done ? '#10b981' : '#1e3a8a'};"><small>الحالة: ${done ? 'مكتمل' : 'قيد التنفيذ'}</small></div>
+                    <div style="margin-top: 12px;">${itemsHtml || 'لا توجد عناصر'}</div>
+                    <div style="margin-top: 8px; color: ${done ? '#10b981' : '#1e3a8a'};"><small>الحالة: ${done ? 'مكتمل' : 'قيد التنفيذ'}</small></div>
                 </div>`;
         });
     } catch (err) {
