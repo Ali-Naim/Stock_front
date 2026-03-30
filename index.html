@@ -595,17 +595,35 @@ async function generateDailyReport(){
         
         tableHtml += `</tr></thead><tbody>`;
         
+        // compute totals per item across all villages
+        const itemTotals = {};
+        Array.from(allItems).forEach(itemName => {
+            itemTotals[itemName] = 0;
+        });
+
         Object.keys(reportData).sort().forEach(village => {
             tableHtml += `<tr>
                 <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">${village}</td>`;
             
             Array.from(allItems).sort().forEach(itemName => {
                 const qty = reportData[village][itemName] || 0;
+                itemTotals[itemName] += qty;
                 tableHtml += `<td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${qty}</td>`;
             });
             
             tableHtml += `</tr>`;
         });
+
+        // add totals row at bottom
+        tableHtml += `<tr style="background: #f1f5f9; font-weight: bold;">
+            <td style="padding: 8px; border: 1px solid #e2e8f0;">مجموع الكل</td>`;
+
+        Array.from(allItems).sort().forEach(itemName => {
+            const totalQty = itemTotals[itemName] || 0;
+            tableHtml += `<td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${totalQty}</td>`;
+        });
+
+        tableHtml += `</tr>`;
         
         tableHtml += `</tbody></table></div></div>`;
         
