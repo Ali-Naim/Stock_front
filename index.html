@@ -3,364 +3,94 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📦 إدارة المخزون</title>
-
-<style>
-* , *::before, *::after {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #eaf2ff 0%, #f4f7fd 100%);
-    min-height: 100vh;
-    color: #1f2937;
-}
-
-.container {
-    max-width: 780px;
-    margin: 25px auto;
-    padding: 18px;
-    background: #ffffff;
-    border-radius: 18px;
-    box-shadow: 0 16px 30px rgba(0,0,0,0.08);
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 18px;
-    font-size: 1.9rem;
-    color: #1b4ad1;
-}
-
-/* Tabs */
-.tabs {
-    display: flex;
-    background: #f9fafb;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 18px;
-    border: 1px solid #e2e8f0;
-}
-
-.tab {
-    flex: 1;
-    padding: 14px;
-    text-align: center;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background .25s ease, color .25s ease;
-    color: #475569;
-}
-
-.tab:hover {
-    background: #e2e8f0;
-}
-
-.tab.active {
-    background: #2563eb;
-    color: white;
-}
-
-.section {
-    display: none;
-}
-
-.section.active {
-    display: block;
-}
-
-.card {
-    background: #ffffff;
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 12px rgba(15,23,42,0.075);
-    border: 1px solid #e2e8f0;
-}
-
-.card small {
-    color: #64748b;
-}
-
-.order-history-item {
-    border-left-width: 4px;
-    border-left-style: solid;
-    padding: 10px 12px;
-    margin-bottom: 10px;
-    transition: background-color 0.2s ease, border-left-color 0.2s ease;
-}
-
-.order-history-item.done {
-    background: linear-gradient(90deg, #dcfce7 0%, #bbf7d0 100%);
-    border-left-color: #0ea25f;
-    color: #064e3b;
-}
-
-.order-history-item.done strong {
-    color: #047857;
-}
-
-.order-history-item.pending {
-    background: linear-gradient(90deg, #fff7ed 0%, #ffedd5 100%);
-    border-left-color: #ea580c;
-    color: #9a3412;
-}
-
-input, select, button {
-    width: 100%;
-    padding: 12px 14px;
-    margin-top: 10px;
-    border-radius: 10px;
-    border: 1px solid #cbd5e1;
-    font-size: 0.95rem;
-    line-height: 1.4;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    box-sizing: border-box;
-}
-
-input, select {
-    min-height: 44px;
-}
-
-button {
-    min-height: 46px;
-}
-
-input:focus, select:focus, button:focus {
-    outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-button {
-    border: none;
-    cursor: pointer;
-    font-weight: 700;
-    min-height: 48px;
-}
-
-select {
-    min-height: 48px;
-}
-
-.add { background: #10b981; color: white; }
-.delete { background: #ef4444; color: white; }
-.done { background: #2563eb; color: white; }
-
-.item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-}
-
-@media(max-width:600px){
-    .item{
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .container {
-        margin: 10px;
-        padding: 12px;
-        border-radius: 12px;
-    }
-    
-    h1 {
-        font-size: 1.5rem;
-        margin-bottom: 12px;
-    }
-    
-    .tab {
-        padding: 12px 8px;
-        font-size: 0.9rem;
-    }
-    
-    .card {
-        padding: 12px;
-        margin-bottom: 8px;
-    }
-    
-    .order-history-item {
-        padding: 12px 8px;
-        margin-bottom: 8px;
-    }
-    
-    input, select, button {
-        font-size: 1rem;
-        padding: 14px 16px;
-        margin-top: 8px;
-        min-height: 48px;
-    }
-    
-    button {
-        min-height: 50px;
-        font-size: 1rem;
-    }
-    
-    /* Mobile-specific button layouts */
-    .order-history-item .flex {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    /* Make inline editing mobile-friendly */
-    #edit-order-name-${order.id} {
-        font-size: 1rem;
-        padding: 12px;
-        margin-bottom: 8px;
-    }
-    
-    /* Improve touch targets for inline editing */
-    button[onclick*="adjustInlineQty"],
-    button[onclick*="removeInlineItem"],
-    button[onclick*="addInlineItem"] {
-        min-width: 44px;
-        min-height: 44px;
-        font-size: 1.2rem;
-    }
-    
-    /* Mobile table scrolling */
-    .card div[style*="overflow-x: auto"] {
-        margin-left: -12px;
-        margin-right: -12px;
-        padding-left: 12px;
-        padding-right: 12px;
-    }
-    
-    .card table {
-        font-size: 0.85rem;
-        min-width: 100%;
-    }
-    
-    .card th, .card td {
-        padding: 6px 4px;
-        white-space: nowrap;
-    }
-    
-    /* Improve filter layout on mobile */
-    .card div[style*="display: flex; gap: 10px"] {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .card div[style*="display: flex; gap: 10px"] > div {
-        width: 100%;
-    }
-    
-    /* Mobile-friendly item editing */
-    div[style*="display: flex; align-items: center; gap: 8px"] {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    div[style*="display: flex; align-items: center; gap: 8px"] select {
-        flex: 1;
-        min-width: 120px;
-    }
-    
-    div[style*="display: flex; align-items: center; gap: 8px"] div[style*="display: flex; align-items: center"] {
-        min-width: 100px;
-    }
-    
-    /* Better mobile button spacing */
-    .order-history-item div[style*="display: flex; flex-direction: column"] {
-        width: 100%;
-        margin-top: 12px;
-    }
-    
-    .order-history-item div[style*="display: flex; flex-direction: column"] div[style*="display: flex; gap: 8px"] {
-        width: 100%;
-    }
-    
-    /* Improve mobile scrolling */
-    body {
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    /* Mobile date inputs */
-    input[type="date"] {
-        font-size: 1rem;
-        padding: 14px 16px;
-        min-height: 48px;
-    }
-    
-    /* Better mobile scrolling for long content */
-    .container {
-        max-height: calc(100vh - 20px);
-        overflow-y: auto;
-    }
-    
-    /* Ensure cards don't get too cramped on mobile */
-    .card {
-        margin-bottom: 16px;
-    }
-}
-</style>
+<meta name="theme-color" content="#123a7a">
+<title>إدارة المخزون</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-<div class="container">
-
-<h1>📦 النظام</h1>
-
-<div class="tabs">
-    <div class="tab active" onclick="switchTab('inventory', event)">المخزون</div>
-    <div class="tab" onclick="switchTab('orders', event)">الطلبات</div>
-    <div class="tab" onclick="switchTab('reports', event)">التقارير</div>
-</div>
-
-<!-- INVENTORY -->
-<div id="inventory" class="section active">
-    <div class="card">
-        <input id="name" placeholder="اسم المنتج">
-        <input id="qty" type="number" placeholder="الكمية">
-        <button class="add" onclick="addItem()">➕ إضافة</button>
-    </div>
-
-    <div id="inventoryList"></div>
-</div>
-
-<!-- ORDERS -->
-<div id="orders" class="section">
-    <div class="card">
-        <input id="orderName" placeholder="اسم الطلب أو العميل">
-        <select id="orderVillage">
-            <option value="">اختر القرية</option>
-            <option value="البساتين">البساتين</option>
-            <option value="البنية">البنية</option>
-            <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
-            <option value="كفرمتى">كفرمتى</option>
-            <option value="عبيه">عبيه</option>
-            <option value="دقون">دقون</option>
-            <option value="دفون">دفون</option>
-            <option value="بعورته">بعورته</option>
-        </select>
-        <select id="orderItem"></select>
-        <input id="orderQty" type="number" placeholder="الكمية">
-        <button class="add" onclick="addToOrder()">➕ إضافة للطلب</button>
-    </div>
-
-    <div id="orderList"></div>
-
-    <div style="display: flex; gap: 10px;">
-        <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
-        <button class="delete" onclick="cancelEdit()" id="cancelEditBtn" style="display: none;">❌ إلغاء التعديل</button>
-    </div>
-
-    <h3 style="margin-top: 20px;">سجل الطلبات</h3>
-    
-    <!-- Filters -->
-    <div class="card">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <div style="flex: 1; min-width: 200px;">
-                <input id="nameFilter" placeholder="البحث بالاسم" oninput="applyFilters()">
+<div id="itemModal" class="modal-overlay" onclick="closeItemModal(event)">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">إضافة منتج</p>
+                <h3 id="itemModalTitle">منتج جديد</h3>
             </div>
-            <div style="flex: 1; min-width: 150px;">
-                <select id="villageFilter" onchange="applyFilters()">
-                    <option value="">جميع القرى</option>
+            <button class="close-btn" type="button" onclick="closeItemModal()" aria-label="إغلاق">✕</button>
+        </div>
+        <p class="modal-copy">أدخل اسم المنتج فقط، وسيتم إضافته إلى القائمة لتستخدمه مباشرة.</p>
+        <input id="newItemName" placeholder="اسم المنتج">
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="createItem()">حفظ المنتج</button>
+            <button class="filter-clear" type="button" onclick="closeItemModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div class="mobile-tab-bar" aria-label="التنقل السريع">
+    <button class="mobile-tab-button active" data-tab-target="inventory" onclick="switchTab('inventory', event)">
+        <span>📦</span>
+        <span>المخزون</span>
+    </button>
+    <button class="mobile-tab-button" data-tab-target="orders" onclick="switchTab('orders', event)">
+        <span>🛒</span>
+        <span>الطلبات</span>
+    </button>
+    <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports', event)">
+        <span>📊</span>
+        <span>التقارير</span>
+    </button>
+</div>
+
+<div class="container">
+    <div class="tabs desktop-tabs">
+        <button class="tab active" data-tab-target="inventory" onclick="switchTab('inventory', event)">المخزون</button>
+        <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
+        <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
+    </div>
+
+    <div id="inventory" class="section active">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">عرض سريع</p>
+                <h2>إدارة المنتجات والكميات</h2>
+            </div>
+            <p>أضف المنتجات وحدّث المخزون بسرعة من شاشة واحدة.</p>
+        </div>
+
+        <div class="card">
+            <h3>إضافة مخزون</h3>
+            <div class="inventory-actions">
+                <button class="done" type="button" onclick="openItemModal()">+ منتج جديد</button>
+            </div>
+            <div class="form-grid">
+                <select id="name" required>
+                    <option value="">اختر المنتج</option>
+                </select>
+                <input id="qty" type="number" placeholder="الكمية">
+            </div>
+            <button class="add" onclick="addItem()">➕ إضافة</button>
+        </div>
+
+        <h3>سجل المخزون</h3>
+        <div id="inventoryList"></div>
+    </div>
+
+    <div id="orders" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">متابعة الطلبات</p>
+                <h2>إنشاء الطلب ومراجعته بسرعة</h2>
+            </div>
+            <p>واجهة مرتبة لتجهيز الطلبات، تعديلها، ومتابعة حالتها من الهاتف بسهولة.</p>
+        </div>
+
+        <div class="card">
+            <h3>إنشاء طلب جديد</h3>
+            <div class="form-grid">
+                <input id="orderName" placeholder="اسم الطلب أو العميل">
+                <select id="orderVillage">
+                    <option value="">اختر القرية</option>
                     <option value="البساتين">البساتين</option>
                     <option value="البنية">البنية</option>
                     <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
@@ -369,679 +99,93 @@ select {
                     <option value="دقون">دقون</option>
                     <option value="دفون">دفون</option>
                     <option value="بعورته">بعورته</option>
+                    <option value="عين كسور">عين كسور</option>
                 </select>
-                <small style="color: #64748b; display: block; margin-top: 2px;">القرية</small>
+                <select id="orderItem"></select>
+                <input id="orderQty" type="number" placeholder="الكمية">
             </div>
-            <div style="flex: 1; min-width: 150px;">
-                <input id="dateFrom" type="date" onchange="applyFilters()">
-                <small style="color: #64748b; display: block; margin-top: 2px;">من تاريخ</small>
-            </div>
-            <div style="flex: 1; min-width: 150px;">
-                <input id="dateTo" type="date" onchange="applyFilters()">
-                <small style="color: #64748b; display: block; margin-top: 2px;">إلى تاريخ</small>
-            </div>
-            <button onclick="clearFilters()" style="background: #6b7280; color: white; padding: 12px 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700;">مسح الفلاتر</button>
+            <button class="add" onclick="addToOrder()">➕ إضافة للطلب</button>
         </div>
-    </div>
-    
-    <div id="orderHistory"></div>
-</div>
 
-<!-- REPORTS -->
-<div id="reports" class="section">
-    <div class="card">
-        <h3>التقرير اليومي</h3>
-        <input id="reportDate" type="date" value="${new Date().toISOString().split('T')[0]}">
-        <button class="done" onclick="generateDailyReport()">إنشاء التقرير</button>
-    </div>
-    
-    <div id="reportContainer"></div>
-</div>
+        <div id="orderList"></div>
 
+        <div class="button-group">
+            <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
+            <button class="delete" onclick="cancelEdit()" id="cancelEditBtn" style="display: none;">❌ إلغاء</button>
+        </div>
+
+        <h3 class="history-heading">سجل الطلبات</h3>
+
+        <div class="card">
+            <div class="filter-container">
+                <div class="filter-group">
+                    <input id="nameFilter" placeholder="الاسم" oninput="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <select id="villageFilter" onchange="applyFilters()">
+                        <option value="">جميع القرى</option>
+                        <option value="البساتين">البساتين</option>
+                        <option value="البنية">البنية</option>
+                        <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
+                        <option value="كفرمتى">كفرمتى</option>
+                        <option value="عبيه">عبيه</option>
+                        <option value="دقون">دقون</option>
+                        <option value="دفون">دفون</option>
+                        <option value="بعورته">بعورته</option>
+                    </select>
+                    <small>القرية</small>
+                </div>
+                <div class="filter-group">
+                    <select id="statusFilter" onchange="applyFilters()">
+                        <option value="">كل حالات التنفيذ</option>
+                        <option value="pending">قيد التنفيذ</option>
+                        <option value="done">مكتمل</option>
+                    </select>
+                    <small>التنفيذ</small>
+                </div>
+                <div class="filter-group">
+                    <select id="savedFilter" onchange="applyFilters()">
+                        <option value="">كل حالات الحفظ</option>
+                        <option value="saved">محفوظ</option>
+                        <option value="unsaved">غير محفوظ</option>
+                    </select>
+                    <small>الحفظ</small>
+                </div>
+                <div class="filter-group">
+                    <input id="dateFrom" type="date" onchange="applyFilters()">
+                    <small>من</small>
+                </div>
+                <div class="filter-group">
+                    <input id="dateTo" type="date" onchange="applyFilters()">
+                    <small>إلى</small>
+                </div>
+                <button onclick="clearFilters()" class="filter-clear">مسح</button>
+            </div>
+        </div>
+
+        <div id="orderHistory"></div>
+    </div>
+
+    <div id="reports" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">قراءة سريعة</p>
+                <h2>تقارير يومية أوضح على الهاتف</h2>
+            </div>
+            <p>اختر اليوم المطلوب وسيظهر التقرير داخل بطاقة قابلة للتمرير بشكل مريح.</p>
+        </div>
+
+        <div class="card">
+            <h3>التقرير اليومي</h3>
+            <input id="reportDate" type="date">
+            <button class="done" onclick="generateDailyReport()">إنشاء التقرير</button>
+        </div>
+
+        <div id="reportContainer"></div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = "https://hrejmgfrcyiflhreokkl.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWptZ2ZyY3lpZmxocmVva2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDIyNDIsImV4cCI6MjA5MDAxODI0Mn0.RaIQfRKufKOfDcZxKmnjaKiZpOjIC6cZhVC1qJuSyr0";
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let inventory = [];
-let currentOrder = [];
-let currentFilters = { name: '', village: '', dateFrom: '', dateTo: '' };
-let editingOrderId = null;
-let inlineEditingOrderId = null;
-let inlineEditingOriginalData = null;
-
-function switchTab(tabName, evt){
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-
-    if (evt && evt.target) evt.target.classList.add('active');
-    document.getElementById(tabName).classList.add('active');
-}
-
-async function loadItems(){
-    try {
-        const { data, error } = await supabaseClient.from("inventory").select("*");
-        if (error) throw error;
-
-        inventory = data || [];
-
-        const list = document.getElementById("inventoryList");
-        const select = document.getElementById("orderItem");
-
-        list.innerHTML = "";
-        select.innerHTML = "";
-
-        if (inventory.length === 0) {
-            list.innerHTML = `<div class="card">لا توجد عناصر في المخزون</div>`;
-            select.innerHTML = `<option value="">لا يوجد</option>`;
-            return;
-        }
-
-        inventory.forEach(item=>{
-            list.innerHTML += `
-            <div class="card item">
-                <div>${item.name} (${item.quantity})</div>
-                <button class="delete" onclick="deleteItem(${item.id})">حذف</button>
-            </div>`;
-
-            select.innerHTML += `
-            <option value="${item.id}">
-            ${item.name} (متوفر: ${item.quantity})
-            </option>`;
-        });
-    } catch (err) {
-        console.error("Error loading inventory:", err);
-        document.getElementById("inventoryList").innerHTML = `<div class="card" style="background:#fee">فشل تحميل المخزون (تحقق من الاتصال والمفاتيح)</div>`;
-    }
-}
-
-async function addItem(){
-    const name = String(document.getElementById("name").value).trim();
-    const qty = Number(document.getElementById("qty").value);
-
-    if (!name || !qty || qty <= 0) return alert("أدخل اسمًا وكمية صحيحة");
-
-    try {
-        const { error } = await supabaseClient.from("inventory").insert([{name, quantity: qty}]);
-        if (error) throw error;
-        document.getElementById("name").value = "";
-        document.getElementById("qty").value = "";
-        loadItems();
-    } catch (err) {
-        console.error("Error adding item:", err);
-        alert("فشل إضافة العنصر. تحقق من الإعدادات.");
-    }
-}
-
-async function deleteItem(id){
-    try {
-        const { error } = await supabaseClient.from("inventory").delete().eq("id", id);
-        if (error) throw error;
-        loadItems();
-    } catch (err) {
-        console.error("Error deleting item:", err);
-        alert("فشل حذف العنصر.");
-    }
-}
-
-function addToOrder(){
-    const orderName = String(document.getElementById("orderName").value).trim();
-    const village = document.getElementById("orderVillage").value;
-    const select = document.getElementById("orderItem");
-    const itemId = select.value;
-    const qty = Number(document.getElementById("orderQty").value);
-
-    if (!orderName) return alert("أدخل اسم الطلب أو العميل");
-    if (!village) return alert("اختر القرية");
-    if (!itemId) return alert("اختر عنصرًا من القائمة");
-    if (!qty || qty <= 0) return alert("أدخل كمية صالحة أكبر من صفر");
-
-    const item = inventory.find(i => String(i.id) === String(itemId));
-    if (!item) return alert("العنصر غير متوفر في المخزون");
-
-    if (qty > item.quantity) return alert(`الكمية المطلوبة أكبر من المتوفر (${item.quantity})`);
-
-    currentOrder.push({id: item.id, name: item.name, qty});
-    renderOrder();
-}
-
-function renderOrder(){
-    const list = document.getElementById("orderList");
-    list.innerHTML = "";
-
-    currentOrder.forEach((item,index)=>{
-        list.innerHTML += `
-        <div class="card item">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span>${item.name}</span>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <button class="delete" onclick="adjustQty(${index}, -1)" style="padding: 2px 8px; font-size: 14px;">-</button>
-                    <span style="min-width: 30px; text-align: center;">${item.qty}</span>
-                    <button class="add" onclick="adjustQty(${index}, 1)" style="padding: 2px 8px; font-size: 14px;">+</button>
-                </div>
-            </div>
-            <button class="delete" onclick="removeItem(${index})">حذف</button>
-        </div>`;
-    });
-}
-
-function removeItem(index){
-    currentOrder.splice(index,1);
-    renderOrder();
-}
-
-function adjustQty(index, delta){
-    const item = currentOrder[index];
-    const newQty = item.qty + delta;
-    
-    if (newQty < 1) return; // Don't allow quantity below 1
-    
-    // Check available stock
-    const stock = inventory.find(i => i.id == item.id);
-    if (!stock) return alert(`العنصر ${item.name} غير متوفر`);
-    
-    const availableQty = editingOrderId ? 
-        stock.quantity + (item.originalQty || 0) : // When editing, add back the original quantity
-        stock.quantity;
-    
-    if (newQty > availableQty) {
-        return alert(`الكمية المتاحة محدودة (${availableQty})`);
-    }
-    
-    item.qty = newQty;
-    renderOrder();
-}
-
-async function submitOrder(){
-    if (currentOrder.length === 0) return alert("لا يوجد عناصر في الطلب");
-
-    try {
-        // If editing, first restore old quantities
-        if (editingOrderId) {
-            const { data: oldOrder, error: fetchErr } = await supabaseClient.from("orders").select("*").eq("id", editingOrderId).single();
-            if (fetchErr) throw fetchErr;
-
-            // Restore old quantities
-            for (let oldItem of oldOrder.items || []) {
-                const stock = inventory.find(i => i.id == oldItem.id);
-                if (stock) {
-                    const restoredQty = stock.quantity + oldItem.qty;
-                    const { error: restoreErr } = await supabaseClient.from("inventory")
-                        .update({ quantity: restoredQty })
-                        .eq("id", oldItem.id);
-                    if (restoreErr) throw restoreErr;
-                }
-            }
-        }
-
-        // Check and deduct new quantities
-        for(let o of currentOrder){
-            const stock = inventory.find(i=>i.id==o.id);
-            if (!stock) {
-                alert(`العنصر ${o.name} غير متوفر بعد الآن`);
-                return;
-            }
-
-            const newQty = stock.quantity - o.qty;
-
-            if(newQty < 0){
-                alert(`الكمية غير كافية لـ ${stock.name}`);
-                return;
-            }
-
-            const { error: invErr } = await supabaseClient.from("inventory")
-                .update({quantity:newQty})
-                .eq("id", o.id);
-
-            if (invErr) throw invErr;
-        }
-
-        const orderName = String(document.getElementById("orderName").value).trim();
-        const village = document.getElementById("orderVillage").value;
-        if (!orderName) return alert("أدخل اسم الطلب أو العميل قبل تأكيد الطلب");
-        if (!village) return alert("اختر القرية قبل تأكيد الطلب");
-
-        const orderRecord = {
-            order_name: orderName,
-            village: village,
-            items: currentOrder.map(item => ({ id: item.id, name: item.name, qty: item.qty })),
-            status: editingOrderId ? undefined : "pending" // Keep status if editing
-        };
-
-        let result;
-        if (editingOrderId) {
-            result = await supabaseClient.from("orders").update(orderRecord).eq("id", editingOrderId);
-        } else {
-            result = await supabaseClient.from("orders").insert([orderRecord]);
-        }
-
-        if (result.error) {
-            console.error("Error submitting/updating order:", result.error);
-            throw result.error;
-        }
-
-        alert(editingOrderId ? "تم تحديث الطلب بنجاح" : "تم تنفيذ الطلب وحفظه في السجل");
-        cancelEdit();
-        loadItems();
-        loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
-    } catch (err) {
-        console.error("Error submitting order:", err);
-        alert("فشل تنفيذ الطلب. حاول لاحقًا.");
-    }
-}
-
-async function setOrderStatus(orderId, status){
-    try {
-        const { error } = await supabaseClient.from("orders").update({ status }).eq("id", orderId);
-        if (error) throw error;
-        loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
-    } catch (err) {
-        console.error("Error updating order status:", err);
-        alert("فشل تحديث حالة الطلب.");
-    }
-}
-
-function cancelEdit(){
-    editingOrderId = null;
-    currentOrder = [];
-    document.getElementById("orderName").value = "";
-    document.getElementById("orderVillage").value = "";
-    document.getElementById("orderQty").value = "";
-    renderOrder();
-    document.querySelector("#orders button.done").textContent = "✅ تأكيد الطلب";
-    document.getElementById("cancelEditBtn").style.display = "none";
-}
-
-function startInlineEdit(orderId){
-    inlineEditingOrderId = orderId;
-    // Store original data for cancellation
-    inlineEditingOriginalData = null; // Will be set when we reload
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
-}
-
-function cancelInlineEdit(){
-    inlineEditingOrderId = null;
-    inlineEditingOriginalData = null;
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
-}
-
-async function saveInlineEdit(orderId){
-    const newName = document.getElementById(`edit-order-name-${orderId}`).value.trim();
-    if (!newName) {
-        alert("يجب إدخال اسم الطلب");
-        return;
-    }
-
-    // Collect updated items
-    const updatedItems = [];
-    let itemIndex = 0;
-    while (document.getElementById(`item-type-${orderId}-${itemIndex}`)) {
-        const itemType = document.getElementById(`item-type-${orderId}-${itemIndex}`).value;
-        const itemQty = parseInt(document.getElementById(`item-qty-${orderId}-${itemIndex}`).textContent);
-        
-        const item = inventory.find(i => i.id == itemType);
-        if (item) {
-            updatedItems.push({
-                id: item.id,
-                name: item.name,
-                qty: itemQty
-            });
-        }
-        itemIndex++;
-    }
-
-    if (updatedItems.length === 0) {
-        alert("يجب أن يحتوي الطلب على عنصر واحد على الأقل");
-        return;
-    }
-
-    try {
-        // Get original order data
-        const { data: originalOrder, error: fetchErr } = await supabaseClient.from("orders").select("*").eq("id", orderId).single();
-        if (fetchErr) throw fetchErr;
-
-        // Restore original quantities
-        for (let oldItem of originalOrder.items || []) {
-            const stock = inventory.find(i => i.id == oldItem.id);
-            if (stock) {
-                const restoredQty = stock.quantity + oldItem.qty;
-                await supabaseClient.from("inventory").update({ quantity: restoredQty }).eq("id", oldItem.id);
-            }
-        }
-
-        // Check and deduct new quantities
-        for (let newItem of updatedItems) {
-            const stock = inventory.find(i => i.id == newItem.id);
-            if (!stock) {
-                alert(`العنصر ${newItem.name} غير متوفر`);
-                return;
-            }
-            if (newItem.qty > stock.quantity) {
-                alert(`الكمية المطلوبة من ${newItem.name} أكبر من المتاح (${stock.quantity})`);
-                return;
-            }
-            const newQty = stock.quantity - newItem.qty;
-            await supabaseClient.from("inventory").update({ quantity: newQty }).eq("id", newItem.id);
-        }
-
-        // Update order
-        const { error: updateErr } = await supabaseClient.from("orders")
-            .update({ 
-                order_name: newName, 
-                items: updatedItems 
-            })
-            .eq("id", orderId);
-        
-        if (updateErr) throw updateErr;
-
-        alert("تم تحديث الطلب بنجاح");
-        inlineEditingOrderId = null;
-        inlineEditingOriginalData = null;
-        loadItems();
-        loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.dateFrom, currentFilters.dateTo);
-    } catch (err) {
-        console.error("Error saving inline edit:", err);
-        alert("فشل حفظ التعديلات");
-    }
-}
-
-function adjustInlineQty(orderId, itemIndex, delta){
-    const qtyElement = document.getElementById(`item-qty-${orderId}-${itemIndex}`);
-    const typeElement = document.getElementById(`item-type-${orderId}-${itemIndex}`);
-    
-    const currentQty = parseInt(qtyElement.textContent);
-    const newQty = currentQty + delta;
-    
-    if (newQty < 1) return;
-    
-    // Check stock availability
-    const itemId = typeElement.value;
-    const stock = inventory.find(i => i.id == itemId);
-    if (!stock) return;
-    
-    // For inline editing, we need to consider the original quantities
-    // This is simplified - in a real app you'd track original vs new quantities
-    if (newQty > stock.quantity + 10) { // Rough estimate
-        alert(`الكمية المتاحة محدودة`);
-        return;
-    }
-    
-    qtyElement.textContent = newQty;
-}
-
-function removeInlineItem(orderId, itemIndex){
-    // Remove the item row
-    const itemRow = document.querySelector(`#item-type-${orderId}-${itemIndex}`).closest('div');
-    itemRow.remove();
-    
-    // Re-index remaining items
-    let newIndex = 0;
-    document.querySelectorAll(`[id^="item-type-${orderId}-"]`).forEach((el, idx) => {
-        el.id = `item-type-${orderId}-${idx}`;
-        el.nextElementSibling.querySelector('span').id = `item-qty-${orderId}-${idx}`;
-        el.nextElementSibling.querySelectorAll('button')[0].setAttribute('onclick', `adjustInlineQty(${orderId}, ${idx}, -1)`);
-        el.nextElementSibling.querySelectorAll('button')[1].setAttribute('onclick', `adjustInlineQty(${orderId}, ${idx}, 1)`);
-        el.nextElementSibling.nextElementSibling.setAttribute('onclick', `removeInlineItem(${orderId}, ${idx})`);
-    });
-}
-
-function addInlineItem(orderId){
-    const container = document.querySelector(`#edit-order-name-${orderId}`).closest('.order-history-item').querySelector('div[style*="margin-top:10px"]');
-    const addButton = container.querySelector('button[onclick*="addInlineItem"]');
-    
-    // Count existing items
-    const existingItems = container.querySelectorAll('[id^="item-type-"]').length;
-    
-    const newItemHtml = `
-        <div style="display: flex; align-items: center; gap: 10px; padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
-            <select id="item-type-${orderId}-${existingItems}" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                ${inventory.map(inv => `<option value="${inv.id}">${inv.name} (متوفر: ${inv.quantity})</option>`).join('')}
-            </select>
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <button onclick="adjustInlineQty(${orderId}, ${existingItems}, -1)" style="padding: 2px 8px; font-size: 14px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">-</button>
-                <span id="item-qty-${orderId}-${existingItems}" style="min-width: 30px; text-align: center;">1</span>
-                <button onclick="adjustInlineQty(${orderId}, ${existingItems}, 1)" style="padding: 2px 8px; font-size: 14px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">+</button>
-            </div>
-            <button onclick="removeInlineItem(${orderId}, ${existingItems})" style="padding: 2px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">حذف</button>
-        </div>`;
-    
-    addButton.insertAdjacentHTML('beforebegin', newItemHtml);
-}
-
-function formatDate(iso){
-    const d = new Date(iso);
-    if (isNaN(d)) return iso;
-    return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-async function loadOrderHistory(nameFilter = '', villageFilter = '', dateFrom = '', dateTo = ''){
-    try {
-        let query = supabaseClient.from("orders").select("*").order("created_at", { ascending: false });
-        
-        // Apply name filter
-        if (nameFilter.trim()) {
-            query = query.ilike("order_name", `%${nameFilter.trim()}%`);
-        }
-        
-        // Apply village filter
-        if (villageFilter) {
-            query = query.eq("village", villageFilter);
-        }
-        
-        // Apply date filters
-        if (dateFrom) {
-            query = query.gte("created_at", dateFrom + "T00:00:00.000Z");
-        }
-        if (dateTo) {
-            // Add one day to include the end date fully
-            const endDate = new Date(dateTo);
-            endDate.setDate(endDate.getDate() + 1);
-            query = query.lt("created_at", endDate.toISOString().split('T')[0] + "T00:00:00.000Z");
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-
-        const history = data || [];
-        const container = document.getElementById("orderHistory");
-        container.innerHTML = "";
-
-        if (history.length === 0) {
-            container.innerHTML = `<div class="card">لا توجد سجلات طلبات بعد</div>`;
-            return;
-        }
-
-        history.forEach(order=>{
-            let itemsHtml = "";
-            const isInlineEditing = inlineEditingOrderId === order.id;
-            
-            if (isInlineEditing) {
-                // Editable items
-                (order.items || []).forEach((i, index) => {
-                    itemsHtml += `
-                        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap;">
-                            <select id="item-type-${order.id}-${index}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 1rem; min-width: 120px;">
-                                ${inventory.map(inv => `<option value="${inv.id}" ${inv.id == i.id ? 'selected' : ''}>${inv.name} (متوفر: ${inv.quantity})</option>`).join('')}
-                            </select>
-                            <div style="display: flex; align-items: center; gap: 8px; background: #f8fafc; border-radius: 8px; padding: 4px;">
-                                <button onclick="adjustInlineQty(${order.id}, ${index}, -1)" style="width: 40px; height: 40px; border-radius: 6px; background: #ef4444; color: white; border: none; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center;">-</button>
-                                <span id="item-qty-${order.id}-${index}" style="min-width: 40px; text-align: center; font-size: 1.1rem; font-weight: bold;">${i.qty}</span>
-                                <button onclick="adjustInlineQty(${order.id}, ${index}, 1)" style="width: 40px; height: 40px; border-radius: 6px; background: #10b981; color: white; border: none; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center;">+</button>
-                            </div>
-                            <button onclick="removeInlineItem(${order.id}, ${index})" style="padding: 8px 12px; background: #6b7280; color: white; border: none; border-radius: 6px; font-size: 0.9rem; min-height: 40px;">حذف</button>
-                        </div>`;
-                });
-                itemsHtml += `<button onclick="addInlineItem(${order.id})" style="margin-top: 12px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; width: 100%; min-height: 48px;">+ إضافة عنصر</button>`;
-            } else {
-                // Display items
-                (order.items || []).forEach(i => {
-                    itemsHtml += `<div style="padding:2px 0;">• ${i.name} - ${i.qty}</div>`;
-                });
-            }
-
-            const done = order.status === "done";
-            const orderDisplayName = order.order_name ? order.order_name : `الطلب #${order.id || ''}`;
-            
-            let editButtons = "";
-            if (isInlineEditing) {
-                editButtons = `
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                        <button onclick="saveInlineEdit(${order.id})" style="padding: 12px 16px; font-size: 1rem; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; min-height: 48px; flex: 1;">حفظ</button>
-                        <button onclick="cancelInlineEdit()" style="padding: 12px 16px; font-size: 1rem; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: bold; min-height: 48px; flex: 1;">إلغاء</button>
-                    </div>`;
-            } else {
-                editButtons = `
-                    <button class="done" style="padding: 12px 16px; font-size: 1rem; min-height: 48px;" onclick="startInlineEdit(${order.id})">تعديل</button>
-                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #334155; white-space: nowrap; font-size: 0.9rem;">
-                        <input type="checkbox" ${done ? 'checked' : ''} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')" style="transform: scale(1.2); margin: 0;" />
-                        <span>مكتمل</span>
-                    </label>`;
-            }
-            
-            container.innerHTML += `
-                <div class="order-history-item ${done ? 'done' : 'pending'}" style="border-left-color: ${done ? '#10b981' : '#2563eb'};">
-                    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            ${isInlineEditing ? 
-                                `<input type="text" id="edit-order-name-${order.id}" value="${orderDisplayName}" style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; font-weight: bold; margin-bottom: 8px; width: 100%; box-sizing: border-box;" />` :
-                                `<strong>${orderDisplayName}</strong>`
-                            }
-                            <small>${order.village ? `القرية: ${order.village} - ` : ''}${formatDate(order.created_at)}</small>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-                            ${editButtons}
-                        </div>
-                    </div>
-                    <div style="margin-top: 12px;">${itemsHtml || 'لا توجد عناصر'}</div>
-                    <div style="margin-top: 8px; color: ${done ? '#10b981' : '#1e3a8a'};"><small>الحالة: ${done ? 'مكتمل' : 'قيد التنفيذ'}</small></div>
-                </div>`;
-        });
-    } catch (err) {
-        console.error("Error loading order history:", err);
-        document.getElementById("orderHistory").innerHTML = `<div class="card" style="background:#fee">فشل تحميل سجل الطلبات</div>`;
-    }
-}
-
-function applyFilters(){
-    const nameFilter = document.getElementById("nameFilter").value;
-    const villageFilter = document.getElementById("villageFilter").value;
-    const dateFrom = document.getElementById("dateFrom").value;
-    const dateTo = document.getElementById("dateTo").value;
-    
-    currentFilters = { name: nameFilter, village: villageFilter, dateFrom, dateTo };
-    loadOrderHistory(nameFilter, villageFilter, dateFrom, dateTo);
-}
-
-function clearFilters(){
-    document.getElementById("nameFilter").value = "";
-    document.getElementById("villageFilter").value = "";
-    document.getElementById("dateFrom").value = "";
-    document.getElementById("dateTo").value = "";
-    currentFilters = { name: '', village: '', dateFrom: '', dateTo: '' };
-    loadOrderHistory();
-}
-
-async function generateDailyReport(){
-    const reportDate = document.getElementById("reportDate").value;
-    if (!reportDate) return alert("اختر تاريخ التقرير");
-    
-    try {
-        // Get start and end of the day
-        const startDate = reportDate + "T00:00:00.000Z";
-        const endDate = reportDate + "T23:59:59.999Z";
-        
-        const { data, error } = await supabaseClient
-            .from("orders")
-            .select("*")
-            .gte("created_at", startDate)
-            .lte("created_at", endDate);
-            
-        if (error) throw error;
-        
-        // Process data to create report
-        const reportData = {};
-        const allItems = new Set();
-        
-        data.forEach(order => {
-            const village = order.village || "غير محدد";
-            if (!reportData[village]) {
-                reportData[village] = {};
-            }
-            
-            (order.items || []).forEach(item => {
-                allItems.add(item.name);
-                if (!reportData[village][item.name]) {
-                    reportData[village][item.name] = 0;
-                }
-                reportData[village][item.name] += item.qty;
-            });
-        });
-        
-        // Generate HTML table
-        let tableHtml = `<div class="card">
-            <h4>تقرير يوم ${new Date(reportDate).toLocaleDateString('ar-EG')}</h4>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead>
-                        <tr style="background: #f9fafb;">
-                            <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">القرية</th>`;
-        
-        Array.from(allItems).sort().forEach(itemName => {
-            tableHtml += `<th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${itemName}</th>`;
-        });
-        
-        tableHtml += `</tr></thead><tbody>`;
-        
-        // compute totals per item across all villages
-        const itemTotals = {};
-        Array.from(allItems).forEach(itemName => {
-            itemTotals[itemName] = 0;
-        });
-
-        Object.keys(reportData).sort().forEach(village => {
-            tableHtml += `<tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">${village}</td>`;
-            
-            Array.from(allItems).sort().forEach(itemName => {
-                const qty = reportData[village][itemName] || 0;
-                itemTotals[itemName] += qty;
-                tableHtml += `<td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${qty}</td>`;
-            });
-            
-            tableHtml += `</tr>`;
-        });
-
-        // add totals row at bottom
-        tableHtml += `<tr style="background: #f1f5f9; font-weight: bold;">
-            <td style="padding: 8px; border: 1px solid #e2e8f0;">مجموع الكل</td>`;
-
-        Array.from(allItems).sort().forEach(itemName => {
-            const totalQty = itemTotals[itemName] || 0;
-            tableHtml += `<td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${totalQty}</td>`;
-        });
-
-        tableHtml += `</tr>`;
-        
-        tableHtml += `</tbody></table></div></div>`;
-        
-        document.getElementById("reportContainer").innerHTML = tableHtml;
-        
-    } catch (err) {
-        console.error("Error generating report:", err);
-        document.getElementById("reportContainer").innerHTML = `<div class="card" style="background:#fee">فشل إنشاء التقرير</div>`;
-    }
-}
-
-async function initialize(){
-    await loadItems();
-    await loadOrderHistory();
-}
-
-initialize();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
