@@ -392,6 +392,46 @@ button {
     font-size: 1rem;
 }
 
+.import-needs-box {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.import-needs-box input[type="file"] {
+    flex: 1 1 320px;
+    min-height: auto;
+    padding: 12px;
+    background: #f8fbff;
+}
+
+.import-needs-box button {
+    width: auto;
+    min-width: 170px;
+}
+
+.needs-import-result {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #f8fbff;
+    line-height: 1.7;
+}
+
+.needs-import-result.error {
+    background: #fff1f1;
+    border-color: #f2bcbc;
+    color: #8a2d2d;
+}
+
+.needs-import-result.success {
+    background: #effcf7;
+    border-color: #bde7d5;
+    color: #156b4a;
+}
+
 .order-source-badge {
     margin-top: 14px;
     padding: 12px 14px;

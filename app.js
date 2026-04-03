@@ -116,6 +116,20 @@ function updateOrderSourceBadge() {
     badge.classList.toggle("hidden", !pendingOrderSourceNeedId);
 }
 
+function setNeedsImportResult(message, type = "") {
+    const element = document.getElementById("needsImportResult");
+    element.textContent = message;
+    element.className = `needs-import-result ${type}`.trim();
+    element.classList.remove("hidden");
+}
+
+function normalizeHeader(value) {
+    return String(value ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+}
+
 function openItemModal() {
     document.getElementById("itemModal").classList.add("active");
     document.body.style.overflow = "hidden";
@@ -901,6 +915,114 @@ async function setNeedStatus(needId, status) {
     } catch (err) {
         console.error("Error updating need status:", err);
         alert("فشل تحديث حالة الاحتياج");
+    }
+}
+
+async function importNeedsExcel() {
+    try {
+        const input = document.getElementById("needsExcelFile");
+        const file = input.files?.[0];
+
+        if (!file) {
+            return setNeedsImportResult("اختر ملف Excel أولًا", "error");
+        }
+
+        if (!window.XLSX) {
+            return setNeedsImportResult("مكتبة قراءة Excel غير متوفرة", "error");
+        }
+
+        const buffer = await file.arrayBuffer();
+        const workbook = window.XLSX.read(buffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        if (!rows.length) {
+            return setNeedsImportResult("الملف فارغ أو لا يحتوي على بيانات", "error");
+        }
+
+        const firstRow = rows[0];
+        const headers = Object.keys(firstRow);
+        const normalizedHeaders = headers.map(normalizeHeader);
+
+        const requiredHeaders = ["family_name", "phone_number", "village", "people_count"];
+        const missingHeaders = requiredHeaders.filter((header) => !normalizedHeaders.includes(header));
+        if (missingHeaders.length) {
+            return setNeedsImportResult(`الأعمدة الأساسية مفقودة: ${missingHeaders.join(", ")}`, "error");
+        }
+
+        const headerMap = Object.fromEntries(headers.map((header) => [normalizeHeader(header), header]));
+        const itemHeaders = headers.filter((header) => !requiredHeaders.includes(normalizeHeader(header)));
+        const inventoryMap = new Map(inventory.map((item) => [item.name.trim().toLowerCase(), item]));
+        const villageMap = new Map(villages.map((village) => [village.name.trim().toLowerCase(), village]));
+
+        const payload = [];
+        const errors = [];
+
+        rows.forEach((row, rowIndex) => {
+            const familyName = String(row[headerMap.family_name] ?? "").trim();
+            const phoneNumber = String(row[headerMap.phone_number] ?? "").trim();
+            const villageName = String(row[headerMap.village] ?? "").trim();
+            const peopleCount = Number(row[headerMap.people_count]);
+
+            if (!familyName || !phoneNumber || !villageName || !peopleCount || peopleCount <= 0) {
+                errors.push(`السطر ${rowIndex + 2}: بيانات أساسية غير مكتملة`);
+                return;
+            }
+
+            const matchedVillage = villageMap.get(villageName.toLowerCase());
+            if (!matchedVillage) {
+                errors.push(`السطر ${rowIndex + 2}: القرية غير موجودة (${villageName})`);
+                return;
+            }
+
+            const items = [];
+            itemHeaders.forEach((header) => {
+                const qty = Number(row[header]);
+                if (!qty || qty <= 0) return;
+
+                const matchedItem = inventoryMap.get(String(header).trim().toLowerCase());
+                if (!matchedItem) {
+                    errors.push(`السطر ${rowIndex + 2}: المادة غير موجودة في المخزون (${header})`);
+                    return;
+                }
+
+                items.push({
+                    id: matchedItem.id,
+                    name: matchedItem.name,
+                    qty,
+                });
+            });
+
+            if (!items.length) {
+                errors.push(`السطر ${rowIndex + 2}: لا توجد مواد بكميات أكبر من صفر`);
+                return;
+            }
+
+            payload.push({
+                family_name: familyName,
+                phone_number: phoneNumber,
+                village_id: matchedVillage.id,
+                people_count: peopleCount,
+                priority: "normal",
+                status: "pending",
+                items,
+            });
+        });
+
+        if (errors.length) {
+            return setNeedsImportResult(errors.slice(0, 8).join(" | "), "error");
+        }
+
+        const { error } = await supabaseClient.from("family_needs").insert(payload);
+        if (error) throw error;
+
+        input.value = "";
+        setNeedsImportResult(`تم استيراد ${payload.length} احتياج بنجاح`, "success");
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+    } catch (err) {
+        console.error("Error importing needs Excel:", err);
+        setNeedsImportResult(err.message || "فشل استيراد ملف Excel", "error");
     }
 }
 

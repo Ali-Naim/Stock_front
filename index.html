@@ -214,6 +214,16 @@
             <button class="add" onclick="addNeedItem()">إضافة مادة إلى الاحتياج</button>
         </div>
 
+        <div class="card">
+            <h3>استيراد احتياجات من Excel</h3>
+            <p class="modal-copy">ترتيب الأعمدة يجب أن يكون: <strong>`family_name`</strong> ثم <strong>`phone_number`</strong> ثم <strong>`village`</strong> ثم <strong>`people_count`</strong>، وبعدها أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
+            <div class="import-needs-box">
+                <input id="needsExcelFile" type="file" accept=".xlsx,.xls,.csv">
+                <button class="done" type="button" onclick="importNeedsExcel()">استيراد الملف</button>
+            </div>
+            <div id="needsImportResult" class="needs-import-result hidden"></div>
+        </div>
+
         <div id="needItemsList"></div>
 
         <div class="button-group">
@@ -291,6 +301,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
