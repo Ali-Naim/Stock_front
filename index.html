@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -7,7 +7,6 @@
 <title>إدارة المخزون</title>
 <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
 <div id="itemModal" class="modal-overlay" onclick="closeItemModal(event)">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle" onclick="event.stopPropagation()">
@@ -16,9 +15,9 @@
                 <p class="section-kicker">إضافة منتج</p>
                 <h3 id="itemModalTitle">منتج جديد</h3>
             </div>
-            <button class="close-btn" type="button" onclick="closeItemModal()" aria-label="إغلاق">✕</button>
+            <button class="close-btn" type="button" onclick="closeItemModal()" aria-label="إغلاق">×</button>
         </div>
-        <p class="modal-copy">أدخل اسم المنتج فقط، وسيتم إضافته إلى القائمة لتستخدمه مباشرة.</p>
+        <p class="modal-copy">أضف المنتج مرة واحدة ثم استخدمه في الطلبات واحتياجات العائلات.</p>
         <input id="newItemName" placeholder="اسم المنتج">
         <div class="modal-actions">
             <button class="done" type="button" onclick="createItem()">حفظ المنتج</button>
@@ -27,17 +26,35 @@
     </div>
 </div>
 
+<div id="needToOrderModal" class="modal-overlay" onclick="closeNeedToOrderModal(event)">
+    <div class="modal-card need-order-modal-card" role="dialog" aria-modal="true" aria-labelledby="needToOrderTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">تحويل إلى طلب</p>
+                <h3 id="needToOrderTitle">اختيار المواد المطلوب تحويلها</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeNeedToOrderModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">اختر المواد التي تريد إضافتها إلى الطلب. سيتم خصمها من الاحتياج، وإذا لم يبقَ شيء تصبح الحالة مكتملة.</p>
+        <div id="needToOrderModalBody"></div>
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="submitNeedToOrder()">إضافة إلى الطلب</button>
+            <button class="filter-clear" type="button" onclick="closeNeedToOrderModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
 <div class="mobile-tab-bar" aria-label="التنقل السريع">
     <button class="mobile-tab-button active" data-tab-target="inventory" onclick="switchTab('inventory', event)">
-        <span>📦</span>
         <span>المخزون</span>
     </button>
     <button class="mobile-tab-button" data-tab-target="orders" onclick="switchTab('orders', event)">
-        <span>🛒</span>
         <span>الطلبات</span>
     </button>
+    <button class="mobile-tab-button" data-tab-target="needs" onclick="switchTab('needs', event)">
+        <span>الاحتياجات</span>
+    </button>
     <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports', event)">
-        <span>📊</span>
         <span>التقارير</span>
     </button>
 </div>
@@ -46,16 +63,17 @@
     <div class="tabs desktop-tabs">
         <button class="tab active" data-tab-target="inventory" onclick="switchTab('inventory', event)">المخزون</button>
         <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
+        <button class="tab" data-tab-target="needs" onclick="switchTab('needs', event)">الاحتياجات</button>
         <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
     </div>
 
     <div id="inventory" class="section active">
         <div class="section-intro">
             <div>
-                <p class="section-kicker">عرض سريع</p>
+                <p class="section-kicker">المخزون</p>
                 <h2>إدارة المنتجات والكميات</h2>
             </div>
-            <p>أضف المنتجات وحدّث المخزون بسرعة من شاشة واحدة.</p>
+            <p>أضف المنتجات، عدّل الكميات، وتابع المتوفر من شاشة واحدة.</p>
         </div>
 
         <div class="card">
@@ -69,7 +87,7 @@
                 </select>
                 <input id="qty" type="number" placeholder="الكمية">
             </div>
-            <button class="add" onclick="addItem()">➕ إضافة</button>
+            <button class="add" onclick="addItem()">إضافة الكمية</button>
         </div>
 
         <h3>سجل المخزون</h3>
@@ -79,39 +97,36 @@
     <div id="orders" class="section">
         <div class="section-intro">
             <div>
-                <p class="section-kicker">متابعة الطلبات</p>
+                <p class="section-kicker">الطلبات</p>
                 <h2>إنشاء الطلب ومراجعته بسرعة</h2>
             </div>
-            <p>واجهة مرتبة لتجهيز الطلبات، تعديلها، ومتابعة حالتها من الهاتف بسهولة.</p>
+            <p>أنشئ الطلبات، عدّلها، وتابع حالتها بسهولة.</p>
         </div>
 
         <div class="card">
             <h3>إنشاء طلب جديد</h3>
             <div class="form-grid">
                 <input id="orderName" placeholder="اسم الطلب أو العميل">
+                <input id="orderPhone" placeholder="رقم الهاتف">
                 <select id="orderVillage">
                     <option value="">اختر القرية</option>
-                    <option value="البساتين">البساتين</option>
-                    <option value="البنية">البنية</option>
-                    <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
-                    <option value="كفرمتى">كفرمتى</option>
-                    <option value="عبيه">عبيه</option>
-                    <option value="دقون">دقون</option>
-                    <option value="دفون">دفون</option>
-                    <option value="بعورته">بعورته</option>
-                    <option value="عين كسور">عين كسور</option>
+                </select>
+                <select id="orderRegistered">
+                    <option value="false">غير مسجل سابقًا</option>
+                    <option value="true">مسجل سابقًا</option>
                 </select>
                 <select id="orderItem"></select>
                 <input id="orderQty" type="number" placeholder="الكمية">
             </div>
-            <button class="add" onclick="addToOrder()">➕ إضافة للطلب</button>
+            <div id="orderSourceBadge" class="order-source-badge hidden">هذا الطلب قادم من صفحة الاحتياجات</div>
+            <button class="add" onclick="addToOrder()">إضافة إلى الطلب</button>
         </div>
 
         <div id="orderList"></div>
 
         <div class="button-group">
-            <button class="done" onclick="submitOrder()">✅ تأكيد الطلب</button>
-            <button class="delete" onclick="cancelEdit()" id="cancelEditBtn" style="display: none;">❌ إلغاء</button>
+            <button class="done" onclick="submitOrder()">تأكيد الطلب</button>
+            <button class="delete" onclick="cancelEdit()" id="cancelEditBtn" style="display: none;">إلغاء التعديل</button>
         </div>
 
         <h3 class="history-heading">سجل الطلبات</h3>
@@ -123,25 +138,17 @@
                 </div>
                 <div class="filter-group">
                     <select id="villageFilter" onchange="applyFilters()">
-                        <option value="">جميع القرى</option>
-                        <option value="البساتين">البساتين</option>
-                        <option value="البنية">البنية</option>
-                        <option value="رمحالا - قبرشمون">رمحالا - قبرشمون</option>
-                        <option value="كفرمتى">كفرمتى</option>
-                        <option value="عبيه">عبيه</option>
-                        <option value="دقون">دقون</option>
-                        <option value="دفون">دفون</option>
-                        <option value="بعورته">بعورته</option>
+                        <option value="">كل القرى</option>
                     </select>
                     <small>القرية</small>
                 </div>
                 <div class="filter-group">
                     <select id="statusFilter" onchange="applyFilters()">
-                        <option value="">كل حالات التنفيذ</option>
+                        <option value="">كل الحالات</option>
                         <option value="pending">قيد التنفيذ</option>
                         <option value="done">مكتمل</option>
                     </select>
-                    <small>التنفيذ</small>
+                    <small>الحالة</small>
                 </div>
                 <div class="filter-group">
                     <select id="savedFilter" onchange="applyFilters()">
@@ -150,6 +157,14 @@
                         <option value="unsaved">غير محفوظ</option>
                     </select>
                     <small>الحفظ</small>
+                </div>
+                <div class="filter-group">
+                    <select id="registeredFilter" onchange="applyFilters()">
+                        <option value="">كل العملاء</option>
+                        <option value="registered">مسجل سابقًا</option>
+                        <option value="not_registered">غير مسجل سابقًا</option>
+                    </select>
+                    <small>التسجيل</small>
                 </div>
                 <div class="filter-group">
                     <input id="dateFrom" type="date" onchange="applyFilters()">
@@ -166,19 +181,109 @@
         <div id="orderHistory"></div>
     </div>
 
-    <div id="reports" class="section">
+    <div id="needs" class="section">
         <div class="section-intro">
             <div>
-                <p class="section-kicker">قراءة سريعة</p>
-                <h2>تقارير يومية أوضح على الهاتف</h2>
+                <p class="section-kicker">الاحتياجات</p>
+                <h2>تسجيل احتياجات العائلات ومتابعة حالتها</h2>
             </div>
-            <p>اختر اليوم المطلوب وسيظهر التقرير داخل بطاقة قابلة للتمرير بشكل مريح.</p>
+            <p>كل احتياج يحفظ اسم العائلة، رقم الهاتف، القرية، عدد الأفراد، المواد المطلوبة، تاريخ الإنشاء، والحالة.</p>
         </div>
 
         <div class="card">
-            <h3>التقرير اليومي</h3>
-            <input id="reportDate" type="date">
-            <button class="done" onclick="generateDailyReport()">إنشاء التقرير</button>
+            <h3>إضافة احتياج جديد</h3>
+            <div class="form-grid needs-form-grid">
+                <input id="needFamilyName" placeholder="اسم العائلة">
+                <input id="needPhone" placeholder="رقم الهاتف">
+                <select id="needVillage">
+                    <option value="">اختر القرية</option>
+                </select>
+                <input id="needPeopleCount" type="number" min="1" placeholder="عدد الأفراد">
+                <select id="needPriority">
+                    <option value="normal">عادي</option>
+                    <option value="medium">متوسط</option>
+                    <option value="urgent">عاجل</option>
+                </select>
+                <select id="needItem"></select>
+                <input id="needQty" type="number" min="1" placeholder="الكمية المطلوبة">
+            </div>
+            <div class="need-item-preview">
+                <small>المادة المختارة</small>
+                <strong id="needItemPreviewName">لم يتم اختيار مادة بعد</strong>
+            </div>
+            <button class="add" onclick="addNeedItem()">إضافة مادة إلى الاحتياج</button>
+        </div>
+
+        <div id="needItemsList"></div>
+
+        <div class="button-group">
+            <button class="done" onclick="submitNeed()" id="submitNeedBtn">حفظ الاحتياج</button>
+            <button class="delete" onclick="cancelNeedEdit()" id="cancelNeedEditBtn" style="display: none;">إلغاء التعديل</button>
+        </div>
+
+        <h3 class="history-heading">سجل الاحتياجات</h3>
+
+        <div class="card needs-filter-card">
+            <div class="filter-container needs-filter-container">
+                <div class="filter-group">
+                    <input id="needNameFilter" placeholder="اسم العائلة" oninput="applyNeedFilters()">
+                </div>
+                <div class="filter-group">
+                    <input id="needPhoneFilter" placeholder="رقم الهاتف" oninput="applyNeedFilters()">
+                </div>
+                <div class="filter-group">
+                    <select id="needVillageFilter" onchange="applyNeedFilters()">
+                        <option value="">كل القرى</option>
+                    </select>
+                    <small>القرية</small>
+                </div>
+                <div class="filter-group">
+                    <select id="needStatusFilter" onchange="applyNeedFilters()">
+                        <option value="">كل الحالات</option>
+                        <option value="pending">قيد الانتظار</option>
+                        <option value="in_progress">قيد المتابعة</option>
+                        <option value="done">مكتمل</option>
+                    </select>
+                    <small>الحالة</small>
+                </div>
+                <div class="filter-group">
+                    <select id="needPriorityFilter" onchange="applyNeedFilters()">
+                        <option value="">كل الأولويات</option>
+                        <option value="normal">عادي</option>
+                        <option value="medium">متوسط</option>
+                        <option value="urgent">عاجل</option>
+                    </select>
+                    <small>الأولوية</small>
+                </div>
+                <button onclick="clearNeedFilters()" class="filter-clear">مسح</button>
+            </div>
+        </div>
+
+        <div id="needsHistoryTable"></div>
+    </div>
+
+    <div id="reports" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">التقارير</p>
+                <h2>إنشاء تقرير حسب الفترة</h2>
+            </div>
+            <p>اختر فترة زمنية وسيظهر لك مجموع المواد حسب القرية.</p>
+        </div>
+
+        <div class="card">
+            <h3>تقرير حسب التاريخ</h3>
+            <div class="form-grid">
+                <div>
+                    <input id="reportFrom" type="date">
+                    <small>من</small>
+                </div>
+                <div>
+                    <input id="reportTo" type="date">
+                    <small>إلى</small>
+                </div>
+            </div>
+            <button class="done" onclick="generateRangeReport()">إنشاء التقرير</button>
         </div>
 
         <div id="reportContainer"></div>

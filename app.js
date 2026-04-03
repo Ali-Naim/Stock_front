@@ -1,25 +1,20 @@
+﻿
 const SUPABASE_URL = "https://hrejmgfrcyiflhreokkl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWptZ2ZyY3lpZmxocmVva2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDIyNDIsImV4cCI6MjA5MDAxODI0Mn0.RaIQfRKufKOfDcZxKmnjaKiZpOjIC6cZhVC1qJuSyr0";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const VILLAGES = [
-    "البساتين",
-    "البنية",
-    "رمحالا - قبرشمون",
-    "كفرمتى",
-    "عبيه",
-    "دقون",
-    "دفون",
-    "بعورته",
-    "عين كسور",
-];
-
+let villages = [];
 let inventory = [];
 let currentOrder = [];
-let currentFilters = { name: "", village: "", status: "", saved: "", dateFrom: "", dateTo: "" };
+let currentNeedItems = [];
+let currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
+let currentNeedFilters = { name: "", phone: "", village: "", status: "", priority: "" };
 let editingOrderId = null;
 let inlineEditingOrderId = null;
+let editingNeedId = null;
+let needToOrderId = null;
+let pendingOrderSourceNeedId = null;
 
 function setActiveTabState(tabName) {
     document.querySelectorAll("[data-tab-target]").forEach((element) => {
@@ -39,19 +34,86 @@ function switchTab(tabName) {
     }
 }
 
-function switchTabMobile(tabName) {
-    switchTab(tabName);
-}
-
 function renderEmptyState(message) {
     return `<div class="card">${message}</div>`;
 }
 
-function getVillageOptions(selectedValue = "") {
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function getVillageOptions(selectedValue = "", emptyLabel = "اختر القرية") {
     return [
-        `<option value="">اختر القرية</option>`,
-        ...VILLAGES.map((village) => `<option value="${village}" ${village === selectedValue ? "selected" : ""}>${village}</option>`),
+        `<option value="">${emptyLabel}</option>`,
+        ...villages.map((village) => `<option value="${village.id}" ${String(village.id) === String(selectedValue) ? "selected" : ""}>${escapeHtml(village.name)}</option>`),
     ].join("");
+}
+
+function getOrderVillageOptions(selectedValue = "", emptyLabel = "اختر القرية") {
+    return [
+        `<option value="">${emptyLabel}</option>`,
+        ...villages.map((village) => `<option value="${escapeHtml(village.name)}" ${String(village.name) === String(selectedValue) ? "selected" : ""}>${escapeHtml(village.name)}</option>`),
+    ].join("");
+}
+
+function getVillageNameById(villageId) {
+    const village = villages.find((entry) => String(entry.id) === String(villageId));
+    return village?.name || "-";
+}
+
+function formatDate(iso) {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return iso;
+    return date.toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
+}
+
+function getLocalDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+async function loadVillages() {
+    try {
+        const { data, error } = await supabaseClient.from("villages").select("*");
+        if (error) throw error;
+        villages = (data || [])
+            .map((row) => ({
+                id: row.id,
+                name: String(row.name ?? row.village_name ?? row.title ?? "").trim(),
+            }))
+            .filter((row) => row.id != null && row.name)
+            .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    } catch (err) {
+        console.error("Error loading villages:", err);
+        villages = [];
+    }
+}
+
+function fillVillageInputs() {
+    document.getElementById("orderVillage").innerHTML = getOrderVillageOptions();
+    document.getElementById("needVillage").innerHTML = getVillageOptions();
+    document.getElementById("villageFilter").innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${escapeHtml(village.name)}">${escapeHtml(village.name)}</option>`).join("")}`;
+    document.getElementById("needVillageFilter").innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${village.id}">${escapeHtml(village.name)}</option>`).join("")}`;
+}
+
+function updateNeedItemPreview() {
+    const itemId = document.getElementById("needItem").value;
+    const preview = document.getElementById("needItemPreviewName");
+    const item = inventory.find((entry) => String(entry.id) === String(itemId));
+    preview.textContent = item ? item.name : "لم يتم اختيار مادة بعد";
+}
+
+function updateOrderSourceBadge() {
+    const badge = document.getElementById("orderSourceBadge");
+    badge.classList.toggle("hidden", !pendingOrderSourceNeedId);
 }
 
 function openItemModal() {
@@ -67,6 +129,14 @@ function closeItemModal(event) {
     document.getElementById("newItemName").value = "";
 }
 
+function closeNeedToOrderModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("needToOrderModal").classList.remove("active");
+    document.body.style.overflow = "";
+    document.getElementById("needToOrderModalBody").innerHTML = "";
+    needToOrderId = null;
+}
+
 async function createItem() {
     const itemName = String(document.getElementById("newItemName").value).trim();
     if (!itemName) return alert("أدخل اسم المنتج");
@@ -76,7 +146,7 @@ async function createItem() {
         if (existingItem) {
             document.getElementById("name").value = String(existingItem.id);
             closeItemModal();
-            return alert("هذا المنتج موجود بالفعل وتم اختياره من القائمة");
+            return alert("هذا المنتج موجود بالفعل وتم اختياره");
         }
 
         const { data, error } = await supabaseClient
@@ -107,17 +177,20 @@ async function loadItems() {
         inventory = data || [];
 
         const list = document.getElementById("inventoryList");
-        const nameSelect = document.getElementById("name");
+        const stockSelect = document.getElementById("name");
         const orderSelect = document.getElementById("orderItem");
+        const needSelect = document.getElementById("needItem");
 
         list.innerHTML = "";
-        nameSelect.innerHTML = `<option value="">اختر المنتج</option>`;
+        stockSelect.innerHTML = `<option value="">اختر المنتج</option>`;
         orderSelect.innerHTML = `<option value="">اختر المنتج</option>`;
+        needSelect.innerHTML = `<option value="">اختر المنتج</option>`;
 
         if (inventory.length === 0) {
             list.innerHTML = renderEmptyState("لا توجد عناصر في المخزون");
-            nameSelect.innerHTML = `<option value="">لا يوجد</option>`;
+            stockSelect.innerHTML = `<option value="">لا يوجد</option>`;
             orderSelect.innerHTML = `<option value="">لا يوجد</option>`;
+            needSelect.innerHTML = `<option value="">لا يوجد</option>`;
             return;
         }
 
@@ -125,7 +198,7 @@ async function loadItems() {
             list.innerHTML += `
                 <div class="card item">
                     <div class="item-meta">
-                        <strong>${item.name}</strong>
+                        <strong>${escapeHtml(item.name)}</strong>
                         <small>الكمية: ${item.quantity}</small>
                     </div>
                     <div class="stock-actions">
@@ -138,22 +211,24 @@ async function loadItems() {
                     </div>
                 </div>`;
 
-            nameSelect.innerHTML += `<option value="${item.id}">${item.name}</option>`;
-            orderSelect.innerHTML += `<option value="${item.id}">${item.name} (متوفر: ${item.quantity})</option>`;
+            stockSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+            orderSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)} (متوفر: ${item.quantity})</option>`;
+            needSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
         });
+
+        updateNeedItemPreview();
     } catch (err) {
         console.error("Error loading inventory:", err);
-        document.getElementById("inventoryList").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل المخزون. تحقق من الاتصال والإعدادات.</div>`;
+        document.getElementById("inventoryList").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل المخزون</div>`;
     }
 }
-
 async function adjustInventoryQty(itemId, delta) {
     try {
         const item = inventory.find((entry) => String(entry.id) === String(itemId));
-        if (!item) return alert("المنتج غير موجود");
+        if (!item) return alert("العنصر غير موجود");
 
         const newQuantity = item.quantity + delta;
-        if (newQuantity < 0) return alert("لا يمكن تقليل الكمية أقل من صفر");
+        if (newQuantity < 0) return alert("لا يمكن أن تكون الكمية أقل من صفر");
 
         const { error } = await supabaseClient.from("inventory").update({ quantity: newQuantity }).eq("id", itemId);
         if (error) throw error;
@@ -174,7 +249,7 @@ async function addItem() {
 
     try {
         const item = inventory.find((entry) => String(entry.id) === String(itemId));
-        if (!item) return alert("المنتج غير موجود");
+        if (!item) return alert("العنصر غير موجود");
 
         const newQuantity = item.quantity + qtyToAdd;
         const { error } = await supabaseClient.from("inventory").update({ quantity: newQuantity }).eq("id", itemId);
@@ -185,7 +260,7 @@ async function addItem() {
         await loadItems();
     } catch (err) {
         console.error("Error adding item:", err);
-        alert("فشل تحديث المخزون. تحقق من الإعدادات.");
+        alert("فشل تحديث المخزون");
     }
 }
 
@@ -196,7 +271,7 @@ async function deleteItem(id) {
         await loadItems();
     } catch (err) {
         console.error("Error deleting item:", err);
-        alert("فشل حذف العنصر.");
+        alert("فشل حذف العنصر");
     }
 }
 
@@ -208,8 +283,8 @@ function addToOrder() {
 
     if (!orderName) return alert("أدخل اسم الطلب أو العميل");
     if (!village) return alert("اختر القرية");
-    if (!itemId) return alert("اختر عنصرًا من القائمة");
-    if (!qty || qty <= 0) return alert("أدخل كمية صالحة أكبر من صفر");
+    if (!itemId) return alert("اختر المنتج");
+    if (!qty || qty <= 0) return alert("أدخل كمية صحيحة أكبر من صفر");
 
     const item = inventory.find((entry) => String(entry.id) === String(itemId));
     if (!item) return alert("العنصر غير متوفر في المخزون");
@@ -233,7 +308,7 @@ function renderOrder() {
         list.innerHTML += `
             <div class="card item">
                 <div class="item-meta">
-                    <span>${item.name}</span>
+                    <span>${escapeHtml(item.name)}</span>
                     <small>الكمية الحالية في الطلب</small>
                 </div>
                 <div class="qty-stepper">
@@ -300,17 +375,23 @@ async function applyInventoryForItems(items = []) {
 }
 
 async function submitOrder() {
-    if (currentOrder.length === 0) return alert("لا يوجد عناصر في الطلب");
+    if (currentOrder.length === 0) return alert("لا توجد عناصر في الطلب");
 
     try {
         const orderName = String(document.getElementById("orderName").value).trim();
+        const phoneNumber = String(document.getElementById("orderPhone").value).trim();
         const village = document.getElementById("orderVillage").value;
-        if (!orderName) return alert("أدخل اسم الطلب أو العميل قبل تأكيد الطلب");
-        if (!village) return alert("اختر القرية قبل تأكيد الطلب");
+        const isRegistered = document.getElementById("orderRegistered").value === "true";
+        if (!orderName) return alert("أدخل اسم الطلب أو العميل قبل الحفظ");
+        if (!phoneNumber) return alert("أدخل رقم الهاتف قبل الحفظ");
+        if (!village) return alert("اختر القرية قبل الحفظ");
 
         const orderRecord = {
             order_name: orderName,
+            phone_number: phoneNumber,
             village,
+            is_registered: isRegistered,
+            source_need_id: pendingOrderSourceNeedId || null,
             items: currentOrder.map((item) => ({ id: item.id, name: item.name, qty: item.qty })),
             is_saved: editingOrderId ? undefined : false,
             status: editingOrderId ? undefined : "pending",
@@ -332,24 +413,23 @@ async function submitOrder() {
             if (error) throw error;
         }
 
-        alert(editingOrderId ? "تم تحديث الطلب بنجاح" : "تم تنفيذ الطلب وحفظه في السجل");
+        alert(editingOrderId ? "تم تحديث الطلب بنجاح" : "تم حفظ الطلب بنجاح");
         cancelEdit();
         await loadItems();
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error submitting order:", err);
-        alert(err.message || "فشل تنفيذ الطلب. حاول لاحقًا.");
+        alert(err.message || "فشل حفظ الطلب");
     }
 }
-
 async function setOrderStatus(orderId, status) {
     try {
         const { error } = await supabaseClient.from("orders").update({ status }).eq("id", orderId);
         if (error) throw error;
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error updating order status:", err);
-        alert("فشل تحديث حالة الطلب.");
+        alert("فشل تحديث حالة الطلب");
     }
 }
 
@@ -357,32 +437,36 @@ async function setOrderSaved(orderId, isSaved) {
     try {
         const { error } = await supabaseClient.from("orders").update({ is_saved: isSaved }).eq("id", orderId);
         if (error) throw error;
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error updating saved flag:", err);
-        alert("فشل تحديث حالة الحفظ.");
+        alert("فشل تحديث حالة الحفظ");
     }
 }
 
 function cancelEdit() {
     editingOrderId = null;
+    pendingOrderSourceNeedId = null;
     currentOrder = [];
     document.getElementById("orderName").value = "";
+    document.getElementById("orderPhone").value = "";
     document.getElementById("orderVillage").value = "";
+    document.getElementById("orderRegistered").value = "false";
     document.getElementById("orderQty").value = "";
+    updateOrderSourceBadge();
     renderOrder();
-    document.querySelector("#orders .button-group .done").textContent = "✅ تأكيد الطلب";
+    document.querySelector("#orders .button-group .done").textContent = "تأكيد الطلب";
     document.getElementById("cancelEditBtn").style.display = "none";
 }
 
 function startInlineEdit(orderId) {
     inlineEditingOrderId = orderId;
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
 }
 
 function cancelInlineEdit() {
     inlineEditingOrderId = null;
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
 }
 
 async function saveInlineEdit(orderId) {
@@ -425,7 +509,7 @@ async function saveInlineEdit(orderId) {
         alert("تم تحديث الطلب بنجاح");
         inlineEditingOrderId = null;
         await loadItems();
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error saving inline edit:", err);
         alert(err.message || "فشل حفظ التعديلات");
@@ -433,7 +517,7 @@ async function saveInlineEdit(orderId) {
 }
 
 async function deleteOrder(orderId) {
-    if (!confirm("هل تريد حذف هذا الطلب؟ سيتم إرجاع الكمية إلى المخزون.")) return;
+    if (!confirm("هل تريد حذف هذا الطلب وإرجاع الكميات إلى المخزون؟")) return;
 
     try {
         const { data: order, error: fetchErr } = await supabaseClient.from("orders").select("*").eq("id", orderId).single();
@@ -444,15 +528,11 @@ async function deleteOrder(orderId) {
         const { error: deleteErr } = await supabaseClient.from("orders").delete().eq("id", orderId);
         if (deleteErr) throw deleteErr;
 
-        if (editingOrderId === orderId) {
-            cancelEdit();
-        }
-        if (inlineEditingOrderId === orderId) {
-            inlineEditingOrderId = null;
-        }
+        if (editingOrderId === orderId) cancelEdit();
+        if (inlineEditingOrderId === orderId) inlineEditingOrderId = null;
 
         await loadItems();
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error deleting order:", err);
         alert("فشل حذف الطلب");
@@ -506,7 +586,7 @@ function buildInlineItemRow(orderId, index, itemId = "", qty = 1) {
             <select id="item-type-${orderId}-${index}">
                 ${inventory.map((inv) => `
                     <option value="${inv.id}" ${String(inv.id) === String(itemId) ? "selected" : ""}>
-                        ${inv.name} (متوفر: ${inv.quantity})
+                        ${escapeHtml(inv.name)} (متوفر: ${inv.quantity})
                     </option>`).join("")}
             </select>
             <div class="qty-stepper">
@@ -525,22 +605,7 @@ function addInlineItem(orderId) {
     const existingItems = container.querySelectorAll('[id^="item-type-"]').length;
     container.insertAdjacentHTML("beforeend", buildInlineItemRow(orderId, existingItems));
 }
-
-function formatDate(iso) {
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return iso;
-    return date.toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
-}
-
-function getLocalDateString() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-}
-
-async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilter = "", savedFilter = "", dateFrom = "", dateTo = "") {
+async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilter = "", savedFilter = "", registeredFilter = "", dateFrom = "", dateTo = "") {
     try {
         let query = supabaseClient.from("orders").select("*").order("created_at", { ascending: false });
 
@@ -549,6 +614,8 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
         if (statusFilter) query = query.eq("status", statusFilter);
         if (savedFilter === "saved") query = query.eq("is_saved", true);
         if (savedFilter === "unsaved") query = query.eq("is_saved", false);
+        if (registeredFilter === "registered") query = query.eq("is_registered", true);
+        if (registeredFilter === "not_registered") query = query.eq("is_registered", false);
         if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00.000Z`);
         if (dateTo) {
             const endDate = new Date(dateTo);
@@ -573,30 +640,31 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
             const done = order.status === "done";
             const saved = Boolean(order.is_saved);
             const orderDisplayName = order.order_name || `الطلب #${order.id || ""}`;
+            const sourceNeedBadge = order.source_need_id ? `<span class="order-origin-chip">من الاحتياجات</span>` : "";
 
             const itemsHtml = isInlineEditing
                 ? `
-                    <input type="text" id="edit-order-name-${order.id}" value="${orderDisplayName}" placeholder="اسم الطلب">
-                    <select id="edit-order-village-${order.id}" class="inline-village-select">${getVillageOptions(order.village || "")}</select>
+                    <input type="text" id="edit-order-name-${order.id}" value="${escapeHtml(orderDisplayName)}" placeholder="اسم الطلب">
+                    <select id="edit-order-village-${order.id}" class="inline-village-select">${getOrderVillageOptions(order.village || "")}</select>
                     <div id="inline-items-${order.id}" class="order-items">
                         ${(order.items || []).map((item, index) => buildInlineItemRow(order.id, index, item.id, item.qty)).join("")}
                     </div>
                     <button class="done" onclick="addInlineItem(${order.id})">+ إضافة عنصر</button>`
                 : `
                     <div class="order-items">
-                        ${(order.items || []).map((item) => `<div class="order-line">• ${item.name} - ${item.qty}</div>`).join("") || "لا توجد عناصر"}
+                        ${(order.items || []).map((item) => `<div class="order-line">• ${escapeHtml(item.name)} - ${item.qty}</div>`).join("") || "لا توجد عناصر"}
                     </div>`;
 
             const actionsHtml = isInlineEditing
                 ? `
                     <div class="inline-actions">
-                        <button class="add" onclick="saveInlineEdit(${order.id})">حفظ سريع</button>
+                        <button class="add" onclick="saveInlineEdit(${order.id})">حفظ</button>
                         <button class="delete" onclick="cancelInlineEdit()">إلغاء</button>
                     </div>`
                 : `
                     <div class="order-quick-actions">
                         <button class="done" onclick="startInlineEdit(${order.id})">تعديل</button>
-                        <button class="delete" onclick="deleteOrder(${order.id})">حذف الطلب</button>
+                        <button class="delete" onclick="deleteOrder(${order.id})">حذف</button>
                     </div>
                     <div class="order-toggle-list">
                         <label class="toggle-chip">
@@ -613,8 +681,9 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
                 <div class="order-history-item ${done ? "done" : "pending"} ${saved ? "saved" : ""}">
                     <div class="order-header">
                         <div class="order-title-wrap">
-                            <strong>${orderDisplayName}</strong>
-                            <small>${order.village ? `القرية: ${order.village} - ` : ""}${formatDate(order.created_at)}</small>
+                            <strong>${escapeHtml(orderDisplayName)} ${sourceNeedBadge}</strong>
+                            <small>${order.phone_number ? `الهاتف: ${escapeHtml(order.phone_number)} - ` : ""}${order.village ? `القرية: ${escapeHtml(order.village)} - ` : ""}${formatDate(order.created_at)}</small>
+                            <small>${order.is_registered ? "العميل مسجل سابقًا" : "العميل غير مسجل سابقًا"}</small>
                         </div>
                         <div class="order-actions">
                             ${actionsHtml}
@@ -635,11 +704,12 @@ function applyFilters() {
     const villageFilter = document.getElementById("villageFilter").value;
     const statusFilter = document.getElementById("statusFilter").value;
     const savedFilter = document.getElementById("savedFilter").value;
+    const registeredFilter = document.getElementById("registeredFilter").value;
     const dateFrom = document.getElementById("dateFrom").value;
     const dateTo = document.getElementById("dateTo").value;
 
-    currentFilters = { name: nameFilter, village: villageFilter, status: statusFilter, saved: savedFilter, dateFrom, dateTo };
-    loadOrderHistory(nameFilter, villageFilter, statusFilter, savedFilter, dateFrom, dateTo);
+    currentFilters = { name: nameFilter, village: villageFilter, status: statusFilter, saved: savedFilter, registered: registeredFilter, dateFrom, dateTo };
+    loadOrderHistory(nameFilter, villageFilter, statusFilter, savedFilter, registeredFilter, dateFrom, dateTo);
 }
 
 function clearFilters() {
@@ -647,21 +717,421 @@ function clearFilters() {
     document.getElementById("villageFilter").value = "";
     document.getElementById("statusFilter").value = "";
     document.getElementById("savedFilter").value = "";
+    document.getElementById("registeredFilter").value = "";
     document.getElementById("dateFrom").value = "";
     document.getElementById("dateTo").value = "";
-    currentFilters = { name: "", village: "", status: "", saved: "", dateFrom: "", dateTo: "" };
+    currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
     loadOrderHistory();
 }
 
-async function generateDailyReport() {
-    const reportDate = document.getElementById("reportDate").value;
-    if (!reportDate) return alert("اختر تاريخ التقرير");
+function addNeedItem() {
+    const familyName = String(document.getElementById("needFamilyName").value).trim();
+    const phoneNumber = String(document.getElementById("needPhone").value).trim();
+    const village = document.getElementById("needVillage").value;
+    const peopleCount = Number(document.getElementById("needPeopleCount").value);
+    const priority = document.getElementById("needPriority").value;
+    const itemId = document.getElementById("needItem").value;
+    const qty = Number(document.getElementById("needQty").value);
+
+    if (!familyName) return alert("أدخل اسم العائلة");
+    if (!phoneNumber) return alert("أدخل رقم الهاتف");
+    if (!village) return alert("اختر القرية");
+    if (!peopleCount || peopleCount <= 0) return alert("أدخل عدد الأفراد");
+    if (!priority) return alert("اختر الأولوية");
+    if (!itemId) return alert("اختر المنتج");
+    if (!qty || qty <= 0) return alert("أدخل الكمية المطلوبة");
+
+    const item = inventory.find((entry) => String(entry.id) === String(itemId));
+    if (!item) return alert("العنصر غير موجود");
+
+    currentNeedItems.push({ id: item.id, name: item.name, qty });
+    document.getElementById("needQty").value = "";
+    renderNeedItems();
+}
+
+function renderNeedItems() {
+    const container = document.getElementById("needItemsList");
+    container.innerHTML = "";
+
+    if (currentNeedItems.length === 0) {
+        container.innerHTML = renderEmptyState("لا توجد مواد مضافة لهذا الاحتياج");
+        return;
+    }
+
+    currentNeedItems.forEach((item, index) => {
+        container.innerHTML += `
+            <div class="card item need-item-card">
+                <div class="item-meta">
+                    <span>${escapeHtml(item.name)}</span>
+                    <small>الكمية المطلوبة</small>
+                </div>
+                <div class="qty-stepper">
+                    <button class="delete" onclick="adjustNeedQty(${index}, -1)">-</button>
+                    <span class="qty-value">${item.qty}</span>
+                    <button class="add" onclick="adjustNeedQty(${index}, 1)">+</button>
+                </div>
+                <button class="delete" onclick="removeNeedItem(${index})">حذف</button>
+            </div>`;
+    });
+}
+
+function adjustNeedQty(index, delta) {
+    const item = currentNeedItems[index];
+    const newQty = item.qty + delta;
+    if (newQty < 1) return;
+    item.qty = newQty;
+    renderNeedItems();
+}
+
+function removeNeedItem(index) {
+    currentNeedItems.splice(index, 1);
+    renderNeedItems();
+}
+async function submitNeed() {
+    if (currentNeedItems.length === 0) return alert("أضف مادة واحدة على الأقل");
+
+    const familyName = String(document.getElementById("needFamilyName").value).trim();
+    const phoneNumber = String(document.getElementById("needPhone").value).trim();
+    const villageId = document.getElementById("needVillage").value;
+    const peopleCount = Number(document.getElementById("needPeopleCount").value);
+    const priority = document.getElementById("needPriority").value;
+
+    if (!familyName) return alert("أدخل اسم العائلة");
+    if (!phoneNumber) return alert("أدخل رقم الهاتف");
+    if (!villageId) return alert("اختر القرية");
+    if (!peopleCount || peopleCount <= 0) return alert("أدخل عدد أفراد صحيح");
+    if (!priority) return alert("اختر الأولوية");
+
+    const payload = {
+        family_name: familyName,
+        phone_number: phoneNumber,
+        village_id: Number(villageId),
+        people_count: peopleCount,
+        priority,
+        items: currentNeedItems.map((item) => ({ id: item.id, name: item.name, qty: item.qty })),
+        status: editingNeedId ? undefined : "pending",
+        updated_at: new Date().toISOString(),
+    };
 
     try {
-        const startDate = `${reportDate}T00:00:00.000Z`;
-        const endDate = `${reportDate}T23:59:59.999Z`;
+        if (editingNeedId) {
+            const { error } = await supabaseClient.from("family_needs").update(payload).eq("id", editingNeedId);
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient.from("family_needs").insert([payload]);
+            if (error) throw error;
+        }
 
-        const { data, error } = await supabaseClient.from("orders").select("*").gte("created_at", startDate).lte("created_at", endDate);
+        alert(editingNeedId ? "تم تحديث الاحتياج بنجاح" : "تم حفظ الاحتياج بنجاح");
+        cancelNeedEdit();
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+    } catch (err) {
+        console.error("Error saving need:", err);
+        alert(err.message || "فشل حفظ احتياج العائلة");
+    }
+}
+
+function cancelNeedEdit() {
+    editingNeedId = null;
+    currentNeedItems = [];
+    document.getElementById("needFamilyName").value = "";
+    document.getElementById("needPhone").value = "";
+    document.getElementById("needVillage").value = "";
+    document.getElementById("needPeopleCount").value = "";
+    document.getElementById("needPriority").value = "normal";
+    document.getElementById("needItem").value = "";
+    document.getElementById("needQty").value = "";
+    document.getElementById("submitNeedBtn").textContent = "حفظ الاحتياج";
+    document.getElementById("cancelNeedEditBtn").style.display = "none";
+    updateNeedItemPreview();
+    renderNeedItems();
+}
+
+async function editNeed(needId) {
+    try {
+        const { data, error } = await supabaseClient.from("family_needs").select("*").eq("id", needId).single();
+        if (error) throw error;
+
+        editingNeedId = needId;
+        document.getElementById("needFamilyName").value = data.family_name || "";
+        document.getElementById("needPhone").value = data.phone_number || "";
+        document.getElementById("needVillage").value = data.village_id || "";
+        document.getElementById("needPeopleCount").value = data.people_count || "";
+        document.getElementById("needPriority").value = data.priority || "normal";
+        currentNeedItems = (data.items || []).map((item) => ({ id: item.id, name: item.name, qty: item.qty }));
+        document.getElementById("submitNeedBtn").textContent = "تحديث الاحتياج";
+        document.getElementById("cancelNeedEditBtn").style.display = "inline-flex";
+        updateNeedItemPreview();
+        renderNeedItems();
+        switchTab("needs");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+        console.error("Error loading need for edit:", err);
+        alert("فشل تحميل الاحتياج");
+    }
+}
+
+async function deleteNeed(needId) {
+    if (!confirm("هل تريد حذف هذا الاحتياج؟")) return;
+
+    try {
+        const { error } = await supabaseClient.from("family_needs").delete().eq("id", needId);
+        if (error) throw error;
+
+        if (editingNeedId === needId) {
+            cancelNeedEdit();
+        }
+
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+    } catch (err) {
+        console.error("Error deleting need:", err);
+        alert("فشل حذف الاحتياج");
+    }
+}
+
+async function setNeedStatus(needId, status) {
+    try {
+        const { error } = await supabaseClient
+            .from("family_needs")
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq("id", needId);
+        if (error) throw error;
+
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+    } catch (err) {
+        console.error("Error updating need status:", err);
+        alert("فشل تحديث حالة الاحتياج");
+    }
+}
+
+async function openNeedToOrderModal(needId) {
+    try {
+        const { data, error } = await supabaseClient.from("family_needs").select("*").eq("id", needId).single();
+        if (error) throw error;
+
+        if (!data.items || data.items.length === 0) {
+            return alert("لا توجد مواد متبقية في هذا الاحتياج");
+        }
+
+        needToOrderId = needId;
+        const villageName = getVillageNameById(data.village_id);
+        const rows = (data.items || []).map((item, index) => `
+            <label class="need-order-row">
+                <input type="checkbox" id="need-order-check-${index}" checked>
+                <div class="need-order-row-copy">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <small>الكمية المتبقية: ${item.qty}</small>
+                </div>
+                <input id="need-order-qty-${index}" type="number" min="1" max="${item.qty}" value="${item.qty}">
+            </label>
+        `).join("");
+
+        document.getElementById("needToOrderModalBody").innerHTML = `
+            <div class="need-order-summary">
+                <strong>${escapeHtml(data.family_name)}</strong>
+                <small>القرية: ${escapeHtml(villageName)}</small>
+            </div>
+            <div id="needToOrderRows" data-family-name="${escapeHtml(data.family_name)}" data-village-id="${data.village_id}">
+                ${rows}
+            </div>
+        `;
+
+        document.getElementById("needToOrderModal").classList.add("active");
+        document.body.style.overflow = "hidden";
+    } catch (err) {
+        console.error("Error opening need-to-order modal:", err);
+        alert("فشل تحميل مواد الاحتياج");
+    }
+}
+
+async function submitNeedToOrder() {
+    if (!needToOrderId) return;
+
+    try {
+        const { data: need, error } = await supabaseClient.from("family_needs").select("*").eq("id", needToOrderId).single();
+        if (error) throw error;
+
+        const selectedItems = [];
+        (need.items || []).forEach((item, index) => {
+            const checked = document.getElementById(`need-order-check-${index}`)?.checked;
+            const qty = Number(document.getElementById(`need-order-qty-${index}`)?.value);
+
+            if (!checked) return;
+            if (!qty || qty <= 0 || qty > item.qty) return;
+
+            selectedItems.push({ id: item.id, name: item.name, qty });
+        });
+
+        if (selectedItems.length === 0) return alert("اختر مادة واحدة على الأقل");
+
+        if (currentOrder.length > 0 && !confirm("يوجد طلب حالي غير محفوظ. هل تريد استبداله بمواد هذا الاحتياج؟")) {
+            return;
+        }
+
+        const remainingItems = (need.items || [])
+            .map((item) => {
+                const selected = selectedItems.find((entry) => String(entry.id) === String(item.id) && entry.name === item.name);
+                if (!selected) return item;
+                const remainingQty = item.qty - selected.qty;
+                return remainingQty > 0 ? { ...item, qty: remainingQty } : null;
+            })
+            .filter(Boolean);
+
+        const nextStatus = remainingItems.length === 0 ? "done" : "in_progress";
+        const { error: updateError } = await supabaseClient
+            .from("family_needs")
+            .update({
+                items: remainingItems,
+                status: nextStatus,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", needToOrderId);
+
+        if (updateError) throw updateError;
+
+        currentOrder = selectedItems.map((item) => ({ id: item.id, name: item.name, qty: item.qty }));
+        pendingOrderSourceNeedId = need.id;
+        document.getElementById("orderName").value = need.family_name || "";
+        document.getElementById("orderPhone").value = need.phone_number || "";
+        document.getElementById("orderVillage").value = getVillageNameById(need.village_id);
+        document.getElementById("orderRegistered").value = "true";
+        document.getElementById("orderQty").value = "";
+        updateOrderSourceBadge();
+        renderOrder();
+        closeNeedToOrderModal();
+        switchTab("orders");
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+    } catch (err) {
+        console.error("Error converting need to order:", err);
+        alert(err.message || "فشل تحويل الاحتياج إلى طلب");
+    }
+}
+
+function getNeedPriorityLabel(priority) {
+    if (priority === "urgent") return "عاجل";
+    if (priority === "medium") return "متوسط";
+    return "عادي";
+}
+
+function getNeedPriorityClass(priority) {
+    if (priority === "urgent") return "urgent";
+    if (priority === "medium") return "medium";
+    return "normal";
+}
+
+async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter = "", statusFilter = "", priorityFilter = "") {
+    try {
+        let query = supabaseClient.from("family_needs").select("*").order("created_at", { ascending: false });
+
+        if (nameFilter.trim()) query = query.ilike("family_name", `%${nameFilter.trim()}%`);
+        if (phoneFilter.trim()) query = query.ilike("phone_number", `%${phoneFilter.trim()}%`);
+        if (villageFilter) query = query.eq("village_id", villageFilter);
+        if (statusFilter) query = query.eq("status", statusFilter);
+        if (priorityFilter) query = query.eq("priority", priorityFilter);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const container = document.getElementById("needsHistoryTable");
+        container.innerHTML = "";
+
+        if (!data || data.length === 0) {
+            container.innerHTML = renderEmptyState("لا توجد احتياجات محفوظة بعد");
+            return;
+        }
+
+        const rows = data.map((need) => {
+            const villageName = getVillageNameById(need.village_id);
+            const itemsText = (need.items || []).map((item) => `${escapeHtml(item.name)} (${item.qty})`).join("، ") || "-";
+            const priorityClass = getNeedPriorityClass(need.priority);
+
+            return `
+                <tr>
+                    <td class="needs-date-cell">${formatDate(need.created_at)}</td>
+                    <td>${escapeHtml(need.family_name)}</td>
+                    <td>${escapeHtml(need.phone_number || "-")}</td>
+                    <td>${escapeHtml(villageName)}</td>
+                    <td>${need.people_count || 0}</td>
+                    <td class="need-items-cell" title="${itemsText}">${itemsText}</td>
+                    <td><span class="priority-badge ${priorityClass}">${getNeedPriorityLabel(need.priority)}</span></td>
+                    <td>
+                        <select onchange="setNeedStatus(${need.id}, this.value)">
+                            <option value="pending" ${need.status === "pending" ? "selected" : ""}>قيد الانتظار</option>
+                            <option value="in_progress" ${need.status === "in_progress" ? "selected" : ""}>قيد المتابعة</option>
+                            <option value="done" ${need.status === "done" ? "selected" : ""}>مكتمل</option>
+                        </select>
+                    </td>
+                    <td class="needs-actions-cell">
+                        <button class="icon-action add" onclick="openNeedToOrderModal(${need.id})" title="إضافة كطلب" aria-label="إضافة كطلب">🛒</button>
+                        <button class="icon-action done" onclick="editNeed(${need.id})" title="تعديل" aria-label="تعديل">✎</button>
+                        <button class="icon-action delete" onclick="deleteNeed(${need.id})" title="حذف" aria-label="حذف">🗑</button>
+                    </td>
+                </tr>`;
+        }).join("");
+
+        container.innerHTML = `
+            <div class="needs-table-wrap">
+                <table class="needs-table">
+                    <thead>
+                        <tr>
+                            <th>تاريخ الإنشاء</th>
+                            <th>اسم العائلة</th>
+                            <th>الهاتف</th>
+                            <th>القرية</th>
+                            <th>عدد الأفراد</th>
+                            <th>المواد المطلوبة</th>
+                            <th>الأولوية</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    } catch (err) {
+        console.error("Error loading needs history:", err);
+        document.getElementById("needsHistoryTable").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل الاحتياجات</div>`;
+    }
+}
+
+function applyNeedFilters() {
+    const name = document.getElementById("needNameFilter").value;
+    const phone = document.getElementById("needPhoneFilter").value;
+    const village = document.getElementById("needVillageFilter").value;
+    const status = document.getElementById("needStatusFilter").value;
+    const priority = document.getElementById("needPriorityFilter").value;
+
+    currentNeedFilters = { name, phone, village, status, priority };
+    loadNeedsHistory(name, phone, village, status, priority);
+}
+
+function clearNeedFilters() {
+    document.getElementById("needNameFilter").value = "";
+    document.getElementById("needPhoneFilter").value = "";
+    document.getElementById("needVillageFilter").value = "";
+    document.getElementById("needStatusFilter").value = "";
+    document.getElementById("needPriorityFilter").value = "";
+    currentNeedFilters = { name: "", phone: "", village: "", status: "", priority: "" };
+    loadNeedsHistory();
+}
+async function generateRangeReport() {
+    const reportFrom = document.getElementById("reportFrom").value;
+    const reportTo = document.getElementById("reportTo").value;
+
+    if (!reportFrom || !reportTo) return alert("اختر تاريخ البداية والنهاية");
+    if (reportFrom > reportTo) return alert("يجب أن يكون تاريخ البداية قبل أو يساوي تاريخ النهاية");
+
+    try {
+        const startDate = `${reportFrom}T00:00:00.000Z`;
+        const endDateObj = new Date(reportTo);
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        const endDateExclusive = `${endDateObj.toISOString().split("T")[0]}T00:00:00.000Z`;
+
+        const { data, error } = await supabaseClient
+            .from("orders")
+            .select("*")
+            .gte("created_at", startDate)
+            .lt("created_at", endDateExclusive);
         if (error) throw error;
 
         const reportData = {};
@@ -677,12 +1147,17 @@ async function generateDailyReport() {
             });
         });
 
-        const sortedItems = Array.from(allItems).sort();
+        const sortedItems = Array.from(allItems).sort((a, b) => a.localeCompare(b, "ar"));
+        if (sortedItems.length === 0) {
+            document.getElementById("reportContainer").innerHTML = renderEmptyState("لا توجد بيانات طلبات ضمن هذه الفترة");
+            return;
+        }
+
         const itemTotals = Object.fromEntries(sortedItems.map((item) => [item, 0]));
 
         let rowsHtml = "";
-        Object.keys(reportData).sort().forEach((village) => {
-            rowsHtml += `<tr><td>${village}</td>`;
+        Object.keys(reportData).sort((a, b) => a.localeCompare(b, "ar")).forEach((village) => {
+            rowsHtml += `<tr><td>${escapeHtml(village)}</td>`;
             sortedItems.forEach((itemName) => {
                 const qty = reportData[village][itemName] || 0;
                 itemTotals[itemName] += qty;
@@ -691,21 +1166,25 @@ async function generateDailyReport() {
             rowsHtml += `</tr>`;
         });
 
-        rowsHtml += `<tr style="background:#f4f8fe; font-weight:800;"><td>مجموع الكل</td>`;
+        rowsHtml += `<tr style="background:#f4f8fe; font-weight:800;"><td>المجموع</td>`;
         sortedItems.forEach((itemName) => {
             rowsHtml += `<td style="text-align:center;">${itemTotals[itemName] || 0}</td>`;
         });
         rowsHtml += `</tr>`;
 
+        const rangeLabel = reportFrom === reportTo
+            ? `تقرير يوم ${new Date(reportFrom).toLocaleDateString("ar-EG")}`
+            : `تقرير من ${new Date(reportFrom).toLocaleDateString("ar-EG")} إلى ${new Date(reportTo).toLocaleDateString("ar-EG")}`;
+
         document.getElementById("reportContainer").innerHTML = `
             <div class="card">
-                <h4>تقرير يوم ${new Date(reportDate).toLocaleDateString("ar-EG")}</h4>
+                <h4>${rangeLabel}</h4>
                 <div class="report-table-wrap">
                     <table>
                         <thead>
                             <tr>
                                 <th style="text-align:right;">القرية</th>
-                                ${sortedItems.map((itemName) => `<th style="text-align:center;">${itemName}</th>`).join("")}
+                                ${sortedItems.map((itemName) => `<th style="text-align:center;">${escapeHtml(itemName)}</th>`).join("")}
                             </tr>
                         </thead>
                         <tbody>${rowsHtml}</tbody>
@@ -723,21 +1202,25 @@ function setTodayDateFilters() {
     document.getElementById("dateFrom").value = today;
     document.getElementById("dateTo").value = today;
     currentFilters = { name: "", village: "", status: "", saved: "", dateFrom: today, dateTo: today };
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.dateFrom, currentFilters.dateTo);
+    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
 }
 
 async function initialize() {
-    document.getElementById("orderVillage").innerHTML = getVillageOptions();
-
-    const villageFilter = document.getElementById("villageFilter");
-    villageFilter.innerHTML = `<option value="">جميع القرى</option>${VILLAGES.map((village) => `<option value="${village}">${village}</option>`).join("")}`;
+    await loadVillages();
+    fillVillageInputs();
 
     const today = getLocalDateString();
-    document.getElementById("reportDate").value = today;
+    document.getElementById("reportFrom").value = today;
+    document.getElementById("reportTo").value = today;
+    document.getElementById("needPriority").value = "normal";
+    document.getElementById("needItem").addEventListener("change", updateNeedItemPreview);
+
     await loadItems();
     renderOrder();
+    renderNeedItems();
     setActiveTabState("inventory");
     setTodayDateFilters();
+    await loadNeedsHistory();
 }
 
 initialize();
