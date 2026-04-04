@@ -36,7 +36,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
     font: inherit;
 }
 
@@ -47,7 +48,8 @@ button {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
     outline: 3px solid rgba(18, 58, 122, 0.22);
     outline-offset: 2px;
 }
@@ -241,6 +243,7 @@ select:focus-visible {
 
 input,
 select,
+textarea,
 button {
     width: 100%;
     min-height: 50px;
@@ -250,7 +253,8 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
     border: 1px solid var(--border-strong);
     background: #fbfdff;
     color: var(--text);
@@ -383,6 +387,13 @@ button {
     border: 1px dashed var(--border-strong);
     border-radius: 16px;
     background: #f8fbff;
+}
+
+.need-notes-input {
+    margin-top: 12px;
+    resize: vertical;
+    min-height: 96px;
+    line-height: 1.6;
 }
 
 .need-item-preview strong {
@@ -663,7 +674,7 @@ button {
 }
 
 .needs-table {
-    min-width: 1220px;
+    min-width: 1340px;
 }
 
 .needs-table th,
@@ -675,6 +686,32 @@ button {
     white-space: nowrap;
 }
 
+.needs-priority-cell {
+    width: 44px;
+    min-width: 44px;
+    text-align: center;
+    vertical-align: middle !important;
+}
+
+.priority-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.priority-dot.normal {
+    background: #6f8098;
+}
+
+.priority-dot.medium {
+    background: #d48a1f;
+}
+
+.priority-dot.urgent {
+    background: #d64545;
+}
+
 .needs-date-cell {
     white-space: nowrap;
     min-width: 110px;
@@ -683,6 +720,34 @@ button {
 .need-items-cell {
     min-width: 340px;
     line-height: 1.7;
+}
+
+.need-notes-cell {
+    min-width: 240px;
+    max-width: 340px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.needs-status-cell {
+    min-width: 210px;
+}
+
+.needs-status-cell select {
+    min-width: 180px;
+}
+
+.needs-row.needs-row-normal {
+    background: rgba(127, 142, 163, 0.08);
+}
+
+.needs-row.needs-row-medium {
+    background: rgba(212, 138, 31, 0.1);
+}
+
+.needs-row.needs-row-urgent {
+    background: rgba(214, 69, 69, 0.11);
 }
 
 .priority-badge {
@@ -710,28 +775,21 @@ button {
 
 .needs-actions-cell {
     display: flex;
-    gap: 8px;
-    min-width: 150px;
+    gap: 6px;
+    min-width: 120px;
     justify-content: center;
 }
 
-.needs-actions-cell button {
-    width: auto;
-    min-width: 70px;
-    min-height: 40px;
-    padding: 8px 12px;
-}
-
-.icon-action {
+.needs-actions-cell .icon-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    min-width: 42px;
-    min-height: 42px;
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
     padding: 0;
-    border-radius: 12px;
-    font-size: 1rem;
+    border-radius: 10px;
+    font-size: 0.86rem;
     line-height: 1;
 }
 

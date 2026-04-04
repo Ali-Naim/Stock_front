@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS family_needs (
   phone_number TEXT,
   village_id BIGINT NOT NULL REFERENCES villages(id),
   people_count INT NOT NULL DEFAULT 1,
+  notes TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
   priority TEXT NOT NULL DEFAULT 'normal',
   items JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -66,6 +67,9 @@ ALTER TABLE family_needs
 
 ALTER TABLE family_needs
   ADD COLUMN IF NOT EXISTS people_count INT NOT NULL DEFAULT 1;
+
+ALTER TABLE family_needs
+  ADD COLUMN IF NOT EXISTS notes TEXT;
 
 ALTER TABLE family_needs
   ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';

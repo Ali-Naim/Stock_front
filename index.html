@@ -207,6 +207,7 @@
                 <select id="needItem"></select>
                 <input id="needQty" type="number" min="1" placeholder="الكمية المطلوبة">
             </div>
+            <textarea id="needNotes" class="need-notes-input" rows="3" placeholder="ملاحظات (اختياري)"></textarea>
             <div class="need-item-preview">
                 <small>المادة المختارة</small>
                 <strong id="needItemPreviewName">لم يتم اختيار مادة بعد</strong>
@@ -216,7 +217,7 @@
 
         <div class="card">
             <h3>استيراد احتياجات من Excel</h3>
-            <p class="modal-copy">ترتيب الأعمدة يجب أن يكون: <strong>`family_name`</strong> ثم <strong>`phone_number`</strong> ثم <strong>`village`</strong> ثم <strong>`people_count`</strong>، وبعدها أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
+            <p class="modal-copy">الأعمدة الأساسية هي <strong>`family_name`</strong> و<strong>`phone_number`</strong>. يمكن ترك <strong>`village`</strong> و<strong>`people_count`</strong> و<strong>`notes`</strong> فارغين (وعند ترك عدد الأفراد فارغًا يتم اعتماد القيمة 1). بعد ذلك ضع أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
             <div class="import-needs-box">
                 <input id="needsExcelFile" type="file" accept=".xlsx,.xls,.csv">
                 <button class="done" type="button" onclick="importNeedsExcel()">استيراد الملف</button>

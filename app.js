@@ -809,6 +809,7 @@ async function submitNeed() {
     const villageId = document.getElementById("needVillage").value;
     const peopleCount = Number(document.getElementById("needPeopleCount").value);
     const priority = document.getElementById("needPriority").value;
+    const notes = String(document.getElementById("needNotes").value ?? "").trim();
 
     if (!familyName) return alert("أدخل اسم العائلة");
     if (!phoneNumber) return alert("أدخل رقم الهاتف");
@@ -822,6 +823,7 @@ async function submitNeed() {
         village_id: Number(villageId),
         people_count: peopleCount,
         priority,
+        notes,
         items: currentNeedItems.map((item) => ({ id: item.id, name: item.name, qty: item.qty })),
         status: editingNeedId ? undefined : "pending",
         updated_at: new Date().toISOString(),
@@ -853,6 +855,7 @@ function cancelNeedEdit() {
     document.getElementById("needVillage").value = "";
     document.getElementById("needPeopleCount").value = "";
     document.getElementById("needPriority").value = "normal";
+    document.getElementById("needNotes").value = "";
     document.getElementById("needItem").value = "";
     document.getElementById("needQty").value = "";
     document.getElementById("submitNeedBtn").textContent = "حفظ الاحتياج";
@@ -872,6 +875,7 @@ async function editNeed(needId) {
         document.getElementById("needVillage").value = data.village_id || "";
         document.getElementById("needPeopleCount").value = data.people_count || "";
         document.getElementById("needPriority").value = data.priority || "normal";
+        document.getElementById("needNotes").value = data.notes || "";
         currentNeedItems = (data.items || []).map((item) => ({ id: item.id, name: item.name, qty: item.qty }));
         document.getElementById("submitNeedBtn").textContent = "تحديث الاحتياج";
         document.getElementById("cancelNeedEditBtn").style.display = "inline-flex";
@@ -945,14 +949,18 @@ async function importNeedsExcel() {
         const headers = Object.keys(firstRow);
         const normalizedHeaders = headers.map(normalizeHeader);
 
-        const requiredHeaders = ["family_name", "phone_number", "village", "people_count"];
+        const requiredHeaders = ["family_name", "phone_number"];
         const missingHeaders = requiredHeaders.filter((header) => !normalizedHeaders.includes(header));
         if (missingHeaders.length) {
             return setNeedsImportResult(`الأعمدة الأساسية مفقودة: ${missingHeaders.join(", ")}`, "error");
         }
 
         const headerMap = Object.fromEntries(headers.map((header) => [normalizeHeader(header), header]));
-        const itemHeaders = headers.filter((header) => !requiredHeaders.includes(normalizeHeader(header)));
+        const optionalCoreHeaders = ["village", "people_count", "notes"];
+        const itemHeaders = headers.filter((header) => {
+            const normalized = normalizeHeader(header);
+            return !requiredHeaders.includes(normalized) && !optionalCoreHeaders.includes(normalized);
+        });
         const inventoryMap = new Map(inventory.map((item) => [item.name.trim().toLowerCase(), item]));
         const villageMap = new Map(villages.map((village) => [village.name.trim().toLowerCase(), village]));
 
@@ -963,15 +971,26 @@ async function importNeedsExcel() {
             const familyName = String(row[headerMap.family_name] ?? "").trim();
             const phoneNumber = String(row[headerMap.phone_number] ?? "").trim();
             const villageName = String(row[headerMap.village] ?? "").trim();
-            const peopleCount = Number(row[headerMap.people_count]);
+            const peopleCountRaw = row[headerMap.people_count];
+            const peopleCountParsed = Number(peopleCountRaw);
+            const peopleCount = String(peopleCountRaw ?? "").trim() === "" ? 1 : peopleCountParsed;
+            const notes = String(row[headerMap.notes] ?? "").trim();
 
-            if (!familyName || !phoneNumber || !villageName || !peopleCount || peopleCount <= 0) {
+            if (!familyName || !phoneNumber) {
                 errors.push(`السطر ${rowIndex + 2}: بيانات أساسية غير مكتملة`);
                 return;
             }
 
-            const matchedVillage = villageMap.get(villageName.toLowerCase());
-            if (!matchedVillage) {
+            if (!Number.isFinite(peopleCount) || peopleCount <= 0) {
+                errors.push(`السطر ${rowIndex + 2}: عدد الأفراد يجب أن يكون رقمًا أكبر من صفر`);
+                return;
+            }
+
+            let matchedVillage = null;
+            if (villageName) {
+                matchedVillage = villageMap.get(villageName.toLowerCase());
+            }
+            if (villageName && !matchedVillage) {
                 errors.push(`السطر ${rowIndex + 2}: القرية غير موجودة (${villageName})`);
                 return;
             }
@@ -1002,8 +1021,9 @@ async function importNeedsExcel() {
             payload.push({
                 family_name: familyName,
                 phone_number: phoneNumber,
-                village_id: matchedVillage.id,
+                village_id: matchedVillage?.id ?? null,
                 people_count: peopleCount,
+                notes,
                 priority: "normal",
                 status: "pending",
                 items,
@@ -1166,17 +1186,19 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter
             const villageName = getVillageNameById(need.village_id);
             const itemsText = (need.items || []).map((item) => `${escapeHtml(item.name)} (${item.qty})`).join("، ") || "-";
             const priorityClass = getNeedPriorityClass(need.priority);
+            const notesText = String(need.notes || "").trim();
 
             return `
-                <tr>
+                <tr class="needs-row needs-row-${priorityClass}">
+                    <td class="needs-priority-cell"><span class="priority-dot ${priorityClass}" title="${getNeedPriorityLabel(need.priority)}" aria-label="${getNeedPriorityLabel(need.priority)}"></span></td>
                     <td class="needs-date-cell">${formatDate(need.created_at)}</td>
                     <td>${escapeHtml(need.family_name)}</td>
                     <td>${escapeHtml(need.phone_number || "-")}</td>
                     <td>${escapeHtml(villageName)}</td>
                     <td>${need.people_count || 0}</td>
                     <td class="need-items-cell" title="${itemsText}">${itemsText}</td>
-                    <td><span class="priority-badge ${priorityClass}">${getNeedPriorityLabel(need.priority)}</span></td>
-                    <td>
+                    <td class="need-notes-cell" title="${escapeHtml(notesText || "-")}">${escapeHtml(notesText || "-")}</td>
+                    <td class="needs-status-cell">
                         <select onchange="setNeedStatus(${need.id}, this.value)">
                             <option value="pending" ${need.status === "pending" ? "selected" : ""}>قيد الانتظار</option>
                             <option value="in_progress" ${need.status === "in_progress" ? "selected" : ""}>قيد المتابعة</option>
@@ -1196,14 +1218,15 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter
                 <table class="needs-table">
                     <thead>
                         <tr>
+                            <th class="needs-priority-cell" title="الأولوية">●</th>
                             <th>تاريخ الإنشاء</th>
                             <th>اسم العائلة</th>
                             <th>الهاتف</th>
                             <th>القرية</th>
                             <th>عدد الأفراد</th>
                             <th>المواد المطلوبة</th>
-                            <th>الأولوية</th>
-                            <th>الحالة</th>
+                            <th>ملاحظات</th>
+                            <th class="needs-status-cell">الحالة</th>
                             <th>الإجراءات</th>
                         </tr>
                     </thead>
