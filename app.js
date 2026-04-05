@@ -458,6 +458,18 @@ async function setOrderSaved(orderId, isSaved) {
     }
 }
 
+async function setOrderDateToToday(orderId) {
+    try {
+        const today = new Date().toISOString();
+        const { error } = await supabaseClient.from("orders").update({ created_at: today }).eq("id", orderId);
+        if (error) throw error;
+        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
+    } catch (err) {
+        console.error("Error updating order date:", err);
+        alert("فشل تحديث تاريخ الطلب");
+    }
+}
+
 function cancelEdit() {
     editingOrderId = null;
     pendingOrderSourceNeedId = null;
@@ -655,6 +667,9 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
             const saved = Boolean(order.is_saved);
             const orderDisplayName = order.order_name || `الطلب #${order.id || ""}`;
             const sourceNeedBadge = order.source_need_id ? `<span class="order-origin-chip">من الاحتياجات</span>` : "";
+            const refreshDateButton = order.source_need_id
+                ? `<button class="add" onclick="setOrderDateToToday(${order.id})">تاريخ اليوم</button>`
+                : "";
 
             const itemsHtml = isInlineEditing
                 ? `
@@ -678,6 +693,7 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
                 : `
                     <div class="order-quick-actions">
                         <button class="done" onclick="startInlineEdit(${order.id})">تعديل</button>
+                        ${refreshDateButton}
                         <button class="delete" onclick="deleteOrder(${order.id})">حذف</button>
                     </div>
                     <div class="order-toggle-list">
