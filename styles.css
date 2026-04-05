@@ -712,6 +712,19 @@ button {
     background: #d64545;
 }
 
+.priority-dot-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid rgba(24, 49, 83, 0.12);
+}
+
 .needs-date-cell {
     white-space: nowrap;
     min-width: 110px;

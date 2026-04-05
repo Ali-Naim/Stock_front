@@ -9,7 +9,7 @@ let inventory = [];
 let currentOrder = [];
 let currentNeedItems = [];
 let currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
-let currentNeedFilters = { name: "", phone: "", village: "", status: "", priority: "" };
+let currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "" };
 let editingOrderId = null;
 let inlineEditingOrderId = null;
 let editingNeedId = null;
@@ -840,7 +840,7 @@ async function submitNeed() {
 
         alert(editingNeedId ? "تم تحديث الاحتياج بنجاح" : "تم حفظ الاحتياج بنجاح");
         cancelNeedEdit();
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
     } catch (err) {
         console.error("Error saving need:", err);
         alert(err.message || "فشل حفظ احتياج العائلة");
@@ -900,7 +900,7 @@ async function deleteNeed(needId) {
             cancelNeedEdit();
         }
 
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
     } catch (err) {
         console.error("Error deleting need:", err);
         alert("فشل حذف الاحتياج");
@@ -915,10 +915,25 @@ async function setNeedStatus(needId, status) {
             .eq("id", needId);
         if (error) throw error;
 
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
     } catch (err) {
         console.error("Error updating need status:", err);
         alert("فشل تحديث حالة الاحتياج");
+    }
+}
+
+async function setNeedPriority(needId, priority) {
+    try {
+        const { error } = await supabaseClient
+            .from("family_needs")
+            .update({ priority, updated_at: new Date().toISOString() })
+            .eq("id", needId);
+        if (error) throw error;
+
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+    } catch (err) {
+        console.error("Error updating need priority:", err);
+        alert("فشل تحديث أولوية الاحتياج");
     }
 }
 
@@ -1039,7 +1054,7 @@ async function importNeedsExcel() {
 
         input.value = "";
         setNeedsImportResult(`تم استيراد ${payload.length} احتياج بنجاح`, "success");
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
     } catch (err) {
         console.error("Error importing needs Excel:", err);
         setNeedsImportResult(err.message || "فشل استيراد ملف Excel", "error");
@@ -1142,7 +1157,7 @@ async function submitNeedToOrder() {
         renderOrder();
         closeNeedToOrderModal();
         switchTab("orders");
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
     } catch (err) {
         console.error("Error converting need to order:", err);
         alert(err.message || "فشل تحويل الاحتياج إلى طلب");
@@ -1161,7 +1176,13 @@ function getNeedPriorityClass(priority) {
     return "normal";
 }
 
-async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter = "", statusFilter = "", priorityFilter = "") {
+function getNextNeedPriority(priority) {
+    if (priority === "normal") return "medium";
+    if (priority === "medium") return "urgent";
+    return "normal";
+}
+
+async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", statusFilter = "", priorityFilter = "") {
     try {
         let query = supabaseClient.from("family_needs").select("*").order("created_at", { ascending: false });
 
@@ -1174,15 +1195,22 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter
         const { data, error } = await query;
         if (error) throw error;
 
+        const normalizedItemFilter = String(itemFilter || "").trim().toLowerCase();
+        const filteredData = normalizedItemFilter
+            ? (data || []).filter((need) =>
+                (need.items || []).some((item) => String(item.name || "").toLowerCase().includes(normalizedItemFilter))
+            )
+            : (data || []);
+
         const container = document.getElementById("needsHistoryTable");
         container.innerHTML = "";
 
-        if (!data || data.length === 0) {
+        if (!filteredData || filteredData.length === 0) {
             container.innerHTML = renderEmptyState("لا توجد احتياجات محفوظة بعد");
             return;
         }
 
-        const rows = data.map((need) => {
+        const rows = filteredData.map((need) => {
             const villageName = getVillageNameById(need.village_id);
             const itemsText = (need.items || []).map((item) => `${escapeHtml(item.name)} (${item.qty})`).join("، ") || "-";
             const priorityClass = getNeedPriorityClass(need.priority);
@@ -1190,7 +1218,16 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter
 
             return `
                 <tr class="needs-row needs-row-${priorityClass}">
-                    <td class="needs-priority-cell"><span class="priority-dot ${priorityClass}" title="${getNeedPriorityLabel(need.priority)}" aria-label="${getNeedPriorityLabel(need.priority)}"></span></td>
+                    <td class="needs-priority-cell">
+                        <button
+                            type="button"
+                            class="priority-dot-button"
+                            onclick="setNeedPriority(${need.id}, '${getNextNeedPriority(need.priority)}')"
+                            title="الأولوية: ${getNeedPriorityLabel(need.priority)}"
+                            aria-label="تغيير الأولوية الحالية: ${getNeedPriorityLabel(need.priority)}">
+                            <span class="priority-dot ${priorityClass}"></span>
+                        </button>
+                    </td>
                     <td class="needs-date-cell">${formatDate(need.created_at)}</td>
                     <td>${escapeHtml(need.family_name)}</td>
                     <td>${escapeHtml(need.phone_number || "-")}</td>
@@ -1218,7 +1255,7 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter
                 <table class="needs-table">
                     <thead>
                         <tr>
-                            <th class="needs-priority-cell" title="الأولوية">●</th>
+                            <th class="needs-priority-cell">الأولوية</th>
                             <th>تاريخ الإنشاء</th>
                             <th>اسم العائلة</th>
                             <th>الهاتف</th>
@@ -1242,21 +1279,23 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", villageFilter
 function applyNeedFilters() {
     const name = document.getElementById("needNameFilter").value;
     const phone = document.getElementById("needPhoneFilter").value;
+    const item = document.getElementById("needItemFilter").value;
     const village = document.getElementById("needVillageFilter").value;
     const status = document.getElementById("needStatusFilter").value;
     const priority = document.getElementById("needPriorityFilter").value;
 
-    currentNeedFilters = { name, phone, village, status, priority };
-    loadNeedsHistory(name, phone, village, status, priority);
+    currentNeedFilters = { name, phone, item, village, status, priority };
+    loadNeedsHistory(name, phone, item, village, status, priority);
 }
 
 function clearNeedFilters() {
     document.getElementById("needNameFilter").value = "";
     document.getElementById("needPhoneFilter").value = "";
+    document.getElementById("needItemFilter").value = "";
     document.getElementById("needVillageFilter").value = "";
     document.getElementById("needStatusFilter").value = "";
     document.getElementById("needPriorityFilter").value = "";
-    currentNeedFilters = { name: "", phone: "", village: "", status: "", priority: "" };
+    currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "" };
     loadNeedsHistory();
 }
 async function generateRangeReport() {
@@ -1275,6 +1314,7 @@ async function generateRangeReport() {
         const { data, error } = await supabaseClient
             .from("orders")
             .select("*")
+            .eq("status", "done")
             .gte("created_at", startDate)
             .lt("created_at", endDateExclusive);
         if (error) throw error;
@@ -1294,7 +1334,7 @@ async function generateRangeReport() {
 
         const sortedItems = Array.from(allItems).sort((a, b) => a.localeCompare(b, "ar"));
         if (sortedItems.length === 0) {
-            document.getElementById("reportContainer").innerHTML = renderEmptyState("لا توجد بيانات طلبات ضمن هذه الفترة");
+            document.getElementById("reportContainer").innerHTML = renderEmptyState("لا توجد طلبات مكتملة ضمن هذه الفترة");
             return;
         }
 
