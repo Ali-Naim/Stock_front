@@ -8,6 +8,38 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<script>
+(function () {
+    try {
+        const session = JSON.parse(localStorage.getItem("stock_auth_session_v1") || "null");
+        if (!session || !session.token) document.body.classList.add("auth-locked");
+    } catch (_error) {
+        document.body.classList.add("auth-locked");
+    }
+})();
+</script>
+
+<div id="loginOverlay" class="modal-overlay login-overlay" aria-hidden="true">
+    <div class="modal-card login-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">تسجيل الدخول</p>
+                <h3 id="loginTitle">إدارة المخزون</h3>
+            </div>
+        </div>
+        <p class="modal-copy">أدخل اسم المستخدم وكلمة المرور للمتابعة.</p>
+        <form id="loginForm" class="login-form">
+            <input id="loginUsername" autocomplete="username" placeholder="اسم المستخدم">
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+            <div id="loginError" class="login-error hidden" role="alert"></div>
+            <div class="modal-actions">
+                <button class="done" type="submit">دخول</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="appRoot">
 <div id="itemModal" class="modal-overlay" onclick="closeItemModal(event)">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -60,6 +92,12 @@
 </div>
 
 <div class="container">
+    <div class="app-bar">
+        <div class="auth-user">
+            <span id="authUserLabel" class="auth-user-label"></span>
+        </div>
+        <button id="logoutBtn" class="filter-clear" type="button">تسجيل خروج</button>
+    </div>
     <div class="tabs desktop-tabs">
         <button class="tab active" data-tab-target="inventory" onclick="switchTab('inventory', event)">المخزون</button>
         <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
@@ -79,7 +117,7 @@
         <div class="card">
             <h3>إضافة مخزون</h3>
             <div class="inventory-actions">
-                <button class="done" type="button" onclick="openItemModal()">+ منتج جديد</button>
+                <button id="createItemBtn" class="done" type="button" onclick="openItemModal()">+ منتج جديد</button>
             </div>
             <div class="form-grid">
                 <select id="name" required>
@@ -303,11 +341,13 @@
         <div id="reportContainer"></div>
     </div>
 </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-window.STOCK_API_BASE = "http://localhost:4001/api";
+window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app:4000/api";
 </script>
+<script src="js/auth.js"></script>
 <script src="js/api.js"></script>
 <script src="js/state.js"></script>
 <script src="js/shared.js"></script>

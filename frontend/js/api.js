@@ -1,8 +1,13 @@
-﻿const API_BASE = "http://localhost:4001/api";
+const API_BASE = window.STOCK_API_BASE || "http://localhost:4001/api";
 
 async function apiRequest(path, options = {}) {
+    const token = typeof getAuthToken === "function" ? getAuthToken() : "";
     const response = await fetch(`${API_BASE}${path}`, {
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options.headers || {}),
+        },
         ...options,
     });
 
@@ -26,6 +31,8 @@ async function apiRequest(path, options = {}) {
 }
 
 const api = {
+    login: (payload) => apiRequest("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
+
     getVillages: () => apiRequest("/villages"),
     getInventory: () => apiRequest("/inventory"),
     createInventoryItem: (payload) => apiRequest("/inventory", { method: "POST", body: JSON.stringify(payload) }),

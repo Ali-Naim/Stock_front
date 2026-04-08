@@ -1,4 +1,4 @@
-﻿async function initialize() {
+async function initialize() {
     await loadVillages();
     fillVillageInputs();
 
@@ -16,4 +16,11 @@
     await loadNeedsHistory();
 }
 
-initialize();
+document.addEventListener("DOMContentLoaded", async () => {
+    if (typeof setupAuthUi === "function") setupAuthUi();
+    if (typeof getAuthToken === "function" && !getAuthToken() && typeof requireAuth === "function") {
+        await requireAuth();
+    }
+    if (typeof getAuthToken === "function" && !getAuthToken()) return;
+    await initialize();
+});

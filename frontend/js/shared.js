@@ -5,6 +5,10 @@
 }
 
 function switchTab(tabName) {
+    if (typeof canAccessTab === "function" && !canAccessTab(tabName)) {
+        console.warn("Tab access denied:", tabName);
+        return;
+    }
     document.querySelectorAll(".section").forEach((section) => {
         section.classList.toggle("active", section.id === tabName);
     });

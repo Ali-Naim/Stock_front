@@ -1,4 +1,8 @@
-﻿async function createItem() {
+async function createItem() {
+    const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+    const isAdmin = roles.includes("admin");
+    if (!isAdmin) return alert("هذه الصلاحية متاحة للمسؤول فقط");
+
     const itemName = String(document.getElementById("newItemName").value).trim();
     if (!itemName) return alert("أدخل اسم المنتج");
 
@@ -26,11 +30,24 @@
 
 async function loadItems() {
     try {
+        const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+        const isAdmin = roles.includes("admin");
+        const canAdjustQty = isAdmin || roles.includes("stock");
+
+        const createItemBtn = document.getElementById("createItemBtn");
+        if (createItemBtn) createItemBtn.classList.toggle("hidden", !isAdmin);
+
+        const stockSelect = document.getElementById("name");
+        const qtyInput = document.getElementById("qty");
+        const addQtyBtn = document.querySelector("#inventory .card .add");
+        stockSelect?.toggleAttribute?.("disabled", !canAdjustQty);
+        qtyInput?.toggleAttribute?.("disabled", !canAdjustQty);
+        addQtyBtn?.toggleAttribute?.("disabled", !canAdjustQty);
+
         const data = await api.getInventory();
         inventory = data || [];
 
         const list = document.getElementById("inventoryList");
-        const stockSelect = document.getElementById("name");
         const orderSelect = document.getElementById("orderItem");
         const needSelect = document.getElementById("needItem");
 
@@ -38,6 +55,9 @@ async function loadItems() {
         stockSelect.innerHTML = `<option value="">اختر المنتج</option>`;
         orderSelect.innerHTML = `<option value="">اختر المنتج</option>`;
         needSelect.innerHTML = `<option value="">اختر المنتج</option>`;
+
+        const isStockOnly = roles.includes("stock") && !isAdmin;
+        const listInventory = isStockOnly ? inventory.filter((item) => Number(item.quantity) > 0) : inventory;
 
         if (inventory.length === 0) {
             list.innerHTML = renderEmptyState("لا توجد عناصر في المخزون");
@@ -47,7 +67,30 @@ async function loadItems() {
             return;
         }
 
+        // Keep stock + needs selects filled with all items.
+        // For orders, show only currently-available items (quantity > 0).
+        const availableForOrders = inventory.filter((item) => Number(item.quantity) > 0);
+
         inventory.forEach((item) => {
+            stockSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+            needSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+        });
+
+        if (availableForOrders.length === 0) {
+            orderSelect.innerHTML = `<option value="">لا يوجد متوفر</option>`;
+        } else {
+            availableForOrders.forEach((item) => {
+                orderSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)} (متوفر: ${item.quantity})</option>`;
+            });
+        }
+
+        if (listInventory.length === 0) {
+            list.innerHTML = renderEmptyState("لا توجد عناصر بكمية متوفرة");
+            updateNeedItemPreview();
+            return;
+        }
+
+        listInventory.forEach((item) => {
             list.innerHTML += `
                 <div class="card item">
                     <div class="item-meta">
@@ -55,18 +98,18 @@ async function loadItems() {
                         <small>الكمية: ${item.quantity}</small>
                     </div>
                     <div class="stock-actions">
-                        <div class="qty-stepper">
+                        ${
+                            canAdjustQty
+                                ? `<div class="qty-stepper">
                             <button class="delete" onclick="adjustInventoryQty(${item.id}, -1)">-</button>
                             <span class="qty-value">${item.quantity}</span>
                             <button class="add" onclick="adjustInventoryQty(${item.id}, 1)">+</button>
-                        </div>
-                        <button class="delete" onclick="deleteItem(${item.id})">حذف</button>
+                        </div>`
+                                : ""
+                        }
+                        ${isAdmin ? `<button class="delete" onclick="deleteItem(${item.id})">حذف</button>` : ""}
                     </div>
                 </div>`;
-
-            stockSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
-            orderSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)} (متوفر: ${item.quantity})</option>`;
-            needSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
         });
 
         updateNeedItemPreview();
@@ -75,8 +118,13 @@ async function loadItems() {
         document.getElementById("inventoryList").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل المخزون</div>`;
     }
 }
+
 async function adjustInventoryQty(itemId, delta) {
     try {
+        const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+        const canAdjustQty = roles.includes("admin") || roles.includes("stock");
+        if (!canAdjustQty) return alert("ليست لديك صلاحية تعديل الكميات");
+
         const item = inventory.find((entry) => String(entry.id) === String(itemId));
         if (!item) return alert("العنصر غير موجود");
 
@@ -93,6 +141,10 @@ async function adjustInventoryQty(itemId, delta) {
 }
 
 async function addItem() {
+    const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+    const canAdjustQty = roles.includes("admin") || roles.includes("stock");
+    if (!canAdjustQty) return alert("ليست لديك صلاحية تعديل الكميات");
+
     const itemId = document.getElementById("name").value;
     const qtyToAdd = Number(document.getElementById("qty").value);
 
@@ -117,6 +169,10 @@ async function addItem() {
 
 async function deleteItem(id) {
     try {
+        const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+        const isAdmin = roles.includes("admin");
+        if (!isAdmin) return alert("هذه الصلاحية متاحة للمسؤول فقط");
+
         await api.deleteInventoryItem(id);
         await loadItems();
     } catch (err) {
