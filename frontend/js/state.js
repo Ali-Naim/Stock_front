@@ -1,0 +1,15 @@
+﻿let villages = [];
+let inventory = [];
+let currentOrder = [];
+let currentNeedItems = [];
+let currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
+let currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "" };
+const NEEDS_PAGE_SIZE = 20;
+let currentNeedsPage = 1;
+let currentNeedsTotalCount = 0;
+let editingOrderId = null;
+let inlineEditingOrderId = null;
+let editingNeedId = null;
+let needToOrderId = null;
+let pendingOrderSourceNeedId = null;
+

@@ -217,7 +217,7 @@
 
         <div class="card">
             <h3>استيراد احتياجات من Excel</h3>
-            <p class="modal-copy">الأعمدة الأساسية هي <strong>`family_name`</strong> و<strong>`phone_number`</strong>. يمكن ترك <strong>`village`</strong> و<strong>`people_count`</strong> و<strong>`notes`</strong> فارغين (وعند ترك عدد الأفراد فارغًا يتم اعتماد القيمة 1). بعد ذلك ضع أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
+            <p class="modal-copy">الأعمدة الأساسية هي <strong>`family_name`</strong> و<strong>`phone_number`</strong>. يمكن ترك <strong>`village`</strong> و<strong>`people_count`</strong> فارغين (وعند ترك عدد الأفراد فارغًا يتم اعتماد القيمة 1). يمكن استيراد سطر يحتوي على <strong>`notes`</strong> فقط حتى لو لم توجد مواد بكميات. وعند الحاجة ضع أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
             <div class="import-needs-box">
                 <input id="needsExcelFile" type="file" accept=".xlsx,.xls,.csv">
                 <button class="done" type="button" onclick="importNeedsExcel()">استيراد الملف</button>
@@ -304,8 +304,17 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="app.js"></script>
+<script>
+window.STOCK_API_BASE = "http://localhost:4001/api";
+</script>
+<script src="js/api.js"></script>
+<script src="js/state.js"></script>
+<script src="js/shared.js"></script>
+<script src="js/inventory.js"></script>
+<script src="js/orders.js"></script>
+<script src="js/needs.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/init.js"></script>
 </body>
 </html>
