@@ -51,6 +51,19 @@ const api = {
     updateNeed: (id, payload) => apiRequest(`/needs/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteNeed: (id) => apiRequest(`/needs/${id}`, { method: "DELETE" }),
 
+    getFamilies: (params = {}) => apiRequest(`/families${toQueryString(params)}`),
+    getFamilyById: (id) => apiRequest(`/families/${id}`),
+    createFamily: (payload) => apiRequest("/families", { method: "POST", body: JSON.stringify(payload) }),
+    updateFamily: (id, payload) => apiRequest(`/families/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    deleteFamily: (id) => apiRequest(`/families/${id}`, { method: "DELETE" }),
+
+    getFamilyDistributions: (familyId, params = {}) => apiRequest(`/families/${familyId}/distributions${toQueryString(params)}`),
+    createFamilyDistribution: (familyId, payload) =>
+        apiRequest(`/families/${familyId}/distributions`, { method: "POST", body: JSON.stringify(payload) }),
+
+    getFamilyRelations: (familyId) => apiRequest(`/families/${familyId}/relations`),
+    createFamilyRelation: (familyId, payload) => apiRequest(`/families/${familyId}/relations`, { method: "POST", body: JSON.stringify(payload) }),
+    deleteFamilyRelation: (familyId, relationId) => apiRequest(`/families/${familyId}/relations/${relationId}`, { method: "DELETE" }),
+
     getRangeReport: (from, to) => apiRequest(`/reports/orders-by-range${toQueryString({ from, to })}`),
 };
-

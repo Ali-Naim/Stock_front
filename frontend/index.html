@@ -76,6 +76,106 @@
     </div>
 </div>
 
+<div id="distributionModal" class="modal-overlay" onclick="closeDistributionModal(event)">
+    <div class="modal-card distribution-modal-card" role="dialog" aria-modal="true" aria-labelledby="distributionModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">توزيع</p>
+                <h3 id="distributionModalTitle">إضافة توزيع لعائلة</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeDistributionModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">اختر نوع التوزيع وأضف المواد والكميات. سيتم حفظها في سجل التوزيعات.</p>
+
+        <div class="form-grid distribution-form-grid">
+            <select id="distributionType">
+                <option value="local">توزيع محلي</option>
+                <option value="municipality">بلدية</option>
+            </select>
+            <input id="distributionAt" type="datetime-local">
+        </div>
+
+        <div class="distribution-add-row">
+            <select id="distributionItem"></select>
+            <input id="distributionQty" type="number" min="1" placeholder="الكمية">
+            <button class="add" type="button" onclick="addDistributionItem()">إضافة</button>
+        </div>
+
+        <div id="distributionItemsList"></div>
+
+        <textarea id="distributionNotes" rows="3" placeholder="ملاحظات (اختياري)"></textarea>
+
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="submitDistribution()">حفظ التوزيع</button>
+            <button class="filter-clear" type="button" onclick="closeDistributionModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div id="familyEditModal" class="modal-overlay" onclick="closeFamilyEditModal(event)">
+    <div class="modal-card family-edit-modal-card" role="dialog" aria-modal="true" aria-labelledby="familyEditModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="familyEditModalTitle">تعديل بيانات العائلة</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeFamilyEditModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">يمكنك تعديل الاسم، رقم الهاتف، عدد الأفراد والقرية.</p>
+
+        <div class="form-grid family-edit-form-grid">
+            <input id="editFatherFirstName" placeholder="اسم الأب">
+            <input id="editFatherLastName" placeholder="كنية الأب">
+            <input id="editFamilyPhone" placeholder="رقم الهاتف">
+            <input id="editFamilyPeopleCount" type="number" min="1" placeholder="عدد الأفراد">
+            <select id="editFamilyVillage">
+                <option value="">اختر القرية</option>
+            </select>
+        </div>
+
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="submitFamilyEdit()">حفظ التعديل</button>
+            <button class="filter-clear" type="button" onclick="closeFamilyEditModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div id="familyRelationsModal" class="modal-overlay" onclick="closeFamilyRelationsModal(event)">
+    <div class="modal-card family-relations-modal-card" role="dialog" aria-modal="true" aria-labelledby="familyRelationsModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="familyRelationsModalTitle">العلاقات</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeFamilyRelationsModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">أضف علاقة بين عائلتين (مثلاً: أخوة، أقارب...).</p>
+
+        <div class="card relations-add-card">
+            <div class="form-grid relations-form-grid">
+                <input id="relationFamilySearch" placeholder="بحث عن عائلة" oninput="filterRelationFamilies()">
+                <select id="relationFamilySelect"></select>
+                <select id="relationTypeSelect" onchange="toggleCustomRelationType()">
+                    <option value="brothers">أخوة</option>
+                    <option value="cousins">أقارب</option>
+                    <option value="in_law">مصاهرة</option>
+                    <option value="same_household">نفس المنزل</option>
+                    <option value="other">أخرى</option>
+                </select>
+                <input id="relationTypeCustom" class="hidden" placeholder="اكتب نوع العلاقة">
+            </div>
+            <textarea id="relationNotes" rows="2" placeholder="ملاحظات (اختياري)"></textarea>
+            <div class="modal-actions">
+                <button class="done" type="button" onclick="submitFamilyRelation()">إضافة العلاقة</button>
+                <button class="filter-clear" type="button" onclick="closeFamilyRelationsModal()">إغلاق</button>
+            </div>
+        </div>
+
+        <h3 class="history-heading">العلاقات الحالية</h3>
+        <div id="familyRelationsList"></div>
+    </div>
+</div>
+
 <div class="mobile-tab-bar" aria-label="التنقل السريع">
     <button class="mobile-tab-button active" data-tab-target="inventory" onclick="switchTab('inventory', event)">
         <span>المخزون</span>
@@ -85,6 +185,9 @@
     </button>
     <button class="mobile-tab-button" data-tab-target="needs" onclick="switchTab('needs', event)">
         <span>الاحتياجات</span>
+    </button>
+    <button class="mobile-tab-button" data-tab-target="families" onclick="switchTab('families', event)">
+        <span>العائلات</span>
     </button>
     <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports', event)">
         <span>التقارير</span>
@@ -102,6 +205,7 @@
         <button class="tab active" data-tab-target="inventory" onclick="switchTab('inventory', event)">المخزون</button>
         <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
         <button class="tab" data-tab-target="needs" onclick="switchTab('needs', event)">الاحتياجات</button>
+        <button class="tab" data-tab-target="families" onclick="switchTab('families', event)">العائلات</button>
         <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
     </div>
 
@@ -314,6 +418,50 @@
         <div id="needsHistoryTable"></div>
     </div>
 
+    <div id="families" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h2>إدارة العائلات وسجل التوزيعات</h2>
+            </div>
+            <p>كل عائلة ممثلة باسم الأب (الاسم والكنية) مع عدد الأفراد والقرية، وسجل التوزيعات والمواد والكميات.</p>
+        </div>
+
+        <div class="card">
+            <h3>إضافة عائلة</h3>
+            <div class="form-grid">
+                <input id="fatherFirstName" placeholder="اسم الأب">
+                <input id="fatherLastName" placeholder="كنية الأب">
+                <input id="familyPhone" placeholder="رقم الهاتف">
+                <input id="familyPeopleCount" type="number" min="1" placeholder="عدد الأفراد">
+                <select id="familyVillage">
+                    <option value="">اختر القرية</option>
+                </select>
+            </div>
+            <button class="add" type="button" onclick="createFamily()">حفظ العائلة</button>
+        </div>
+
+        <h3 class="history-heading">سجل العائلات</h3>
+
+        <div class="card">
+            <div class="filter-container">
+                <div class="filter-group">
+                    <input id="familyNameFilter" placeholder="اسم الأب" oninput="applyFamilyFilters()">
+                </div>
+                <div class="filter-group">
+                    <select id="familyVillageFilter" onchange="applyFamilyFilters()">
+                        <option value="">كل القرى</option>
+                    </select>
+                    <small>القرية</small>
+                </div>
+                <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
+                <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
+            </div>
+        </div>
+
+        <div id="familiesList"></div>
+    </div>
+
     <div id="reports" class="section">
         <div class="section-intro">
             <div>
@@ -354,6 +502,7 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 <script src="js/inventory.js"></script>
 <script src="js/orders.js"></script>
 <script src="js/needs.js"></script>
+<script src="js/families.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/init.js"></script>
 </body>

@@ -18,6 +18,10 @@ function switchTab(tabName) {
     if (tabName === "orders" && (!currentFilters.dateFrom && !currentFilters.dateTo)) {
         setTodayDateFilters();
     }
+
+    if (tabName === "families" && typeof ensureFamiliesLoaded === "function") {
+        ensureFamiliesLoaded();
+    }
 }
 
 function renderEmptyState(message) {
@@ -83,10 +87,29 @@ async function loadVillages() {
 }
 
 function fillVillageInputs() {
-    document.getElementById("orderVillage").innerHTML = getOrderVillageOptions();
-    document.getElementById("needVillage").innerHTML = getVillageOptions();
-    document.getElementById("villageFilter").innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${escapeHtml(village.name)}">${escapeHtml(village.name)}</option>`).join("")}`;
-    document.getElementById("needVillageFilter").innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${village.id}">${escapeHtml(village.name)}</option>`).join("")}`;
+    const orderVillage = document.getElementById("orderVillage");
+    if (orderVillage) orderVillage.innerHTML = getOrderVillageOptions();
+
+    const needVillage = document.getElementById("needVillage");
+    if (needVillage) needVillage.innerHTML = getVillageOptions();
+
+    const villageFilter = document.getElementById("villageFilter");
+    if (villageFilter) {
+        villageFilter.innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${escapeHtml(village.name)}">${escapeHtml(village.name)}</option>`).join("")}`;
+    }
+
+    const needVillageFilter = document.getElementById("needVillageFilter");
+    if (needVillageFilter) {
+        needVillageFilter.innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${village.id}">${escapeHtml(village.name)}</option>`).join("")}`;
+    }
+
+    const familyVillage = document.getElementById("familyVillage");
+    if (familyVillage) familyVillage.innerHTML = getVillageOptions();
+
+    const familyVillageFilter = document.getElementById("familyVillageFilter");
+    if (familyVillageFilter) {
+        familyVillageFilter.innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${village.id}">${escapeHtml(village.name)}</option>`).join("")}`;
+    }
 }
 
 function updateNeedItemPreview() {

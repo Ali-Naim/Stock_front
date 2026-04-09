@@ -7,6 +7,7 @@ This frontend expects your backend to implement login and return a token plus th
 - `inventory`
 - `orders`
 - `needs`
+- `families`
 - `reports`
 
 ## Recommended RBAC schema (works in PostgreSQL / MySQL with small syntax tweaks)
@@ -96,6 +97,7 @@ INSERT INTO pages (code, label) VALUES
   ('inventory', 'Inventory'),
   ('orders',    'Orders'),
   ('needs',     'Needs'),
+  ('families',  'Families'),
   ('reports',   'Reports');
 ```
 
@@ -137,22 +139,103 @@ WHERE r.name = 'admin';
 INSERT INTO role_pages (role_id, page_id)
 SELECT r.id, p.id
 FROM roles r
-JOIN pages p ON p.code IN ('needs','orders')
+JOIN pages p ON p.code IN ('needs','orders','families')
 WHERE r.name = 'call_center';
 
 -- data_entry: needs only
 INSERT INTO role_pages (role_id, page_id)
 SELECT r.id, p.id
 FROM roles r
-JOIN pages p ON p.code IN ('needs','orders')
+JOIN pages p ON p.code IN ('needs','orders','families')
 WHERE r.name = 'data_entry';
 
 -- stock: inventory + orders + reports
 INSERT INTO role_pages (role_id, page_id)
 SELECT r.id, p.id
 FROM roles r
-JOIN pages p ON p.code IN ('inventory','orders','reports')
+JOIN pages p ON p.code IN ('inventory','orders','families','reports')
 WHERE r.name = 'stock';
+
+## Families + distributions (logs) schema (recommended)
+
+This feature adds:
+
+- `families`: one row per family (represented by the father)
+- `family_distributions`: one row per distribution event (with timestamp + type)
+- `family_distribution_items`: items + quantities in each event
+
+Assumptions:
+
+- You already have a `villages` table (used by `GET /api/villages`)
+- You already have an inventory items table (used by `GET /api/inventory`)
+
+### 1) Families
+
+```sql
+CREATE TABLE families (
+  id                BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  father_first_name VARCHAR(100) NOT NULL,
+  father_last_name  VARCHAR(100) NOT NULL,
+  phone_number      TEXT NULL,
+  people_count      INT NOT NULL DEFAULT 1 CHECK (people_count > 0),
+  village_id        BIGINT NULL REFERENCES villages(id) ON DELETE SET NULL,
+  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Optional: reduce duplicates inside the same village.
+CREATE UNIQUE INDEX families_unique_father_village
+  ON families (LOWER(father_first_name), LOWER(father_last_name), village_id);
+```
+
+### 2) Distribution logs (time + type)
+
+```sql
+CREATE TABLE family_distributions (
+  id             BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  family_id      BIGINT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  type           VARCHAR(20) NOT NULL CHECK (type IN ('local','municipality')),
+  distributed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  notes          TEXT NULL,
+  created_by     BIGINT NULL REFERENCES users(id) ON DELETE SET NULL,
+  created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX family_distributions_family_time_idx
+  ON family_distributions (family_id, distributed_at DESC);
+```
+
+### 3) Items inside each distribution
+
+```sql
+CREATE TABLE family_distribution_items (
+  distribution_id BIGINT NOT NULL REFERENCES family_distributions(id) ON DELETE CASCADE,
+  item_id         BIGINT NOT NULL, -- reference your inventory items table id
+  quantity        NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+  PRIMARY KEY (distribution_id, item_id)
+);
+
+CREATE INDEX family_distribution_items_item_idx
+  ON family_distribution_items (item_id);
+```
+
+### 4) Family relations (prepare for linking families later)
+
+```sql
+CREATE TABLE family_relations (
+  id            BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  family_id_a   BIGINT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  family_id_b   BIGINT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  relation_type TEXT NOT NULL,
+  notes         TEXT NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT family_relations_not_self CHECK (family_id_a <> family_id_b)
+);
+
+-- Prevent duplicates regardless of A/B order (Postgres).
+CREATE UNIQUE INDEX family_relations_unique_pair_type
+  ON family_relations (LEAST(family_id_a, family_id_b), GREATEST(family_id_a, family_id_b), relation_type);
+```
 ```
 
 ## Backend auth tables (sessions) + login RPC (Supabase/Postgres)

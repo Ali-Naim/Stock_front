@@ -1,10 +1,10 @@
 const AUTH_STORAGE_KEY = "stock_auth_session_v1";
 
 const ROLE_TAB_ALLOWLIST = {
-    admin: ["inventory", "orders", "needs", "reports"],
-    call_center: ["needs", "orders"],
-    data_entry: ["needs", "orders"],
-    stock: ["inventory", "orders", "reports"],
+    admin: ["inventory", "orders", "needs", "families", "reports"],
+    call_center: ["needs", "orders", "families"],
+    data_entry: ["needs", "orders", "families"],
+    stock: ["inventory", "orders", "families", "reports"],
 };
 
 function getApiBase() {
@@ -69,7 +69,7 @@ function getAllowedTabs() {
 
     const roles = getUserRoles();
     if (!roles.length) {
-        return new Set(["inventory", "orders", "needs", "reports"]);
+        return new Set(["inventory", "orders", "needs", "families", "reports"]);
     }
 
     const allowed = new Set();
@@ -78,7 +78,7 @@ function getAllowedTabs() {
         (list || []).forEach((tab) => allowed.add(tab));
     });
 
-    if (!allowed.size) return new Set(["inventory", "orders", "needs", "reports"]);
+    if (!allowed.size) return new Set(["inventory", "orders", "needs", "families", "reports"]);
     return allowed;
 }
 
