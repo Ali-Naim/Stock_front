@@ -34,6 +34,23 @@ async function loadItems() {
         const isAdmin = roles.includes("admin");
         const canAdjustQty = isAdmin || roles.includes("stock");
 
+        let reservedByItemId = new Map();
+        try {
+            const pendingOrders = await api.getOrders({ status: "pending" });
+            reservedByItemId = new Map();
+            (pendingOrders || []).forEach((order) => {
+                (order?.items || []).forEach((item) => {
+                    const id = String(item?.id ?? "").trim();
+                    if (!id) return;
+                    const qty = Number(item?.qty ?? 0);
+                    if (!qty || qty <= 0) return;
+                    reservedByItemId.set(id, (reservedByItemId.get(id) || 0) + qty);
+                });
+            });
+        } catch (error) {
+            console.warn("Could not load pending orders for reservations:", error);
+        }
+
         const createItemBtn = document.getElementById("createItemBtn");
         if (createItemBtn) createItemBtn.classList.toggle("hidden", !isAdmin);
 
@@ -57,7 +74,9 @@ async function loadItems() {
         needSelect.innerHTML = `<option value="">اختر المنتج</option>`;
 
         const isStockOnly = roles.includes("stock") && !isAdmin;
-        const listInventory = isStockOnly ? inventory.filter((item) => Number(item.quantity) > 0) : inventory;
+        const listInventory = isStockOnly
+            ? inventory.filter((item) => Number(item.quantity) > 0 || (reservedByItemId.get(String(item.id)) || 0) > 0)
+            : inventory;
 
         if (inventory.length === 0) {
             list.innerHTML = renderEmptyState("لا توجد عناصر في المخزون");
@@ -92,7 +111,7 @@ async function loadItems() {
 
         listInventory.forEach((item) => {
             list.innerHTML += `
-                <div class="card item">
+                <div class="card item" data-inventory-item-id="${item.id}">
                     <div class="item-meta">
                         <strong>${escapeHtml(item.name)}</strong>
                         <small>الكمية: ${item.quantity}</small>
@@ -110,6 +129,14 @@ async function loadItems() {
                         ${isAdmin ? `<button class="delete" onclick="deleteItem(${item.id})">حذف</button>` : ""}
                     </div>
                 </div>`;
+        });
+
+        document.querySelectorAll("[data-inventory-item-id]").forEach((card) => {
+            const reservedQty = reservedByItemId.get(String(card.dataset.inventoryItemId)) || 0;
+            if (!reservedQty || reservedQty <= 0) return;
+            const quantityLine = card.querySelector(".item-meta small");
+            if (!quantityLine) return;
+            quantityLine.textContent = `${quantityLine.textContent} (${reservedQty} محجوز)`;
         });
 
         updateNeedItemPreview();
