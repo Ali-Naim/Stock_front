@@ -76,6 +76,44 @@
     </div>
 </div>
 
+<div id="completedNeedsModal" class="modal-overlay" onclick="closeCompletedNeedsModal(event)">
+    <div class="modal-card completed-needs-modal-card" role="dialog" aria-modal="true" aria-labelledby="completedNeedsTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">الاحتياجات</p>
+                <h3 id="completedNeedsTitle">الاحتياجات المكتملة</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeCompletedNeedsModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">يتم عرض الاحتياجات المكتملة فقط. يتم تطبيق نفس فلاتر سجل الاحتياجات.</p>
+        <div id="completedNeedsHistoryTable"></div>
+        <div class="modal-actions">
+            <button class="filter-clear" type="button" onclick="closeCompletedNeedsModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<div id="needsExcelImportModal" class="modal-overlay" onclick="closeNeedsExcelImportModal(event)">
+    <div class="modal-card needs-import-modal-card" role="dialog" aria-modal="true" aria-labelledby="needsExcelImportTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">الاحتياجات</p>
+                <h3 id="needsExcelImportTitle">استيراد احتياجات من Excel</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeNeedsExcelImportModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">الأعمدة الأساسية هي <strong>`family_name`</strong> و<strong>`phone_number`</strong>. يمكن ترك <strong>`village`</strong> و<strong>`people_count`</strong> فارغين (وعند ترك عدد الأفراد فارغًا يتم اعتماد القيمة 1). يمكن استيراد سطر يحتوي على <strong>`notes`</strong> فقط حتى لو لم توجد مواد بكميات. وعند الحاجة ضع أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
+        <div class="import-needs-box">
+            <input id="needsExcelFile" type="file" accept=".xlsx,.xls,.csv">
+            <button class="done" type="button" onclick="importNeedsExcel()">استيراد الملف</button>
+        </div>
+        <div id="needsImportResult" class="needs-import-result hidden"></div>
+        <div class="modal-actions">
+            <button class="filter-clear" type="button" onclick="closeNeedsExcelImportModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
 <div id="distributionModal" class="modal-overlay" onclick="closeDistributionModal(event)">
     <div class="modal-card distribution-modal-card" role="dialog" aria-modal="true" aria-labelledby="distributionModalTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -359,12 +397,7 @@
 
         <div class="card">
             <h3>استيراد احتياجات من Excel</h3>
-            <p class="modal-copy">الأعمدة الأساسية هي <strong>`family_name`</strong> و<strong>`phone_number`</strong>. يمكن ترك <strong>`village`</strong> و<strong>`people_count`</strong> فارغين (وعند ترك عدد الأفراد فارغًا يتم اعتماد القيمة 1). يمكن استيراد سطر يحتوي على <strong>`notes`</strong> فقط حتى لو لم توجد مواد بكميات. وعند الحاجة ضع أعمدة المواد بأسمائها كما هي في المخزون، والقيم هي الكميات.</p>
-            <div class="import-needs-box">
-                <input id="needsExcelFile" type="file" accept=".xlsx,.xls,.csv">
-                <button class="done" type="button" onclick="importNeedsExcel()">استيراد الملف</button>
-            </div>
-            <div id="needsImportResult" class="needs-import-result hidden"></div>
+            <button class="done" type="button" onclick="openNeedsExcelImportModal()">فتح نافذة الاستيراد</button>
         </div>
 
         <div id="needItemsList"></div>
@@ -374,7 +407,10 @@
             <button class="delete" onclick="cancelNeedEdit()" id="cancelNeedEditBtn" style="display: none;">إلغاء التعديل</button>
         </div>
 
-        <h3 class="history-heading">سجل الاحتياجات</h3>
+        <div class="history-heading-row">
+            <h3 class="history-heading">سجل الاحتياجات</h3>
+            <button class="done" type="button" onclick="openCompletedNeedsModal()">عرض المكتملة</button>
+        </div>
 
         <div class="card needs-filter-card">
             <div class="filter-container needs-filter-container">
@@ -395,10 +431,9 @@
                 </div>
                 <div class="filter-group">
                     <select id="needStatusFilter" onchange="applyNeedFilters()">
-                        <option value="">كل الحالات</option>
+                        <option value="">غير مكتمل</option>
                         <option value="pending">قيد الانتظار</option>
                         <option value="in_progress">قيد المتابعة</option>
-                        <option value="done">مكتمل</option>
                     </select>
                     <small>الحالة</small>
                 </div>

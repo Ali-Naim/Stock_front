@@ -98,7 +98,7 @@ async function submitNeed() {
 
         alert(editingNeedId ? "تم تحديث الاحتياج بنجاح" : "تم حفظ الاحتياج بنجاح");
         cancelNeedEdit();
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await refreshNeedsHistoryViews();
     } catch (err) {
         console.error("Error saving need:", err);
         alert(err.message || "فشل حفظ احتياج العائلة");
@@ -156,7 +156,7 @@ async function deleteNeed(needId) {
             cancelNeedEdit();
         }
 
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await refreshNeedsHistoryViews();
     } catch (err) {
         console.error("Error deleting need:", err);
         alert("فشل حذف الاحتياج");
@@ -167,7 +167,7 @@ async function setNeedStatus(needId, status) {
     try {
         await api.updateNeed(needId, { status, updated_at: new Date().toISOString() });
 
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await refreshNeedsHistoryViews();
     } catch (err) {
         console.error("Error updating need status:", err);
         alert("فشل تحديث حالة الاحتياج");
@@ -178,7 +178,7 @@ async function setNeedPriority(needId, priority) {
     try {
         await api.updateNeed(needId, { priority, updated_at: new Date().toISOString() });
 
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await refreshNeedsHistoryViews();
     } catch (err) {
         console.error("Error updating need priority:", err);
         alert("فشل تحديث أولوية الاحتياج");
@@ -301,7 +301,7 @@ async function importNeedsExcel() {
 
         input.value = "";
         setNeedsImportResult(`تم استيراد ${payload.length} احتياج بنجاح`, "success");
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await refreshNeedsHistoryViews();
     } catch (err) {
         console.error("Error importing needs Excel:", err);
         setNeedsImportResult(err.message || "فشل استيراد ملف Excel", "error");
@@ -397,7 +397,7 @@ async function submitNeedToOrder() {
         renderOrder();
         closeNeedToOrderModal();
         switchTab("orders");
-        await loadNeedsHistory(currentNeedFilters.name, currentNeedFilters.phone, currentNeedFilters.item, currentNeedFilters.village, currentNeedFilters.status, currentNeedFilters.priority);
+        await refreshNeedsHistoryViews();
     } catch (err) {
         console.error("Error converting need to order:", err);
         alert(err.message || "فشل تحويل الاحتياج إلى طلب");
@@ -422,7 +422,7 @@ function getNextNeedPriority(priority) {
     return "normal";
 }
 
-function renderNeedsPagination(totalCount, currentPage, pageSize) {
+function renderNeedsPagination(totalCount, currentPage, pageSize, onClickFnName = "goToNeedsPage") {
     const totalPages = Math.ceil(totalCount / pageSize);
     if (totalPages <= 1) return "";
 
@@ -433,11 +433,90 @@ function renderNeedsPagination(totalCount, currentPage, pageSize) {
         <div class="needs-pagination">
             <small class="needs-pagination-info">عرض ${pageStart}-${pageEnd} من أصل ${totalCount}</small>
             <div class="needs-pagination-actions">
-                <button type="button" class="done" onclick="goToNeedsPage(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""}>السابق</button>
+                <button type="button" class="done" onclick="${onClickFnName}(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""}>السابق</button>
                 <span class="needs-pagination-page">صفحة ${currentPage} من ${totalPages}</span>
-                <button type="button" class="done" onclick="goToNeedsPage(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""}>التالي</button>
+                <button type="button" class="done" onclick="${onClickFnName}(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""}>التالي</button>
             </div>
         </div>`;
+}
+
+function compareNeedsByCreatedAtDesc(a, b) {
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+}
+
+function renderNeedsHistoryTable(containerId, needs, totalCount, currentPage, pageSize, paginationFnName, emptyZeroMessage = "لا توجد احتياجات محفوظة بعد") {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+
+    if (!needs || needs.length === 0) {
+        const emptyMessage = totalCount === 0
+            ? emptyZeroMessage
+            : "لا توجد نتائج مطابقة في هذه الصفحة";
+        container.innerHTML = `${renderEmptyState(emptyMessage)}${renderNeedsPagination(totalCount, currentPage, pageSize, paginationFnName)}`;
+        return;
+    }
+
+    const rows = needs.map((need) => {
+        const villageName = getVillageNameById(need.village_id);
+        const itemsText = (need.items || []).map((item) => `${escapeHtml(item.name)} (${item.qty})`).join("، ") || "-";
+        const priorityClass = getNeedPriorityClass(need.priority);
+        const notesText = String(need.notes || "").trim();
+
+        return `
+            <tr class="needs-row needs-row-${priorityClass}">
+                <td class="needs-priority-cell">
+                    <button
+                        type="button"
+                        class="priority-dot-button"
+                        onclick="setNeedPriority(${need.id}, '${getNextNeedPriority(need.priority)}')"
+                        title="الأولوية: ${getNeedPriorityLabel(need.priority)}"
+                        aria-label="تغيير الأولوية الحالية: ${getNeedPriorityLabel(need.priority)}">
+                        <span class="priority-dot ${priorityClass}"></span>
+                    </button>
+                </td>
+                <td class="needs-date-cell">${formatDate(need.created_at)}</td>
+                <td>${escapeHtml(need.family_name)}</td>
+                <td>${escapeHtml(need.phone_number || "-")}</td>
+                <td>${escapeHtml(villageName)}</td>
+                <td>${need.people_count || 0}</td>
+                <td class="need-items-cell" title="${itemsText}">${itemsText}</td>
+                <td class="need-notes-cell" title="${escapeHtml(notesText || "-")}">${escapeHtml(notesText || "-")}</td>
+                <td class="needs-status-cell">
+                    <select onchange="setNeedStatus(${need.id}, this.value)">
+                        <option value="pending" ${need.status === "pending" ? "selected" : ""}>قيد الانتظار</option>
+                        <option value="in_progress" ${need.status === "in_progress" ? "selected" : ""}>قيد المتابعة</option>
+                        <option value="done" ${need.status === "done" ? "selected" : ""}>مكتمل</option>
+                    </select>
+                </td>
+                <td class="needs-actions-cell">
+                    <button class="icon-action add" onclick="openNeedToOrderModal(${need.id})" title="إضافة كطلب" aria-label="إضافة كطلب">🛒</button>
+                    <button class="icon-action done" onclick="editNeed(${need.id})" title="تعديل" aria-label="تعديل">✎</button>
+                    <button class="icon-action delete" onclick="deleteNeed(${need.id})" title="حذف" aria-label="حذف">🗑</button>
+                </td>
+            </tr>`;
+    }).join("");
+
+    container.innerHTML = `
+        <div class="needs-table-wrap">
+            <table class="needs-table">
+                <thead>
+                    <tr>
+                        <th class="needs-priority-cell">الأولوية</th>
+                        <th>تاريخ الإنشاء</th>
+                        <th>اسم العائلة</th>
+                        <th>الهاتف</th>
+                        <th>القرية</th>
+                        <th>عدد الأفراد</th>
+                        <th>المواد المطلوبة</th>
+                        <th>ملاحظات</th>
+                        <th class="needs-status-cell">الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderNeedsPagination(totalCount, currentPage, pageSize, paginationFnName)}`;
 }
 
 function goToNeedsPage(page) {
@@ -457,8 +536,116 @@ function goToNeedsPage(page) {
     );
 }
 
+function goToCompletedNeedsPage(page) {
+    const totalPages = Math.max(1, Math.ceil(completedNeedsTotalCount / COMPLETED_NEEDS_PAGE_SIZE));
+    const nextPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
+    if (nextPage === completedNeedsPage) return;
+
+    completedNeedsPage = nextPage;
+    loadCompletedNeedsHistory(
+        currentNeedFilters.name,
+        currentNeedFilters.phone,
+        currentNeedFilters.item,
+        currentNeedFilters.village,
+        currentNeedFilters.priority,
+        completedNeedsPage
+    );
+}
+
+async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", priorityFilter = "", page = currentNeedsPage) {
+    try {
+        currentNeedsPage = Math.max(1, Number(page) || 1);
+        const offset = (currentNeedsPage - 1) * NEEDS_PAGE_SIZE;
+        const desiredCount = Math.max(NEEDS_PAGE_SIZE, Math.min((currentNeedsPage * NEEDS_PAGE_SIZE), 1000));
+
+        const [pendingResponse, inProgressResponse] = await Promise.all([
+            api.getNeeds({
+                name: nameFilter.trim() || undefined,
+                phone: phoneFilter.trim() || undefined,
+                item: itemFilter.trim() || undefined,
+                village: villageFilter || undefined,
+                status: "pending",
+                priority: priorityFilter || undefined,
+                page: 1,
+                pageSize: desiredCount,
+            }),
+            api.getNeeds({
+                name: nameFilter.trim() || undefined,
+                phone: phoneFilter.trim() || undefined,
+                item: itemFilter.trim() || undefined,
+                village: villageFilter || undefined,
+                status: "in_progress",
+                priority: priorityFilter || undefined,
+                page: 1,
+                pageSize: desiredCount,
+            }),
+        ]);
+
+        const pendingData = pendingResponse?.data || [];
+        const inProgressData = inProgressResponse?.data || [];
+        const pendingTotal = Number(pendingResponse?.total || 0);
+        const inProgressTotal = Number(inProgressResponse?.total || 0);
+        currentNeedsTotalCount = pendingTotal + inProgressTotal;
+
+        const totalPages = Math.max(1, Math.ceil(currentNeedsTotalCount / NEEDS_PAGE_SIZE));
+        if (currentNeedsTotalCount > 0 && currentNeedsPage > totalPages) {
+            currentNeedsPage = totalPages;
+            return loadActiveNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, currentNeedsPage);
+        }
+
+        const merged = [...pendingData, ...inProgressData].sort(compareNeedsByCreatedAtDesc);
+        const pageData = merged.slice(offset, offset + NEEDS_PAGE_SIZE);
+        renderNeedsHistoryTable("needsHistoryTable", pageData, currentNeedsTotalCount, currentNeedsPage, NEEDS_PAGE_SIZE, "goToNeedsPage");
+    } catch (err) {
+        console.error("Error loading active needs history:", err);
+        document.getElementById("needsHistoryTable").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل الاحتياجات</div>`;
+    }
+}
+
+async function loadCompletedNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", priorityFilter = "", page = completedNeedsPage) {
+    try {
+        completedNeedsPage = Math.max(1, Number(page) || 1);
+        const response = await api.getNeeds({
+            name: nameFilter.trim() || undefined,
+            phone: phoneFilter.trim() || undefined,
+            item: itemFilter.trim() || undefined,
+            village: villageFilter || undefined,
+            status: "done",
+            priority: priorityFilter || undefined,
+            page: completedNeedsPage,
+            pageSize: COMPLETED_NEEDS_PAGE_SIZE,
+        });
+
+        const data = response?.data || [];
+        completedNeedsTotalCount = Number(response?.total || 0);
+
+        const totalPages = Math.max(1, Math.ceil(completedNeedsTotalCount / COMPLETED_NEEDS_PAGE_SIZE));
+        if (completedNeedsTotalCount > 0 && completedNeedsPage > totalPages) {
+            completedNeedsPage = totalPages;
+            return loadCompletedNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, completedNeedsPage);
+        }
+
+        renderNeedsHistoryTable(
+            "completedNeedsHistoryTable",
+            data,
+            completedNeedsTotalCount,
+            completedNeedsPage,
+            COMPLETED_NEEDS_PAGE_SIZE,
+            "goToCompletedNeedsPage",
+            "لا توجد احتياجات مكتملة بعد"
+        );
+    } catch (err) {
+        console.error("Error loading completed needs history:", err);
+        document.getElementById("completedNeedsHistoryTable").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل الاحتياجات المكتملة</div>`;
+    }
+}
+
 async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", statusFilter = "", priorityFilter = "", page = currentNeedsPage) {
     try {
+        if (!statusFilter) {
+            return loadActiveNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, page);
+        }
+
         currentNeedsPage = Math.max(1, Number(page) || 1);
         const response = await api.getNeeds({
             name: nameFilter.trim() || undefined,
@@ -470,6 +657,7 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = 
             page: currentNeedsPage,
             pageSize: NEEDS_PAGE_SIZE,
         });
+
         const data = response?.data || [];
         currentNeedsTotalCount = Number(response?.total || 0);
 
@@ -479,84 +667,79 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = 
             return loadNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, statusFilter, priorityFilter, currentNeedsPage);
         }
 
-        const filteredData = data || [];
-
-        const container = document.getElementById("needsHistoryTable");
-        container.innerHTML = "";
-
-        if (!filteredData || filteredData.length === 0) {
-            const emptyMessage = currentNeedsTotalCount === 0
-                ? "لا توجد احتياجات محفوظة بعد"
-                : "لا توجد نتائج مطابقة في هذه الصفحة";
-            container.innerHTML = `${renderEmptyState(emptyMessage)}${renderNeedsPagination(currentNeedsTotalCount, currentNeedsPage, NEEDS_PAGE_SIZE)}`;
-            return;
-        }
-
-        const rows = filteredData.map((need) => {
-            const villageName = getVillageNameById(need.village_id);
-            const itemsText = (need.items || []).map((item) => `${escapeHtml(item.name)} (${item.qty})`).join("، ") || "-";
-            const priorityClass = getNeedPriorityClass(need.priority);
-            const notesText = String(need.notes || "").trim();
-
-            return `
-                <tr class="needs-row needs-row-${priorityClass}">
-                    <td class="needs-priority-cell">
-                        <button
-                            type="button"
-                            class="priority-dot-button"
-                            onclick="setNeedPriority(${need.id}, '${getNextNeedPriority(need.priority)}')"
-                            title="الأولوية: ${getNeedPriorityLabel(need.priority)}"
-                            aria-label="تغيير الأولوية الحالية: ${getNeedPriorityLabel(need.priority)}">
-                            <span class="priority-dot ${priorityClass}"></span>
-                        </button>
-                    </td>
-                    <td class="needs-date-cell">${formatDate(need.created_at)}</td>
-                    <td>${escapeHtml(need.family_name)}</td>
-                    <td>${escapeHtml(need.phone_number || "-")}</td>
-                    <td>${escapeHtml(villageName)}</td>
-                    <td>${need.people_count || 0}</td>
-                    <td class="need-items-cell" title="${itemsText}">${itemsText}</td>
-                    <td class="need-notes-cell" title="${escapeHtml(notesText || "-")}">${escapeHtml(notesText || "-")}</td>
-                    <td class="needs-status-cell">
-                        <select onchange="setNeedStatus(${need.id}, this.value)">
-                            <option value="pending" ${need.status === "pending" ? "selected" : ""}>قيد الانتظار</option>
-                            <option value="in_progress" ${need.status === "in_progress" ? "selected" : ""}>قيد المتابعة</option>
-                            <option value="done" ${need.status === "done" ? "selected" : ""}>مكتمل</option>
-                        </select>
-                    </td>
-                    <td class="needs-actions-cell">
-                        <button class="icon-action add" onclick="openNeedToOrderModal(${need.id})" title="إضافة كطلب" aria-label="إضافة كطلب">🛒</button>
-                        <button class="icon-action done" onclick="editNeed(${need.id})" title="تعديل" aria-label="تعديل">✎</button>
-                        <button class="icon-action delete" onclick="deleteNeed(${need.id})" title="حذف" aria-label="حذف">🗑</button>
-                    </td>
-                </tr>`;
-        }).join("");
-
-        container.innerHTML = `
-            <div class="needs-table-wrap">
-                <table class="needs-table">
-                    <thead>
-                        <tr>
-                            <th class="needs-priority-cell">الأولوية</th>
-                            <th>تاريخ الإنشاء</th>
-                            <th>اسم العائلة</th>
-                            <th>الهاتف</th>
-                            <th>القرية</th>
-                            <th>عدد الأفراد</th>
-                            <th>المواد المطلوبة</th>
-                            <th>ملاحظات</th>
-                            <th class="needs-status-cell">الحالة</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-            ${renderNeedsPagination(currentNeedsTotalCount, currentNeedsPage, NEEDS_PAGE_SIZE)}`;
+        renderNeedsHistoryTable("needsHistoryTable", data, currentNeedsTotalCount, currentNeedsPage, NEEDS_PAGE_SIZE, "goToNeedsPage");
     } catch (err) {
         console.error("Error loading needs history:", err);
         document.getElementById("needsHistoryTable").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل الاحتياجات</div>`;
     }
+}
+
+function openCompletedNeedsModal() {
+    completedNeedsPage = 1;
+    document.getElementById("completedNeedsModal").classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadCompletedNeedsHistory(
+        currentNeedFilters.name,
+        currentNeedFilters.phone,
+        currentNeedFilters.item,
+        currentNeedFilters.village,
+        currentNeedFilters.priority,
+        completedNeedsPage
+    );
+}
+
+function closeCompletedNeedsModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("completedNeedsModal").classList.remove("active");
+    document.body.style.overflow = "";
+    document.getElementById("completedNeedsHistoryTable").innerHTML = "";
+}
+
+function openNeedsExcelImportModal() {
+    const result = document.getElementById("needsImportResult");
+    result.className = "needs-import-result hidden";
+    result.textContent = "";
+    const fileInput = document.getElementById("needsExcelFile");
+    if (fileInput) fileInput.value = "";
+
+    document.getElementById("needsExcelImportModal").classList.add("active");
+    document.body.style.overflow = "hidden";
+}
+
+function closeNeedsExcelImportModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("needsExcelImportModal").classList.remove("active");
+    document.body.style.overflow = "";
+
+    const fileInput = document.getElementById("needsExcelFile");
+    if (fileInput) fileInput.value = "";
+    const result = document.getElementById("needsImportResult");
+    result.className = "needs-import-result hidden";
+    result.textContent = "";
+}
+
+async function refreshNeedsHistoryViews() {
+    await loadNeedsHistory(
+        currentNeedFilters.name,
+        currentNeedFilters.phone,
+        currentNeedFilters.item,
+        currentNeedFilters.village,
+        currentNeedFilters.status,
+        currentNeedFilters.priority,
+        currentNeedsPage
+    );
+
+    const modal = document.getElementById("completedNeedsModal");
+    if (!modal || !modal.classList.contains("active")) return;
+
+    await loadCompletedNeedsHistory(
+        currentNeedFilters.name,
+        currentNeedFilters.phone,
+        currentNeedFilters.item,
+        currentNeedFilters.village,
+        currentNeedFilters.priority,
+        completedNeedsPage
+    );
 }
 
 function applyNeedFilters() {
@@ -569,7 +752,8 @@ function applyNeedFilters() {
 
     currentNeedFilters = { name, phone, item, village, status, priority };
     currentNeedsPage = 1;
-    loadNeedsHistory(name, phone, item, village, status, priority, currentNeedsPage);
+    completedNeedsPage = 1;
+    refreshNeedsHistoryViews();
 }
 
 function clearNeedFilters() {
@@ -581,5 +765,6 @@ function clearNeedFilters() {
     document.getElementById("needPriorityFilter").value = "";
     currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "" };
     currentNeedsPage = 1;
-    loadNeedsHistory("", "", "", "", "", "", currentNeedsPage);
+    completedNeedsPage = 1;
+    refreshNeedsHistoryViews();
 }

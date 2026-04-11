@@ -532,6 +532,25 @@ button {
     margin-top: 22px;
 }
 
+.history-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.history-heading-row .history-heading {
+    margin: 22px 0 0;
+}
+
+.history-heading-row button {
+    width: auto;
+    min-height: 40px;
+    padding: 10px 14px;
+    margin-top: 22px;
+}
+
 .order-history-item {
     margin-bottom: 12px;
     padding: 14px 16px;
@@ -894,6 +913,16 @@ button {
 }
 
 .need-order-modal-card {
+    width: min(100%, 720px);
+}
+
+.completed-needs-modal-card {
+    width: min(100%, 1100px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.needs-import-modal-card {
     width: min(100%, 720px);
 }
 
