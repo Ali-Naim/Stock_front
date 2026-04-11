@@ -22,6 +22,9 @@ function switchTab(tabName) {
     if (tabName === "families" && typeof ensureFamiliesLoaded === "function") {
         ensureFamiliesLoaded();
     }
+    if (tabName === "tasks" && typeof loadTasks === "function") {
+        loadTasks();
+    }
 }
 
 function renderEmptyState(message) {

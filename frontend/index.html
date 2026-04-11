@@ -227,6 +227,9 @@
     <button class="mobile-tab-button" data-tab-target="families" onclick="switchTab('families', event)">
         <span>العائلات</span>
     </button>
+    <button class="mobile-tab-button" data-tab-target="tasks" onclick="switchTab('tasks', event)">
+        <span>المهام</span>
+    </button>
     <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports', event)">
         <span>التقارير</span>
     </button>
@@ -244,6 +247,7 @@
         <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
         <button class="tab" data-tab-target="needs" onclick="switchTab('needs', event)">الاحتياجات</button>
         <button class="tab" data-tab-target="families" onclick="switchTab('families', event)">العائلات</button>
+        <button class="tab" data-tab-target="tasks" onclick="switchTab('tasks', event)">المهام</button>
         <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
     </div>
 
@@ -497,6 +501,60 @@
         <div id="familiesList"></div>
     </div>
 
+    <div id="tasks" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">المهام</p>
+                <h2>متابعة وتعيين المهام حسب الدور</h2>
+            </div>
+            <p>يعرض هذا الصفحة المهام المخصصة لكل دور من قبل المسؤول. يمكن للمسؤول إضافة مهام جديدة، ويمكن لجميع المستخدمين رؤية المهام الخاصة بدورهم.</p>
+        </div>
+
+        <div id="tasksAdminCard" class="card hidden">
+            <h3>إضافة مهمة جديدة</h3>
+            <div class="form-grid needs-form-grid">
+                <input id="taskTitle" placeholder="عنوان المهمة">
+                <textarea id="taskDescription" rows="3" placeholder="وصف المهمة"></textarea>
+                <select id="taskAssignedRole"></select>
+                <select id="taskStatus">
+                    <option value="pending">قيد التنفيذ</option>
+                    <option value="in_progress">قيد المتابعة</option>
+                    <option value="done">مكتمل</option>
+                </select>
+                <input id="taskDueDate" type="date" placeholder="تاريخ الاستحقاق">
+            </div>
+            <div class="button-group">
+                <button class="done" type="button" onclick="createTask()">حفظ المهمة</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="filter-container">
+                <div class="filter-group">
+                    <input id="taskSearch" placeholder="بحث في المهام" oninput="applyTaskFilters()">
+                </div>
+                <div class="filter-group">
+                    <select id="taskRoleFilter" onchange="applyTaskFilters()">
+                        <option value="">كل الأدوار</option>
+                    </select>
+                    <small>الدور</small>
+                </div>
+                <div class="filter-group">
+                    <select id="taskStatusFilter" onchange="applyTaskFilters()">
+                        <option value="">كل الحالات</option>
+                        <option value="pending">قيد التنفيذ</option>
+                        <option value="in_progress">قيد المتابعة</option>
+                        <option value="done">مكتمل</option>
+                    </select>
+                    <small>الحالة</small>
+                </div>
+                <button onclick="applyTaskFilters();" class="filter-clear" type="button">تحديث</button>
+            </div>
+        </div>
+
+        <div id="tasksList"></div>
+    </div>
+
     <div id="reports" class="section">
         <div class="section-intro">
             <div>
@@ -539,6 +597,7 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 <script src="js/needs.js"></script>
 <script src="js/families.js"></script>
 <script src="js/reports.js"></script>
+<script src="js/tasks.js"></script>
 <script src="js/init.js"></script>
 </body>
 </html>

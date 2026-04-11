@@ -65,5 +65,11 @@ const api = {
     createFamilyRelation: (familyId, payload) => apiRequest(`/families/${familyId}/relations`, { method: "POST", body: JSON.stringify(payload) }),
     deleteFamilyRelation: (familyId, relationId) => apiRequest(`/families/${familyId}/relations/${relationId}`, { method: "DELETE" }),
 
+    getTasks: () => apiRequest("/tasks"),
+    getTaskRoles: () => apiRequest("/tasks/roles"),
+    createTask: (payload) => apiRequest("/tasks", { method: "POST", body: JSON.stringify(payload) }),
+    updateTask: (id, payload) => apiRequest(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    deleteTask: (id) => apiRequest(`/tasks/${id}`, { method: "DELETE" }),
+
     getRangeReport: (from, to) => apiRequest(`/reports/orders-by-range${toQueryString({ from, to })}`),
 };
