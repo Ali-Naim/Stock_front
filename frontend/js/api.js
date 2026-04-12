@@ -67,6 +67,7 @@ const api = {
 
     getTasks: () => apiRequest("/tasks"),
     getTaskRoles: () => apiRequest("/tasks/roles"),
+    getTaskLogs: () => apiRequest("/tasks/logs"),
     createTask: (payload) => apiRequest("/tasks", { method: "POST", body: JSON.stringify(payload) }),
     updateTask: (id, payload) => apiRequest(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteTask: (id) => apiRequest(`/tasks/${id}`, { method: "DELETE" }),

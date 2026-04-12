@@ -27,8 +27,7 @@ function renderOrder() {
         return;
     }
 
-    currentOrder.forEach((item, index) => {
-        list.innerHTML += `
+    list.innerHTML = currentOrder.map((item, index) => `
             <div class="card item">
                 <div class="item-meta">
                     <span>${escapeHtml(item.name)}</span>
@@ -40,8 +39,7 @@ function renderOrder() {
                     <button class="add" onclick="adjustQty(${index}, 1)">+</button>
                 </div>
                 <button class="delete" onclick="removeItem(${index})">حذف</button>
-            </div>`;
-    });
+            </div>`).join("");
 }
 
 function removeItem(index) {
@@ -141,32 +139,50 @@ async function submitOrder() {
     }
 }
 async function setOrderStatus(orderId, status) {
+    const order = currentOrdersData.find(o => String(o.id) === String(orderId));
+    if (!order) return;
+    const prev = order.status;
+    order.status = status;
+    replaceOrderCard(orderId);
     try {
         await api.updateOrder(orderId, { status });
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error updating order status:", err);
+        order.status = prev;
+        replaceOrderCard(orderId);
         alert("فشل تحديث حالة الطلب");
     }
 }
 
 async function setOrderSaved(orderId, isSaved) {
+    const order = currentOrdersData.find(o => String(o.id) === String(orderId));
+    if (!order) return;
+    const prev = order.is_saved;
+    order.is_saved = isSaved;
+    replaceOrderCard(orderId);
     try {
         await api.updateOrder(orderId, { is_saved: isSaved });
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error updating saved flag:", err);
+        order.is_saved = prev;
+        replaceOrderCard(orderId);
         alert("فشل تحديث حالة الحفظ");
     }
 }
 
 async function setOrderDateToToday(orderId) {
+    const order = currentOrdersData.find(o => String(o.id) === String(orderId));
+    if (!order) return;
+    const today = new Date().toISOString();
+    const prev = order.created_at;
+    order.created_at = today;
+    replaceOrderCard(orderId);
     try {
-        const today = new Date().toISOString();
         await api.updateOrder(orderId, { created_at: today });
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error updating order date:", err);
+        order.created_at = prev;
+        replaceOrderCard(orderId);
         alert("فشل تحديث تاريخ الطلب");
     }
 }
@@ -187,13 +203,16 @@ function cancelEdit() {
 }
 
 function startInlineEdit(orderId) {
+    const prev = inlineEditingOrderId;
     inlineEditingOrderId = orderId;
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
+    if (prev != null && prev !== orderId) replaceOrderCard(prev);
+    replaceOrderCard(orderId);
 }
 
 function cancelInlineEdit() {
+    const orderId = inlineEditingOrderId;
     inlineEditingOrderId = null;
-    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
+    if (orderId != null) replaceOrderCard(orderId);
 }
 
 async function saveInlineEdit(orderId) {
@@ -240,20 +259,30 @@ async function saveInlineEdit(orderId) {
 async function deleteOrder(orderId) {
     if (!confirm("هل تريد حذف هذا الطلب وإرجاع الكميات إلى المخزون؟")) return;
 
+    const idx = currentOrdersData.findIndex(o => String(o.id) === String(orderId));
+    const order = currentOrdersData[idx];
+    const card = document.querySelector(`[data-order-id="${orderId}"]`);
+
+    // Optimistic removal
+    if (idx !== -1) currentOrdersData.splice(idx, 1);
+    if (card) card.remove();
+    if (editingOrderId === orderId) cancelEdit();
+    if (inlineEditingOrderId === orderId) inlineEditingOrderId = null;
+
     try {
-        const order = await api.getOrderById(orderId);
-
-        await restoreInventoryForItems(order.items || []);
-
+        await restoreInventoryForItems(order?.items || []);
         await api.deleteOrder(orderId);
-
-        if (editingOrderId === orderId) cancelEdit();
-        if (inlineEditingOrderId === orderId) inlineEditingOrderId = null;
-
         await loadItems();
-        await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error deleting order:", err);
+        // Rollback
+        if (idx !== -1 && order) {
+            currentOrdersData.splice(idx, 0, order);
+            const container = document.getElementById("orderHistory");
+            const ref = container.children[idx] || null;
+            container.insertAdjacentHTML(ref ? "beforebegin" : "beforeend",
+                buildOrderCardHtml(order));
+        }
         alert("فشل حذف الطلب");
     }
 }
@@ -324,6 +353,77 @@ function addInlineItem(orderId) {
     const existingItems = container.querySelectorAll('[id^="item-type-"]').length;
     container.insertAdjacentHTML("beforeend", buildInlineItemRow(orderId, existingItems));
 }
+function buildOrderCardHtml(order) {
+    const isInlineEditing = inlineEditingOrderId === order.id;
+    const done = order.status === "done";
+    const saved = Boolean(order.is_saved);
+    const orderDisplayName = order.order_name || `الطلب #${order.id || ""}`;
+    const sourceNeedBadge = order.source_need_id ? `<span class="order-origin-chip">من الاحتياجات</span>` : "";
+    const refreshDateButton = order.source_need_id
+        ? `<button class="add" onclick="setOrderDateToToday(${order.id})">تاريخ اليوم</button>`
+        : "";
+
+    const itemsHtml = isInlineEditing
+        ? `
+            <input type="text" id="edit-order-name-${order.id}" value="${escapeHtml(orderDisplayName)}" placeholder="اسم الطلب">
+            <select id="edit-order-village-${order.id}" class="inline-village-select">${getOrderVillageOptions(order.village || "")}</select>
+            <div id="inline-items-${order.id}" class="order-items">
+                ${(order.items || []).map((item, index) => buildInlineItemRow(order.id, index, item.id, item.qty)).join("")}
+            </div>
+            <button class="done" onclick="addInlineItem(${order.id})">+ إضافة عنصر</button>`
+        : `
+            <div class="order-items">
+                ${(order.items || []).map((item) => `<div class="order-line">• ${escapeHtml(item.name)} - ${item.qty}</div>`).join("") || "لا توجد عناصر"}
+            </div>`;
+
+    const actionsHtml = isInlineEditing
+        ? `
+            <div class="inline-actions">
+                <button class="add" onclick="saveInlineEdit(${order.id})">حفظ</button>
+                <button class="delete" onclick="cancelInlineEdit()">إلغاء</button>
+            </div>`
+        : `
+            <div class="order-quick-actions">
+                <button class="done" onclick="startInlineEdit(${order.id})">تعديل</button>
+                ${refreshDateButton}
+                <button class="delete" onclick="deleteOrder(${order.id})">حذف</button>
+            </div>
+            <div class="order-toggle-list">
+                <label class="toggle-chip">
+                    <input type="checkbox" ${done ? "checked" : ""} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')">
+                    <span>مكتمل</span>
+                </label>
+                <label class="toggle-chip saved">
+                    <input type="checkbox" ${saved ? "checked" : ""} onchange="setOrderSaved(${order.id}, this.checked)">
+                    <span>محفوظ</span>
+                </label>
+            </div>`;
+
+    return `
+        <div class="order-history-item ${done ? "done" : "pending"} ${saved ? "saved" : ""}" data-order-id="${order.id}">
+            <div class="order-header">
+                <div class="order-title-wrap">
+                    <strong>${escapeHtml(orderDisplayName)} ${sourceNeedBadge}</strong>
+                    <small>${order.phone_number ? `الهاتف: ${escapeHtml(order.phone_number)} - ` : ""}${order.village ? `القرية: ${escapeHtml(order.village)} - ` : ""}${formatDate(order.created_at)}</small>
+                    <small>${order.is_registered ? "العميل مسجل سابقًا" : "العميل غير مسجل سابقًا"}</small>
+                </div>
+                <div class="order-actions">
+                    ${actionsHtml}
+                </div>
+            </div>
+            ${itemsHtml}
+            <div class="status-label"><small>الحالة: ${done ? "مكتمل" : "قيد التنفيذ"}${saved ? " - محفوظ" : " - غير محفوظ"}</small></div>
+        </div>`;
+}
+
+function replaceOrderCard(orderId) {
+    const card = document.querySelector(`[data-order-id="${orderId}"]`);
+    const order = currentOrdersData.find(o => String(o.id) === String(orderId));
+    if (!card || !order) return;
+    card.insertAdjacentHTML("afterend", buildOrderCardHtml(order));
+    card.remove();
+}
+
 async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilter = "", savedFilter = "", registeredFilter = "", dateFrom = "", dateTo = "") {
     try {
         const history = await api.getOrders({
@@ -335,76 +435,15 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
         });
-        const container = document.getElementById("orderHistory");
-        container.innerHTML = "";
 
+        currentOrdersData = history;
+
+        const container = document.getElementById("orderHistory");
         if (history.length === 0) {
             container.innerHTML = renderEmptyState("لا توجد سجلات طلبات بعد");
             return;
         }
-
-        history.forEach((order) => {
-            const isInlineEditing = inlineEditingOrderId === order.id;
-            const done = order.status === "done";
-            const saved = Boolean(order.is_saved);
-            const orderDisplayName = order.order_name || `الطلب #${order.id || ""}`;
-            const sourceNeedBadge = order.source_need_id ? `<span class="order-origin-chip">من الاحتياجات</span>` : "";
-            const refreshDateButton = order.source_need_id
-                ? `<button class="add" onclick="setOrderDateToToday(${order.id})">تاريخ اليوم</button>`
-                : "";
-
-            const itemsHtml = isInlineEditing
-                ? `
-                    <input type="text" id="edit-order-name-${order.id}" value="${escapeHtml(orderDisplayName)}" placeholder="اسم الطلب">
-                    <select id="edit-order-village-${order.id}" class="inline-village-select">${getOrderVillageOptions(order.village || "")}</select>
-                    <div id="inline-items-${order.id}" class="order-items">
-                        ${(order.items || []).map((item, index) => buildInlineItemRow(order.id, index, item.id, item.qty)).join("")}
-                    </div>
-                    <button class="done" onclick="addInlineItem(${order.id})">+ إضافة عنصر</button>`
-                : `
-                    <div class="order-items">
-                        ${(order.items || []).map((item) => `<div class="order-line">• ${escapeHtml(item.name)} - ${item.qty}</div>`).join("") || "لا توجد عناصر"}
-                    </div>`;
-
-            const actionsHtml = isInlineEditing
-                ? `
-                    <div class="inline-actions">
-                        <button class="add" onclick="saveInlineEdit(${order.id})">حفظ</button>
-                        <button class="delete" onclick="cancelInlineEdit()">إلغاء</button>
-                    </div>`
-                : `
-                    <div class="order-quick-actions">
-                        <button class="done" onclick="startInlineEdit(${order.id})">تعديل</button>
-                        ${refreshDateButton}
-                        <button class="delete" onclick="deleteOrder(${order.id})">حذف</button>
-                    </div>
-                    <div class="order-toggle-list">
-                        <label class="toggle-chip">
-                            <input type="checkbox" ${done ? "checked" : ""} onchange="setOrderStatus(${order.id}, this.checked ? 'done' : 'pending')">
-                            <span>مكتمل</span>
-                        </label>
-                        <label class="toggle-chip saved">
-                            <input type="checkbox" ${saved ? "checked" : ""} onchange="setOrderSaved(${order.id}, this.checked)">
-                            <span>محفوظ</span>
-                        </label>
-                    </div>`;
-
-            container.innerHTML += `
-                <div class="order-history-item ${done ? "done" : "pending"} ${saved ? "saved" : ""}">
-                    <div class="order-header">
-                        <div class="order-title-wrap">
-                            <strong>${escapeHtml(orderDisplayName)} ${sourceNeedBadge}</strong>
-                            <small>${order.phone_number ? `الهاتف: ${escapeHtml(order.phone_number)} - ` : ""}${order.village ? `القرية: ${escapeHtml(order.village)} - ` : ""}${formatDate(order.created_at)}</small>
-                            <small>${order.is_registered ? "العميل مسجل سابقًا" : "العميل غير مسجل سابقًا"}</small>
-                        </div>
-                        <div class="order-actions">
-                            ${actionsHtml}
-                        </div>
-                    </div>
-                    ${itemsHtml}
-                    <div class="status-label"><small>الحالة: ${done ? "مكتمل" : "قيد التنفيذ"}${saved ? " - محفوظ" : " - غير محفوظ"}</small></div>
-                </div>`;
-        });
+        container.innerHTML = history.map(buildOrderCardHtml).join("");
     } catch (err) {
         console.error("Error loading order history:", err);
         document.getElementById("orderHistory").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل سجل الطلبات</div>`;
@@ -435,3 +474,6 @@ function clearFilters() {
     currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
     loadOrderHistory();
 }
+
+// Debounce text-input searches so we don't fire an API call on every keystroke
+window.applyFilters = debounce(applyFilters, 350);

@@ -1,4 +1,12 @@
-﻿function setActiveTabState(tabName) {
+﻿function debounce(fn, delay = 300) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+function setActiveTabState(tabName) {
     document.querySelectorAll("[data-tab-target]").forEach((element) => {
         element.classList.toggle("active", element.dataset.tabTarget === tabName);
     });

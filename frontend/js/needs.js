@@ -32,8 +32,7 @@ function renderNeedItems() {
         return;
     }
 
-    currentNeedItems.forEach((item, index) => {
-        container.innerHTML += `
+    container.innerHTML = currentNeedItems.map((item, index) => `
             <div class="card item need-item-card">
                 <div class="item-meta">
                     <span>${escapeHtml(item.name)}</span>
@@ -45,8 +44,7 @@ function renderNeedItems() {
                     <button class="add" onclick="adjustNeedQty(${index}, 1)">+</button>
                 </div>
                 <button class="delete" onclick="removeNeedItem(${index})">حذف</button>
-            </div>`;
-    });
+            </div>`).join("");
 }
 
 function adjustNeedQty(index, delta) {
@@ -543,7 +541,7 @@ function goToCompletedNeedsPage(page) {
 
     completedNeedsPage = nextPage;
     loadCompletedNeedsHistory(
-        currentNeedFilters.name,
+        completedNeedsDialogName,
         currentNeedFilters.phone,
         currentNeedFilters.item,
         currentNeedFilters.village,
@@ -674,18 +672,37 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = 
     }
 }
 
-function openCompletedNeedsModal() {
+let completedNeedsDialogName = "";
+
+function applyCompletedNeedsSearch() {
+    completedNeedsDialogName = String(document.getElementById("completedNeedsSearch")?.value || "").trim();
     completedNeedsPage = 1;
-    document.getElementById("completedNeedsModal").classList.add("active");
-    document.body.style.overflow = "hidden";
     loadCompletedNeedsHistory(
-        currentNeedFilters.name,
+        completedNeedsDialogName,
         currentNeedFilters.phone,
         currentNeedFilters.item,
         currentNeedFilters.village,
         currentNeedFilters.priority,
         completedNeedsPage
     );
+}
+
+function openCompletedNeedsModal() {
+    completedNeedsPage = 1;
+    completedNeedsDialogName = "";
+    const searchInput = document.getElementById("completedNeedsSearch");
+    if (searchInput) searchInput.value = "";
+    document.getElementById("completedNeedsModal").classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadCompletedNeedsHistory(
+        completedNeedsDialogName,
+        currentNeedFilters.phone,
+        currentNeedFilters.item,
+        currentNeedFilters.village,
+        currentNeedFilters.priority,
+        completedNeedsPage
+    );
+    setTimeout(() => document.getElementById("completedNeedsSearch")?.focus(), 0);
 }
 
 function closeCompletedNeedsModal(event) {
@@ -733,7 +750,7 @@ async function refreshNeedsHistoryViews() {
     if (!modal || !modal.classList.contains("active")) return;
 
     await loadCompletedNeedsHistory(
-        currentNeedFilters.name,
+        completedNeedsDialogName,
         currentNeedFilters.phone,
         currentNeedFilters.item,
         currentNeedFilters.village,
@@ -768,3 +785,7 @@ function clearNeedFilters() {
     completedNeedsPage = 1;
     refreshNeedsHistoryViews();
 }
+
+// Debounce text-input searches so we don't fire an API call on every keystroke
+window.applyNeedFilters = debounce(applyNeedFilters, 350);
+window.applyCompletedNeedsSearch = debounce(applyCompletedNeedsSearch, 350);

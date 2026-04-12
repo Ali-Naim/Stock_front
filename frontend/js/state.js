@@ -17,6 +17,7 @@ let completedNeedsPage = 1;
 let completedNeedsTotalCount = 0;
 let editingOrderId = null;
 let inlineEditingOrderId = null;
+let currentOrdersData = [];
 let editingNeedId = null;
 let needToOrderId = null;
 let pendingOrderSourceNeedId = null;

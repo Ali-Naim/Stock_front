@@ -2,8 +2,8 @@ const AUTH_STORAGE_KEY = "stock_auth_session_v1";
 
 const ROLE_TAB_ALLOWLIST = {
     admin: ["inventory", "orders", "needs", "families", "reports", "tasks"],
-    call_center: ["needs", "orders", "families", "tasks"],
-    data_entry: ["needs", "orders", "families", "tasks"],
+    call_center: ["inventory", "needs", "orders", "families", "tasks"],
+    data_entry: ["inventory", "needs", "orders", "families", "tasks"],
     stock: ["inventory", "orders", "families", "reports", "tasks"],
 };
 

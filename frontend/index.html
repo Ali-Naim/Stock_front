@@ -58,6 +58,29 @@
     </div>
 </div>
 
+<div id="setQtyModal" class="modal-overlay" onclick="closeSetQtyModal(event)">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="setQtyModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">تعديل المخزون</p>
+                <h3 id="setQtyModalTitle">تعديل الكمية</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeSetQtyModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy" id="setQtyModalCurrent"></p>
+        <div class="qty-stepper set-qty-stepper">
+            <button class="delete" type="button" onclick="stepSetQty(-1)">-</button>
+            <input id="setQtyInput" type="number" min="0" placeholder="الكمية"
+                   onkeydown="if(event.key==='Enter') confirmSetQty()">
+            <button class="add" type="button" onclick="stepSetQty(1)">+</button>
+        </div>
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="confirmSetQty()">تأكيد</button>
+            <button class="filter-clear" type="button" onclick="closeSetQtyModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
 <div id="needToOrderModal" class="modal-overlay" onclick="closeNeedToOrderModal(event)">
     <div class="modal-card need-order-modal-card" role="dialog" aria-modal="true" aria-labelledby="needToOrderTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -85,7 +108,10 @@
             </div>
             <button class="close-btn" type="button" onclick="closeCompletedNeedsModal()" aria-label="إغلاق">×</button>
         </div>
-        <p class="modal-copy">يتم عرض الاحتياجات المكتملة فقط. يتم تطبيق نفس فلاتر سجل الاحتياجات.</p>
+        <div class="completed-needs-search-bar">
+            <input id="completedNeedsSearch" type="text" placeholder="بحث باسم العائلة..."
+                   oninput="applyCompletedNeedsSearch()">
+        </div>
         <div id="completedNeedsHistoryTable"></div>
         <div class="modal-actions">
             <button class="filter-clear" type="button" onclick="closeCompletedNeedsModal()">إغلاق</button>
@@ -260,7 +286,7 @@
             <p>أضف المنتجات، عدّل الكميات، وتابع المتوفر من شاشة واحدة.</p>
         </div>
 
-        <div class="card">
+        <div id="inventoryFormCard" class="card">
             <h3>إضافة مخزون</h3>
             <div class="inventory-actions">
                 <button id="createItemBtn" class="done" type="button" onclick="openItemModal()">+ منتج جديد</button>
@@ -523,6 +549,10 @@
                 </select>
                 <input id="taskDueDate" type="date" placeholder="تاريخ الاستحقاق">
             </div>
+            <label class="task-daily-toggle">
+                <input id="taskIsDaily" type="checkbox">
+                <span>🔁 مهمة يومية (تُعاد تلقائياً كل يوم)</span>
+            </label>
             <div class="button-group">
                 <button class="done" type="button" onclick="createTask()">حفظ المهمة</button>
             </div>
@@ -548,11 +578,32 @@
                     </select>
                     <small>الحالة</small>
                 </div>
+                <div class="filter-group">
+                    <select id="taskDailyFilter" onchange="applyTaskFilters()">
+                        <option value="">كل المهام</option>
+                        <option value="daily">🔁 يومية فقط</option>
+                        <option value="regular">عادية فقط</option>
+                    </select>
+                    <small>النوع</small>
+                </div>
                 <button onclick="applyTaskFilters();" class="filter-clear" type="button">تحديث</button>
             </div>
         </div>
 
         <div id="tasksList"></div>
+
+        <div class="button-group" style="margin-top:1rem;">
+            <button id="taskLogsToggleBtn" class="filter-clear hidden" type="button" onclick="toggleTaskLogs()">
+                📋 سجل المهام المكتملة
+            </button>
+        </div>
+
+        <div id="taskLogsSection" class="hidden" style="margin-top:0.5rem;">
+            <div class="card">
+                <h3 style="margin-bottom:1rem;">سجل إنجاز المهام</h3>
+                <div id="taskLogsContainer"></div>
+            </div>
+        </div>
     </div>
 
     <div id="reports" class="section">
@@ -576,7 +627,10 @@
                     <small>إلى</small>
                 </div>
             </div>
-            <button class="done" onclick="generateRangeReport()">إنشاء التقرير</button>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                <button class="done" onclick="generateRangeReport()">إنشاء التقرير</button>
+                <button id="downloadExcelBtn" class="done" style="display:none;background:#1d7044;" onclick="downloadReportAsExcel()">تحميل Excel</button>
+            </div>
         </div>
 
         <div id="reportContainer"></div>
@@ -588,6 +642,7 @@
 <script>
 window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 </script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
 <script src="js/state.js"></script>

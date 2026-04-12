@@ -1,5 +1,5 @@
 async function initialize() {
-    await loadVillages();
+    await Promise.all([loadVillages(), loadItems()]);
     fillVillageInputs();
 
     const today = getLocalDateString();
@@ -8,7 +8,6 @@ async function initialize() {
     document.getElementById("needPriority").value = "normal";
     document.getElementById("needItem").addEventListener("change", updateNeedItemPreview);
 
-    await loadItems();
     renderOrder();
     renderNeedItems();
     setActiveTabState("inventory");

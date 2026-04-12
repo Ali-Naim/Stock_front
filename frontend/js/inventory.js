@@ -51,8 +51,13 @@ async function loadItems() {
             console.warn("Could not load pending orders for reservations:", error);
         }
 
+        const isReadOnly = !canAdjustQty;
+
         const createItemBtn = document.getElementById("createItemBtn");
         if (createItemBtn) createItemBtn.classList.toggle("hidden", !isAdmin);
+
+        const formCard = document.getElementById("inventoryFormCard");
+        if (formCard) formCard.classList.toggle("hidden", isReadOnly);
 
         const stockSelect = document.getElementById("name");
         const qtyInput = document.getElementById("qty");
@@ -74,9 +79,11 @@ async function loadItems() {
         needSelect.innerHTML = `<option value="">اختر المنتج</option>`;
 
         const isStockOnly = roles.includes("stock") && !isAdmin;
-        const listInventory = isStockOnly
-            ? inventory.filter((item) => Number(item.quantity) > 0 || (reservedByItemId.get(String(item.id)) || 0) > 0)
-            : inventory;
+        const listInventory = isAdmin
+            ? inventory
+            : isStockOnly
+                ? inventory.filter((item) => Number(item.quantity) > 0 || (reservedByItemId.get(String(item.id)) || 0) > 0)
+                : inventory.filter((item) => Number(item.quantity) > 0);
 
         if (inventory.length === 0) {
             list.innerHTML = renderEmptyState("لا توجد عناصر في المخزون");
@@ -109,35 +116,27 @@ async function loadItems() {
             return;
         }
 
-        listInventory.forEach((item) => {
-            list.innerHTML += `
-                <div class="card item" data-inventory-item-id="${item.id}">
-                    <div class="item-meta">
-                        <strong>${escapeHtml(item.name)}</strong>
-                        <small>الكمية: ${item.quantity}</small>
-                    </div>
-                    <div class="stock-actions">
-                        ${
-                            canAdjustQty
-                                ? `<div class="qty-stepper">
-                            <button class="delete" onclick="adjustInventoryQty(${item.id}, -1)">-</button>
-                            <span class="qty-value">${item.quantity}</span>
-                            <button class="add" onclick="adjustInventoryQty(${item.id}, 1)">+</button>
-                        </div>`
-                                : ""
-                        }
-                        ${isAdmin ? `<button class="delete" onclick="deleteItem(${item.id})">حذف</button>` : ""}
-                    </div>
+        list.innerHTML = `<div class="inventory-readonly-grid">${listInventory.map((item) => {
+            const reserved = reservedByItemId.get(String(item.id)) || 0;
+            const qtyLabel = reserved > 0 ? `${item.quantity} <small class="inv-reserved">(${reserved} محجوز)</small>` : `${item.quantity}`;
+            if (canAdjustQty) {
+                return `
+                <div class="card inventory-readonly-card inventory-editable-card" data-inventory-item-id="${item.id}"
+                     onclick="openSetQtyModal(${item.id})" role="button" tabindex="0"
+                     onkeydown="if(event.key==='Enter'||event.key===' ') openSetQtyModal(${item.id})">
+                    ${isAdmin ? `<button class="inventory-delete-btn" type="button" title="حذف"
+                        onclick="event.stopPropagation(); deleteItem(${item.id})" aria-label="حذف">×</button>` : ""}
+                    <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
+                    <span class="inventory-readonly-qty">${qtyLabel}</span>
+                    <small class="inv-edit-hint">اضغط للتعديل</small>
                 </div>`;
-        });
-
-        document.querySelectorAll("[data-inventory-item-id]").forEach((card) => {
-            const reservedQty = reservedByItemId.get(String(card.dataset.inventoryItemId)) || 0;
-            if (!reservedQty || reservedQty <= 0) return;
-            const quantityLine = card.querySelector(".item-meta small");
-            if (!quantityLine) return;
-            quantityLine.textContent = `${quantityLine.textContent} (${reservedQty} محجوز)`;
-        });
+            }
+            return `
+                <div class="card inventory-readonly-card" data-inventory-item-id="${item.id}">
+                    <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
+                    <span class="inventory-readonly-qty">${qtyLabel}</span>
+                </div>`;
+        }).join("")}</div>`;
 
         updateNeedItemPreview();
     } catch (err) {
@@ -207,3 +206,59 @@ async function deleteItem(id) {
         alert("فشل حذف العنصر");
     }
 }
+
+let _setQtyItemId = null;
+
+function openSetQtyModal(itemId) {
+    const item = inventory.find((entry) => String(entry.id) === String(itemId));
+    if (!item) return;
+
+    _setQtyItemId = itemId;
+    document.getElementById("setQtyModalTitle").textContent = escapeHtml(item.name);
+    document.getElementById("setQtyModalCurrent").textContent = `الكمية الحالية: ${item.quantity}`;
+
+    const input = document.getElementById("setQtyInput");
+    input.value = item.quantity;
+
+    document.getElementById("setQtyModal").classList.add("active");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+}
+
+function stepSetQty(delta) {
+    const input = document.getElementById("setQtyInput");
+    const current = Number(input.value) || 0;
+    const next = current + delta;
+    if (next < 0) return;
+    input.value = next;
+}
+
+function closeSetQtyModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("setQtyModal").classList.remove("active");
+    document.body.style.overflow = "";
+    _setQtyItemId = null;
+}
+
+async function confirmSetQty() {
+    if (_setQtyItemId === null) return;
+
+    const newQty = Number(document.getElementById("setQtyInput").value);
+    if (!Number.isFinite(newQty) || newQty < 0) return alert("أدخل كمية صحيحة (صفر أو أكثر)");
+
+    try {
+        await api.updateInventoryItem(_setQtyItemId, { quantity: newQty });
+        document.getElementById("setQtyModal").classList.remove("active");
+        document.body.style.overflow = "";
+        _setQtyItemId = null;
+        await loadItems();
+    } catch (err) {
+        console.error("Error setting quantity:", err);
+        alert("فشل تحديث الكمية");
+    }
+}
+
+window.openSetQtyModal = openSetQtyModal;
+window.closeSetQtyModal = closeSetQtyModal;
+window.confirmSetQty = confirmSetQty;
+window.stepSetQty = stepSetQty;

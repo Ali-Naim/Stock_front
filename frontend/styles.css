@@ -284,6 +284,97 @@ textarea:focus-visible {
     min-width: 160px;
 }
 
+.inventory-readonly-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.inventory-readonly-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 12px;
+    text-align: center;
+    border-radius: 12px;
+    cursor: default;
+    position: relative;
+}
+
+.inventory-editable-card {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inventory-editable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.15);
+}
+
+.inventory-editable-card:active {
+    transform: translateY(0);
+}
+
+.inv-edit-hint {
+    font-size: 0.72rem;
+    color: var(--primary, #2563eb);
+    opacity: 0.7;
+}
+
+.inv-reserved {
+    font-size: 0.75rem;
+    opacity: 0.85;
+    font-weight: 400;
+}
+
+.inventory-delete-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1rem;
+    line-height: 1;
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.inventory-editable-card:hover .inventory-delete-btn {
+    opacity: 1;
+}
+
+.inventory-readonly-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main, #1a1a2e);
+    line-height: 1.3;
+}
+
+.inventory-readonly-qty {
+    display: inline-block;
+    background: var(--primary, #2563eb);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 2px 16px;
+    min-width: 40px;
+    text-align: center;
+}
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -689,6 +780,21 @@ button {
     background: #eff5fc;
 }
 
+.set-qty-stepper {
+    display: flex;
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.set-qty-stepper input {
+    flex: 1;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border-radius: 8px;
+    min-width: 0;
+}
+
 .qty-stepper button {
     width: 42px;
     min-width: 42px;
@@ -917,9 +1023,17 @@ button {
 }
 
 .completed-needs-modal-card {
-    width: min(100%, 1100px);
+    width: min(96vw, 1500px);
     max-height: calc(100vh - 40px);
     overflow-y: auto;
+}
+
+.completed-needs-search-bar {
+    margin-bottom: 12px;
+}
+
+.completed-needs-search-bar input {
+    width: 100%;
 }
 
 .needs-import-modal-card {
@@ -1078,6 +1192,16 @@ button {
     background: rgba(18, 58, 122, 0.16);
 }
 
+.icon-btn-danger {
+    background: rgba(180, 30, 30, 0.08);
+    border-color: rgba(180, 30, 30, 0.18);
+    color: #b41e1e;
+}
+
+.icon-btn-danger:hover {
+    background: rgba(180, 30, 30, 0.16);
+}
+
 .family-detail-row.hidden {
     display: none;
 }
@@ -1089,6 +1213,90 @@ button {
 
 .family-dists {
     margin-top: 12px;
+}
+
+/* Task status select for non-admin users */
+.task-status-select {
+    width: auto;
+    min-width: 130px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    font-size: 0.88rem;
+    font-family: inherit;
+    cursor: pointer;
+    background: #f8fbff;
+}
+
+.task-status-select.task-status-done {
+    border-color: #22c55e;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.task-status-select.task-status-in_progress {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.task-status-select.task-status-pending {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #334155;
+}
+
+/* Completed task row styling */
+tr.task-row-done td {
+    opacity: 0.65;
+}
+
+.task-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Keep the task delete column narrow and centered */
+.needs-table td:last-child:has(.icon-btn) {
+    text-align: center;
+    width: 52px;
+    padding: 6px 4px;
+}
+
+/* Daily task badge */
+.task-daily-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    background: rgba(29, 78, 216, 0.1);
+    border: 1px solid rgba(29, 78, 216, 0.2);
+    border-radius: 6px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+/* Daily task checkbox in create form */
+.task-daily-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 4px;
+    cursor: pointer;
+    font-size: 0.92rem;
+    color: var(--text);
+    user-select: none;
+}
+
+.task-daily-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    flex-shrink: 0;
 }
 
 .need-order-summary {

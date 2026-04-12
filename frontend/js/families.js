@@ -596,23 +596,26 @@ async function hydrateFamilyStatsIfMissing() {
     const maxToHydrate = 60;
     const ids = list.slice(0, maxToHydrate);
 
-    for (const familyId of ids) {
-        try {
-            const summary = await api.getFamilyDistributions(familyId, { summary: 1 });
-            const count = Number(summary?.distribution_count ?? summary?.count ?? 0);
-            const lastAt = summary?.last_distribution_at ?? summary?.lastAt ?? "";
-            familyStatsCache[String(familyId)] = {
-                count: Number.isFinite(count) ? count : 0,
-                lastAt: lastAt || "",
-            };
-
-            const countEl = document.getElementById(`familyDistCount_${familyId}`);
-            if (countEl) countEl.textContent = String(familyStatsCache[String(familyId)].count ?? 0);
-            const lastEl = document.getElementById(`familyLastDist_${familyId}`);
-            if (lastEl) lastEl.textContent = familyStatsCache[String(familyId)].lastAt ? formatDate(familyStatsCache[String(familyId)].lastAt) : "-";
-        } catch (error) {
-            console.warn("Failed to hydrate family stats for", familyId, error?.message || error);
-        }
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (familyId) => {
+            try {
+                const summary = await api.getFamilyDistributions(familyId, { summary: 1 });
+                const count = Number(summary?.distribution_count ?? summary?.count ?? 0);
+                const lastAt = summary?.last_distribution_at ?? summary?.lastAt ?? "";
+                familyStatsCache[String(familyId)] = {
+                    count: Number.isFinite(count) ? count : 0,
+                    lastAt: lastAt || "",
+                };
+                const countEl = document.getElementById(`familyDistCount_${familyId}`);
+                if (countEl) countEl.textContent = String(familyStatsCache[String(familyId)].count ?? 0);
+                const lastEl = document.getElementById(`familyLastDist_${familyId}`);
+                if (lastEl) lastEl.textContent = familyStatsCache[String(familyId)].lastAt ? formatDate(familyStatsCache[String(familyId)].lastAt) : "-";
+            } catch (error) {
+                console.warn("Failed to hydrate family stats for", familyId, error?.message || error);
+            }
+        }));
     }
 }
 
@@ -686,6 +689,9 @@ function renderFamilies() {
                                             <button class="icon-btn" type="button" onclick="toggleFamilyDistributions(${id})" aria-label="عرض السجل">
                                                 ${iconSvg("list")}
                                             </button>
+                                            <button class="icon-btn icon-btn-danger" type="button" onclick="deleteFamily(${id})" aria-label="حذف العائلة">
+                                                ${iconSvg("trash")}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -755,6 +761,27 @@ async function createFamily() {
     }
 }
 
+async function deleteFamily(familyId) {
+    const id = Number(familyId);
+    if (!id) return;
+
+    const family = (families || []).find((row) => Number(row.id) === id);
+    const name = family ? getFamilyDisplayName(family) : `#${id}`;
+    if (!confirm(`حذف العائلة "${name}"؟ سيتم حذف جميع التوزيعات والعلاقات المرتبطة بها.`)) return;
+
+    try {
+        await api.deleteFamily(id);
+        families = (families || []).filter((row) => Number(row.id) !== id);
+        delete familyStatsCache[String(id)];
+        delete familyDistributionsCache[String(id)];
+        delete familyRelationsCache[String(id)];
+        renderFamilies();
+    } catch (error) {
+        console.error(error);
+        alert("فشل حذف العائلة");
+    }
+}
+
 async function ensureFamiliesLoaded() {
     if (familiesLoadedOnce) return;
     familiesLoadedOnce = true;
@@ -781,3 +808,4 @@ window.submitFamilyRelation = submitFamilyRelation;
 window.deleteFamilyRelation = deleteFamilyRelation;
 window.filterRelationFamilies = filterRelationFamilies;
 window.toggleCustomRelationType = toggleCustomRelationType;
+window.deleteFamily = deleteFamily;
