@@ -1,11 +1,12 @@
 let tasks = [];
-let taskRoles = [];
+let taskUsers = [];
 let tasksLoadedOnce = false;
 let taskLogs = [];
+let editingTaskId = null;
 const taskFilters = {
   search: "",
   status: "",
-  roleId: "",
+  userId: "",
   daily: "",
 };
 
@@ -39,34 +40,40 @@ function getFilteredTasks() {
   const search = taskFilters.search.toLowerCase();
   return (tasks || []).filter((task) => {
     if (taskFilters.status && String(task.status) !== String(taskFilters.status)) return false;
-    if (taskFilters.roleId && String(task.assigned_role_id) !== String(taskFilters.roleId)) return false;
+    if (taskFilters.userId && String(task.assigned_user_id) !== String(taskFilters.userId)) return false;
     if (taskFilters.daily === "daily" && !task.is_daily) return false;
     if (taskFilters.daily === "regular" && task.is_daily) return false;
 
     if (!search) return true;
     const title = String(task.title || "").toLowerCase();
     const description = String(task.description || "").toLowerCase();
-    const roleName = String(task.assigned_role?.name || "").toLowerCase();
+    const assignedName = String(task.assigned_user?.name || task.assigned_user?.username || task.assigned_role?.name || "").toLowerCase();
     const createdBy = String(task.created_by?.username || "").toLowerCase();
 
-    return title.includes(search) || description.includes(search) || roleName.includes(search) || createdBy.includes(search);
+    return title.includes(search) || description.includes(search) || assignedName.includes(search) || createdBy.includes(search);
   });
 }
 
-async function loadTaskRoles() {
+async function loadTaskUsers() {
   try {
-    const data = await api.getTaskRoles();
-    taskRoles = Array.isArray(data) ? data : data?.data || [];
-    const dropdown = document.getElementById("taskAssignedRole");
-    if (!dropdown) return;
-    dropdown.innerHTML = [`
-      <option value="">اختر الدور</option>
-      ${taskRoles
-        .map((role) => `<option value="${escapeHtml(role.id)}">${escapeHtml(role.name)}</option>`)
-        .join("")}
-    `].join("");
+    const data = await api.getTaskUsers();
+    taskUsers = Array.isArray(data) ? data : data?.data || [];
+
+    // Populate create-form dropdown
+    const dropdown = document.getElementById("taskAssignedUser");
+    if (dropdown) {
+      dropdown.innerHTML = `<option value="">اختر المستخدم</option>` +
+        taskUsers.map((u) => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name || u.username)}</option>`).join("");
+    }
+
+    // Populate filter dropdown
+    const filterDropdown = document.getElementById("taskUserFilter");
+    if (filterDropdown) {
+      filterDropdown.innerHTML = `<option value="">كل المستخدمين</option>` +
+        taskUsers.map((u) => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name || u.username)}</option>`).join("");
+    }
   } catch (err) {
-    console.error("Error loading task roles:", err);
+    console.error("Error loading task users:", err);
   }
 }
 
@@ -98,7 +105,7 @@ function renderTasks() {
         <thead>
           <tr>
             <th>م</th>
-            <th>الدور</th>
+            <th>المكلف</th>
             <th>المهمة</th>
             <th>الوصف</th>
             <th>الموعد النهائي</th>
@@ -111,15 +118,23 @@ function renderTasks() {
         <tbody>
           ${visibleTasks
             .map((task, index) => {
-              const roleName = task.assigned_role?.name || "غير معروف";
+              const assignedName = task.assigned_user?.name || task.assigned_user?.username || task.assigned_role?.name || "غير معروف";
               const createdBy = task.created_by?.username || "غير معروف";
               const dueDate = task.due_date ? String(task.due_date) : "-";
               const actions = isAdminUser()
-                ? `<button class="icon-btn icon-btn-danger" type="button" onclick="deleteTask(${task.id})" aria-label="حذف المهمة">
-                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                       <path d="M6 7h12M9 7V5h6v2M8 7l1 14h6l1-14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                     </svg>
-                   </button>`
+                ? `<div class="task-actions">
+                     <button class="icon-btn" type="button" onclick="openTaskEditModal(${task.id})" aria-label="تعديل المهمة">
+                       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                       </svg>
+                     </button>
+                     <button class="icon-btn icon-btn-danger" type="button" onclick="deleteTask(${task.id})" aria-label="حذف المهمة">
+                       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                         <path d="M6 7h12M9 7V5h6v2M8 7l1 14h6l1-14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                       </svg>
+                     </button>
+                   </div>`
                 : "";
               const dailyBadge = task.is_daily
                 ? `<span class="task-daily-badge" title="مهمة يومية تُعاد تلقائياً">🔁 يومي</span>`
@@ -127,7 +142,7 @@ function renderTasks() {
               return `
                 <tr class="${task.status === "done" ? "task-row-done" : ""}">
                   <td>${index + 1}</td>
-                  <td>${escapeHtml(roleName)}</td>
+                  <td>${escapeHtml(assignedName)}</td>
                   <td>${dailyBadge}${escapeHtml(task.title)}</td>
                   <td>${escapeHtml(task.description || "-")}</td>
                   <td>${escapeHtml(dueDate)}</td>
@@ -148,7 +163,7 @@ function renderTasks() {
 function applyTaskFilters() {
   taskFilters.search = String(document.getElementById("taskSearch")?.value || "").trim();
   taskFilters.status = String(document.getElementById("taskStatusFilter")?.value || "").trim();
-  taskFilters.roleId = String(document.getElementById("taskRoleFilter")?.value || "").trim();
+  taskFilters.userId = String(document.getElementById("taskUserFilter")?.value || "").trim();
   taskFilters.daily = String(document.getElementById("taskDailyFilter")?.value || "").trim();
   renderTasks();
 }
@@ -159,7 +174,7 @@ async function refreshTasks() {
     tasks = Array.isArray(data) ? data : data?.data || [];
     const admin = isAdminUser();
     if (admin) {
-      await loadTaskRoles();
+      await loadTaskUsers();
     }
     document.getElementById("tasksAdminCard")?.classList.toggle("hidden", !admin);
     document.getElementById("taskLogsToggleBtn")?.classList.toggle("hidden", !admin);
@@ -181,18 +196,18 @@ async function createTask() {
   try {
     const title = String(document.getElementById("taskTitle")?.value || "").trim();
     const description = String(document.getElementById("taskDescription")?.value || "").trim();
-    const assignedRoleId = Number(document.getElementById("taskAssignedRole")?.value || 0);
+    const assignedUserId = Number(document.getElementById("taskAssignedUser")?.value || 0);
     const status = String(document.getElementById("taskStatus")?.value || "pending").trim();
     const dueDate = String(document.getElementById("taskDueDate")?.value || "").trim() || undefined;
     const isDaily = document.getElementById("taskIsDaily")?.checked === true;
 
     if (!title) return alert("الرجاء إدخال عنوان المهمة.");
-    if (!assignedRoleId) return alert("الرجاء اختيار الدور المسؤول عن المهمة.");
+    if (!assignedUserId) return alert("الرجاء اختيار المستخدم المسؤول عن المهمة.");
 
     await api.createTask({
       title,
       description,
-      assigned_role_id: assignedRoleId,
+      assigned_user_id: assignedUserId,
       status,
       due_date: dueDate,
       is_daily: isDaily,
@@ -200,7 +215,7 @@ async function createTask() {
 
     document.getElementById("taskTitle").value = "";
     document.getElementById("taskDescription").value = "";
-    document.getElementById("taskAssignedRole").value = "";
+    document.getElementById("taskAssignedUser").value = "";
     document.getElementById("taskStatus").value = "pending";
     document.getElementById("taskDueDate").value = "";
     document.getElementById("taskIsDaily").checked = false;
@@ -321,6 +336,61 @@ async function deleteTask(taskId) {
   }
 }
 
+function openTaskEditModal(taskId) {
+  const task = (tasks || []).find((t) => String(t.id) === String(taskId));
+  if (!task) return;
+  editingTaskId = taskId;
+
+  document.getElementById("editTaskTitle").value = task.title || "";
+  document.getElementById("editTaskDescription").value = task.description || "";
+  document.getElementById("editTaskDueDate").value = task.due_date || "";
+  document.getElementById("editTaskIsDaily").checked = Boolean(task.is_daily);
+
+  // Populate user dropdown
+  const userSelect = document.getElementById("editTaskAssignedUser");
+  userSelect.innerHTML = `<option value="">اختر المستخدم</option>` +
+    taskUsers.map((u) => `<option value="${escapeHtml(u.id)}" ${String(u.id) === String(task.assigned_user_id) ? "selected" : ""}>${escapeHtml(u.name || u.username)}</option>`).join("");
+
+  document.getElementById("taskEditModal").classList.add("active");
+}
+
+function closeTaskEditModal() {
+  editingTaskId = null;
+  document.getElementById("taskEditModal").classList.remove("active");
+}
+
+async function saveTaskEdit() {
+  if (!editingTaskId) return;
+
+  const title = String(document.getElementById("editTaskTitle").value || "").trim();
+  const description = String(document.getElementById("editTaskDescription").value || "").trim();
+  const assignedUserId = Number(document.getElementById("editTaskAssignedUser").value || 0) || null;
+  const dueDate = String(document.getElementById("editTaskDueDate").value || "").trim() || null;
+  const isDaily = document.getElementById("editTaskIsDaily").checked;
+
+  if (!title) return alert("الرجاء إدخال عنوان المهمة.");
+
+  try {
+    const updated = await api.updateTask(editingTaskId, {
+      title,
+      description,
+      assigned_user_id: assignedUserId,
+      due_date: dueDate,
+      is_daily: isDaily,
+    });
+
+    // Update local state
+    const idx = tasks.findIndex((t) => String(t.id) === String(editingTaskId));
+    if (idx !== -1) tasks[idx] = { ...tasks[idx], ...updated };
+
+    closeTaskEditModal();
+    renderTasks();
+  } catch (err) {
+    console.error("Error saving task edit:", err);
+    alert(err.message || "فشل حفظ التعديلات.");
+  }
+}
+
 window.loadTasks = loadTasks;
 window.applyTaskFilters = applyTaskFilters;
 window.createTask = createTask;
@@ -329,3 +399,6 @@ window.toggleTaskStatus = toggleTaskStatus;
 window.deleteTask = deleteTask;
 window.toggleTaskLogs = toggleTaskLogs;
 window.loadTaskLogs = loadTaskLogs;
+window.openTaskEditModal = openTaskEditModal;
+window.closeTaskEditModal = closeTaskEditModal;
+window.saveTaskEdit = saveTaskEdit;

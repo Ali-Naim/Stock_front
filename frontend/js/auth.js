@@ -1,10 +1,11 @@
 const AUTH_STORAGE_KEY = "stock_auth_session_v1";
 
 const ROLE_TAB_ALLOWLIST = {
-    admin: ["inventory", "orders", "needs", "families", "reports", "tasks"],
+    admin:       ["inventory", "orders", "needs", "families", "reports", "tasks"],
     call_center: ["inventory", "needs", "orders", "families", "tasks"],
-    data_entry: ["inventory", "needs", "orders", "families", "tasks"],
-    stock: ["inventory", "orders", "families", "reports", "tasks"],
+    data_entry:  ["inventory", "needs", "orders", "families", "tasks"],
+    stock:       ["inventory", "orders", "families", "reports", "tasks"],
+    interaction: ["inventory", "orders", "families", "tasks"],
 };
 
 function getApiBase() {
@@ -103,6 +104,14 @@ function setLoginError(message = "") {
     element.classList.toggle("hidden", !message);
 }
 
+function updateOrderCreatorLabel() {
+    const user = getCurrentUser();
+    const label = document.getElementById("orderCreatorLabel");
+    if (!label) return;
+    const name = user?.name || user?.username;
+    label.textContent = name ? `منشئ الطلب: ${name}` : "";
+}
+
 function updateAuthBar() {
     const user = getCurrentUser();
     const roles = getUserRoles();
@@ -116,10 +125,11 @@ function updateAuthBar() {
         return;
     }
 
-    const name = user?.username || user?.name || user?.email || "مستخدم";
+    const name = user?.name || user?.username || user?.email || "مستخدم";
     const rolesText = roles.length ? `(${roles.join(" / ")})` : "";
     label.textContent = `${name} ${rolesText}`.trim();
     logoutBtn?.classList.remove("hidden");
+    updateOrderCreatorLabel();
 }
 
 function applyRoleVisibility() {

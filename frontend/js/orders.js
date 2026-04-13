@@ -399,6 +399,7 @@ function buildOrderCardHtml(order) {
                 </label>
             </div>`;
 
+    const creatorName = order.created_by?.name || order.created_by?.username || null;
     return `
         <div class="order-history-item ${done ? "done" : "pending"} ${saved ? "saved" : ""}" data-order-id="${order.id}">
             <div class="order-header">
@@ -406,6 +407,7 @@ function buildOrderCardHtml(order) {
                     <strong>${escapeHtml(orderDisplayName)} ${sourceNeedBadge}</strong>
                     <small>${order.phone_number ? `الهاتف: ${escapeHtml(order.phone_number)} - ` : ""}${order.village ? `القرية: ${escapeHtml(order.village)} - ` : ""}${formatDate(order.created_at)}</small>
                     <small>${order.is_registered ? "العميل مسجل سابقًا" : "العميل غير مسجل سابقًا"}</small>
+                    ${creatorName ? `<span class="order-creator-chip">👤 ${escapeHtml(creatorName)}</span>` : ""}
                 </div>
                 <div class="order-actions">
                     ${actionsHtml}
@@ -426,7 +428,7 @@ function replaceOrderCard(orderId) {
 
 async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilter = "", savedFilter = "", registeredFilter = "", dateFrom = "", dateTo = "") {
     try {
-        const history = await api.getOrders({
+        const result = await api.getOrders({
             name: nameFilter.trim() || undefined,
             village: villageFilter || undefined,
             status: statusFilter || undefined,
@@ -434,21 +436,66 @@ async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilte
             registered: registeredFilter === "registered" ? "true" : registeredFilter === "not_registered" ? "false" : undefined,
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
+            page: ordersPage,
         });
 
+        const history = result.data || [];
+        ordersTotalCount = result.total ?? 0;
         currentOrdersData = history;
+
+        updateOrderCountLabel();
 
         const container = document.getElementById("orderHistory");
         if (history.length === 0) {
             container.innerHTML = renderEmptyState("لا توجد سجلات طلبات بعد");
+            renderOrderPagination();
             return;
         }
         container.innerHTML = history.map(buildOrderCardHtml).join("");
+        renderOrderPagination();
     } catch (err) {
         console.error("Error loading order history:", err);
         document.getElementById("orderHistory").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل سجل الطلبات</div>`;
     }
 }
+
+function updateOrderCountLabel() {
+    const label = document.getElementById("orderCountLabel");
+    if (!label) return;
+    if (ordersTotalCount === 0) {
+        label.textContent = "لا توجد طلبات";
+        return;
+    }
+    const from = (ordersPage - 1) * ORDER_PAGE_SIZE + 1;
+    const to = Math.min(ordersPage * ORDER_PAGE_SIZE, ordersTotalCount);
+    label.textContent = `${from}–${to} من أصل ${ordersTotalCount} طلب`;
+}
+
+function renderOrderPagination() {
+    const container = document.getElementById("orderPagination");
+    if (!container) return;
+    const totalPages = Math.ceil(ordersTotalCount / ORDER_PAGE_SIZE);
+    if (totalPages <= 1) {
+        container.innerHTML = "";
+        return;
+    }
+    container.innerHTML = `
+        <div class="pagination">
+            <button class="pagination-btn" onclick="goToOrdersPage(${ordersPage - 1})" ${ordersPage <= 1 ? "disabled" : ""}>→</button>
+            <span class="pagination-info">صفحة ${ordersPage} من ${totalPages}</span>
+            <button class="pagination-btn" onclick="goToOrdersPage(${ordersPage + 1})" ${ordersPage >= totalPages ? "disabled" : ""}>←</button>
+        </div>
+    `;
+}
+
+function goToOrdersPage(page) {
+    const totalPages = Math.ceil(ordersTotalCount / ORDER_PAGE_SIZE);
+    if (page < 1 || page > totalPages) return;
+    ordersPage = page;
+    loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
+}
+
+window.goToOrdersPage = goToOrdersPage;
 
 function applyFilters() {
     const nameFilter = document.getElementById("nameFilter").value;
@@ -459,6 +506,7 @@ function applyFilters() {
     const dateFrom = document.getElementById("dateFrom").value;
     const dateTo = document.getElementById("dateTo").value;
 
+    ordersPage = 1;
     currentFilters = { name: nameFilter, village: villageFilter, status: statusFilter, saved: savedFilter, registered: registeredFilter, dateFrom, dateTo };
     loadOrderHistory(nameFilter, villageFilter, statusFilter, savedFilter, registeredFilter, dateFrom, dateTo);
 }
@@ -471,6 +519,7 @@ function clearFilters() {
     document.getElementById("registeredFilter").value = "";
     document.getElementById("dateFrom").value = "";
     document.getElementById("dateTo").value = "";
+    ordersPage = 1;
     currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
     loadOrderHistory();
 }

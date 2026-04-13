@@ -39,7 +39,7 @@ const api = {
     updateInventoryItem: (id, payload) => apiRequest(`/inventory/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteInventoryItem: (id) => apiRequest(`/inventory/${id}`, { method: "DELETE" }),
 
-    getOrders: (params = {}) => apiRequest(`/orders${toQueryString(params)}`),
+    getOrders: (params = {}) => apiRequest(`/orders${toQueryString({ limit: ORDER_PAGE_SIZE, ...params })}`),
     getOrderById: (id) => apiRequest(`/orders/${id}`),
     createOrder: (payload) => apiRequest("/orders", { method: "POST", body: JSON.stringify(payload) }),
     updateOrder: (id, payload) => apiRequest(`/orders/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
@@ -67,6 +67,7 @@ const api = {
 
     getTasks: () => apiRequest("/tasks"),
     getTaskRoles: () => apiRequest("/tasks/roles"),
+    getTaskUsers: () => apiRequest("/tasks/users"),
     getTaskLogs: () => apiRequest("/tasks/logs"),
     createTask: (payload) => apiRequest("/tasks", { method: "POST", body: JSON.stringify(payload) }),
     updateTask: (id, payload) => apiRequest(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
