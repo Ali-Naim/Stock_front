@@ -26,7 +26,7 @@ html {
 body {
     margin: 0;
     min-height: 100vh;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Cairo", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     color: var(--text);
     background:
         radial-gradient(circle at top right, rgba(18, 58, 122, 0.18), transparent 26%),
@@ -144,6 +144,41 @@ textarea:focus-visible {
 
 .mobile-tab-bar {
     display: none;
+}
+
+body.bootstrap-ui {
+    --bs-primary: var(--primary);
+    --bs-secondary: #5f738d;
+    --bs-success: var(--accent);
+    --bs-danger: var(--danger);
+    --bs-body-color: var(--text);
+    --bs-body-bg: transparent;
+}
+
+body.bootstrap-ui .btn {
+    border: none;
+    border-radius: 14px;
+    min-height: 48px;
+    font-weight: 800;
+}
+
+body.bootstrap-ui .form-control,
+body.bootstrap-ui .form-select {
+    border-radius: 14px;
+    border: 1px solid var(--border-strong);
+    min-height: 50px;
+    background: #fbfdff;
+    color: var(--text);
+}
+
+body.bootstrap-ui .form-control:focus,
+body.bootstrap-ui .form-select:focus {
+    border-color: rgba(18, 58, 122, 0.42);
+    box-shadow: 0 0 0 0.2rem rgba(18, 58, 122, 0.15);
+}
+
+body.bootstrap-ui .table {
+    margin-bottom: 0;
 }
 
 .modal-overlay {
@@ -1649,7 +1684,7 @@ th {
         bottom: max(12px, env(safe-area-inset-bottom));
         z-index: 40;
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
         gap: 8px;
         padding: 8px;
         border-radius: 22px;
