@@ -544,7 +544,16 @@
             <div class="form-grid needs-form-grid">
                 <input id="taskTitle" placeholder="عنوان المهمة">
                 <textarea id="taskDescription" rows="3" placeholder="وصف المهمة"></textarea>
-                <select id="taskAssignedUser"></select>
+                <div>
+                    <select id="taskAssignedUser"></select>
+                    <small style="color:#6b7280;">المكلف (فرد) - اختياري</small>
+                </div>
+                <div>
+                    <select id="taskAssignedRole">
+                        <option value="">اختر الفريق (الدور) - اختياري</option>
+                    </select>
+                    <small style="color:#6b7280;">الفريق (الدور) - اختياري</small>
+                </div>
                 <select id="taskStatus">
                     <option value="pending">قيد التنفيذ</option>
                     <option value="in_progress">قيد المتابعة</option>
@@ -556,7 +565,16 @@
                 <input id="taskIsDaily" type="checkbox">
                 <span>🔁 مهمة يومية (تُعاد تلقائياً كل يوم)</span>
             </label>
-            <div class="button-group">
+            <label class="task-daily-toggle" style="margin-top:8px;">
+                <input id="taskHasSubtasks" type="checkbox" onchange="toggleSubtasksSection()">
+                <span>📋 مهمة رئيسية (تحتوي على مهام فرعية)</span>
+            </label>
+            <div id="createSubtasksSection" class="subtasks-create-section" style="display:none;">
+                <h4>المهام الفرعية</h4>
+                <div id="subtaskRowsContainer"></div>
+                <button type="button" class="subtask-add-btn" onclick="addSubtaskRow()">+ إضافة مهمة فرعية</button>
+            </div>
+            <div class="button-group" style="margin-top:12px;">
                 <button class="done" type="button" onclick="createTask()">حفظ المهمة</button>
             </div>
         </div>
@@ -565,6 +583,12 @@
             <div class="filter-container">
                 <div class="filter-group">
                     <input id="taskSearch" placeholder="بحث في المهام" oninput="applyTaskFilters()">
+                </div>
+                <div class="filter-group">
+                    <select id="taskRoleFilter" onchange="applyTaskFilters()">
+                        <option value="">كل الفرق</option>
+                    </select>
+                    <small>الفريق</small>
                 </div>
                 <div class="filter-group">
                     <select id="taskUserFilter" onchange="applyTaskFilters()">
@@ -577,7 +601,6 @@
                         <option value="">كل الحالات</option>
                         <option value="pending">قيد التنفيذ</option>
                         <option value="in_progress">قيد المتابعة</option>
-                        <option value="done">مكتمل</option>
                     </select>
                     <small>الحالة</small>
                 </div>
@@ -597,13 +620,13 @@
 
         <div class="button-group" style="margin-top:1rem;">
             <button id="taskLogsToggleBtn" class="filter-clear hidden" type="button" onclick="toggleTaskLogs()">
-                📋 سجل المهام المكتملة
+                ✅ المهام المكتملة
             </button>
         </div>
 
         <div id="taskLogsSection" class="hidden" style="margin-top:0.5rem;">
             <div class="card">
-                <h3 style="margin-bottom:1rem;">سجل إنجاز المهام</h3>
+                <h3 style="margin-bottom:1rem;">المهام المكتملة</h3>
                 <div id="taskLogsContainer"></div>
             </div>
         </div>
@@ -668,16 +691,66 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
         <div class="form-grid needs-form-grid">
             <input id="editTaskTitle" placeholder="عنوان المهمة">
             <textarea id="editTaskDescription" rows="3" placeholder="وصف المهمة"></textarea>
-            <select id="editTaskAssignedUser"></select>
+            <div>
+                <select id="editTaskAssignedUser"></select>
+                <small style="color:#6b7280;">المكلف (فرد)</small>
+            </div>
+            <div>
+                <select id="editTaskAssignedRole"></select>
+                <small style="color:#6b7280;">الفريق (الدور)</small>
+            </div>
             <input id="editTaskDueDate" type="date">
         </div>
         <label class="task-daily-toggle" style="margin-top:10px;">
             <input id="editTaskIsDaily" type="checkbox">
             <span>🔁 مهمة يومية (تُعاد تلقائياً كل يوم)</span>
         </label>
+        <div style="margin-top:12px;">
+            <label style="font-size:0.88rem;color:#6b7280;display:block;margin-bottom:4px;">🏆 ملاحظة الإنجاز (اختياري)</label>
+            <textarea id="editTaskAchievementNote" rows="2" placeholder="سجّل إنجازاً أو ملاحظة..." style="width:100%;border-radius:8px;border:1.5px solid var(--border);padding:7px 10px;font-family:inherit;font-size:0.9rem;resize:vertical;box-sizing:border-box;"></textarea>
+        </div>
         <div class="modal-actions">
             <button class="done" type="button" onclick="saveTaskEdit()">حفظ التعديلات</button>
+            <button class="filter-clear" id="editTaskReopenBtn" type="button" onclick="reopenTaskFromModal()" style="display:none;">🔄 إعادة فتح</button>
             <button class="delete" type="button" onclick="closeTaskEditModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Achievement Note Modal -->
+<div id="achievementModal" class="modal-overlay" role="dialog" aria-modal="true" onclick="if(event.target===this)cancelAchievement()">
+    <div class="modal-card" style="width:min(100%,460px);">
+        <div class="modal-header">
+            <h3>🏆 تسجيل إنجاز</h3>
+            <button class="icon-btn" type="button" onclick="cancelAchievement()" aria-label="إغلاق">✕</button>
+        </div>
+        <p style="margin:0 0 10px;font-size:0.9rem;color:#374151;">المهمة: <strong id="achievementTaskName"></strong></p>
+        <label style="font-size:0.88rem;color:#6b7280;display:block;margin-bottom:6px;">أضف ملاحظة إنجاز (اختياري):</label>
+        <textarea id="achievementNote" placeholder="مثال: تم إنجاز التسليم في الموعد المحدد..."></textarea>
+        <div class="modal-actions" style="margin-top:14px;">
+            <button class="done" type="button" onclick="confirmAchievement()">✅ تأكيد الإنجاز</button>
+            <button class="delete" type="button" onclick="cancelAchievement()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Subtask Modal -->
+<div id="addSubtaskModal" class="modal-overlay" role="dialog" aria-modal="true" onclick="if(event.target===this)closeAddSubtaskModal()">
+    <div class="modal-card" style="width:min(100%,500px);">
+        <div class="modal-header">
+            <h3>إضافة مهمة فرعية</h3>
+            <button class="icon-btn" type="button" onclick="closeAddSubtaskModal()" aria-label="إغلاق">✕</button>
+        </div>
+        <p style="margin:0 0 12px;font-size:0.85rem;color:#6b7280;">المهمة الرئيسية: <strong id="addSubtaskParentTitle"></strong></p>
+        <div class="form-grid needs-form-grid">
+            <input id="addSubtaskTitle" placeholder="عنوان المهمة الفرعية">
+            <textarea id="addSubtaskDescription" rows="2" placeholder="وصف (اختياري)"></textarea>
+            <select id="addSubtaskAssignedUser"></select>
+            <input id="addSubtaskDueDate" type="date" placeholder="تاريخ الاستحقاق">
+        </div>
+        <div class="modal-actions" style="margin-top:14px;">
+            <button class="done" type="button" onclick="saveNewSubtask()">حفظ المهمة الفرعية</button>
+            <button class="delete" type="button" onclick="closeAddSubtaskModal()">إلغاء</button>
         </div>
     </div>
 </div>

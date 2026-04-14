@@ -36,9 +36,10 @@ async function loadItems() {
 
         let reservedByItemId = new Map();
         try {
-            const pendingOrders = await api.getOrders({ status: "pending" });
-            reservedByItemId = new Map();
-            (pendingOrders || []).forEach((order) => {
+            const pendingRes = await api.getOrders({ status: "pending", limit: 500 });
+            // getOrders returns a paginated { data, total } object, not a plain array
+            const pendingOrders = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.data || []);
+            pendingOrders.forEach((order) => {
                 (order?.items || []).forEach((item) => {
                     const id = String(item?.id ?? "").trim();
                     if (!id) return;
@@ -118,7 +119,7 @@ async function loadItems() {
 
         list.innerHTML = `<div class="inventory-readonly-grid">${listInventory.map((item) => {
             const reserved = reservedByItemId.get(String(item.id)) || 0;
-            const qtyLabel = reserved > 0 ? `${item.quantity} <small class="inv-reserved">(${reserved} محجوز)</small>` : `${item.quantity}`;
+            const reservedBadge = reserved > 0 ? `<small class="inv-reserved">(${reserved} محجوز)</small>` : "";
             if (canAdjustQty) {
                 return `
                 <div class="card inventory-readonly-card inventory-editable-card" data-inventory-item-id="${item.id}"
@@ -127,14 +128,16 @@ async function loadItems() {
                     ${isAdmin ? `<button class="inventory-delete-btn" type="button" title="حذف"
                         onclick="event.stopPropagation(); deleteItem(${item.id})" aria-label="حذف">×</button>` : ""}
                     <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
-                    <span class="inventory-readonly-qty">${qtyLabel}</span>
+                    <span class="inventory-readonly-qty">${item.quantity}</span>
+                    ${reservedBadge}
                     <small class="inv-edit-hint">اضغط للتعديل</small>
                 </div>`;
             }
             return `
                 <div class="card inventory-readonly-card" data-inventory-item-id="${item.id}">
                     <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
-                    <span class="inventory-readonly-qty">${qtyLabel}</span>
+                    <span class="inventory-readonly-qty">${item.quantity}</span>
+                    ${reservedBadge}
                 </div>`;
         }).join("")}</div>`;
 

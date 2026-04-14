@@ -12,7 +12,9 @@ async function initialize() {
     renderNeedItems();
     setActiveTabState("inventory");
     setTodayDateFilters();
-    await loadNeedsHistory();
+    if (typeof canAccessTab === "function" && canAccessTab("needs")) {
+        await loadNeedsHistory();
+    }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
