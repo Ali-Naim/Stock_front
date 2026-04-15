@@ -530,6 +530,7 @@ function goToNeedsPage(page) {
         currentNeedFilters.village,
         currentNeedFilters.status,
         currentNeedFilters.priority,
+        currentNeedFilters.notes,
         currentNeedsPage
     );
 }
@@ -546,11 +547,12 @@ function goToCompletedNeedsPage(page) {
         currentNeedFilters.item,
         currentNeedFilters.village,
         currentNeedFilters.priority,
+        currentNeedFilters.notes,
         completedNeedsPage
     );
 }
 
-async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", priorityFilter = "", page = currentNeedsPage) {
+async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", priorityFilter = "", notesFilter = "", page = currentNeedsPage) {
     try {
         currentNeedsPage = Math.max(1, Number(page) || 1);
         const offset = (currentNeedsPage - 1) * NEEDS_PAGE_SIZE;
@@ -564,6 +566,7 @@ async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFil
                 village: villageFilter || undefined,
                 status: "pending",
                 priority: priorityFilter || undefined,
+                notes: notesFilter.trim() || undefined,
                 page: 1,
                 pageSize: desiredCount,
             }),
@@ -574,6 +577,7 @@ async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFil
                 village: villageFilter || undefined,
                 status: "in_progress",
                 priority: priorityFilter || undefined,
+                notes: notesFilter.trim() || undefined,
                 page: 1,
                 pageSize: desiredCount,
             }),
@@ -588,7 +592,7 @@ async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFil
         const totalPages = Math.max(1, Math.ceil(currentNeedsTotalCount / NEEDS_PAGE_SIZE));
         if (currentNeedsTotalCount > 0 && currentNeedsPage > totalPages) {
             currentNeedsPage = totalPages;
-            return loadActiveNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, currentNeedsPage);
+            return loadActiveNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, notesFilter, currentNeedsPage);
         }
 
         const merged = [...pendingData, ...inProgressData].sort(compareNeedsByCreatedAtDesc);
@@ -600,7 +604,7 @@ async function loadActiveNeedsHistory(nameFilter = "", phoneFilter = "", itemFil
     }
 }
 
-async function loadCompletedNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", priorityFilter = "", page = completedNeedsPage) {
+async function loadCompletedNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", priorityFilter = "", notesFilter = "", page = completedNeedsPage) {
     try {
         completedNeedsPage = Math.max(1, Number(page) || 1);
         const response = await api.getNeeds({
@@ -610,6 +614,7 @@ async function loadCompletedNeedsHistory(nameFilter = "", phoneFilter = "", item
             village: villageFilter || undefined,
             status: "done",
             priority: priorityFilter || undefined,
+            notes: notesFilter.trim() || undefined,
             page: completedNeedsPage,
             pageSize: COMPLETED_NEEDS_PAGE_SIZE,
         });
@@ -620,7 +625,7 @@ async function loadCompletedNeedsHistory(nameFilter = "", phoneFilter = "", item
         const totalPages = Math.max(1, Math.ceil(completedNeedsTotalCount / COMPLETED_NEEDS_PAGE_SIZE));
         if (completedNeedsTotalCount > 0 && completedNeedsPage > totalPages) {
             completedNeedsPage = totalPages;
-            return loadCompletedNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, completedNeedsPage);
+            return loadCompletedNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, notesFilter, completedNeedsPage);
         }
 
         renderNeedsHistoryTable(
@@ -638,10 +643,10 @@ async function loadCompletedNeedsHistory(nameFilter = "", phoneFilter = "", item
     }
 }
 
-async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", statusFilter = "", priorityFilter = "", page = currentNeedsPage) {
+async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = "", villageFilter = "", statusFilter = "", priorityFilter = "", notesFilter = "", page = currentNeedsPage) {
     try {
         if (!statusFilter) {
-            return loadActiveNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, page);
+            return loadActiveNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, priorityFilter, notesFilter, page);
         }
 
         currentNeedsPage = Math.max(1, Number(page) || 1);
@@ -652,6 +657,7 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = 
             village: villageFilter || undefined,
             status: statusFilter || undefined,
             priority: priorityFilter || undefined,
+            notes: notesFilter.trim() || undefined,
             page: currentNeedsPage,
             pageSize: NEEDS_PAGE_SIZE,
         });
@@ -662,7 +668,7 @@ async function loadNeedsHistory(nameFilter = "", phoneFilter = "", itemFilter = 
         const totalPages = Math.max(1, Math.ceil(currentNeedsTotalCount / NEEDS_PAGE_SIZE));
         if (currentNeedsTotalCount > 0 && currentNeedsPage > totalPages) {
             currentNeedsPage = totalPages;
-            return loadNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, statusFilter, priorityFilter, currentNeedsPage);
+            return loadNeedsHistory(nameFilter, phoneFilter, itemFilter, villageFilter, statusFilter, priorityFilter, notesFilter, currentNeedsPage);
         }
 
         renderNeedsHistoryTable("needsHistoryTable", data, currentNeedsTotalCount, currentNeedsPage, NEEDS_PAGE_SIZE, "goToNeedsPage");
@@ -683,6 +689,7 @@ function applyCompletedNeedsSearch() {
         currentNeedFilters.item,
         currentNeedFilters.village,
         currentNeedFilters.priority,
+        currentNeedFilters.notes,
         completedNeedsPage
     );
 }
@@ -700,6 +707,7 @@ function openCompletedNeedsModal() {
         currentNeedFilters.item,
         currentNeedFilters.village,
         currentNeedFilters.priority,
+        currentNeedFilters.notes,
         completedNeedsPage
     );
     setTimeout(() => document.getElementById("completedNeedsSearch")?.focus(), 0);
@@ -743,6 +751,7 @@ async function refreshNeedsHistoryViews() {
         currentNeedFilters.village,
         currentNeedFilters.status,
         currentNeedFilters.priority,
+        currentNeedFilters.notes,
         currentNeedsPage
     );
 
@@ -755,6 +764,7 @@ async function refreshNeedsHistoryViews() {
         currentNeedFilters.item,
         currentNeedFilters.village,
         currentNeedFilters.priority,
+        currentNeedFilters.notes,
         completedNeedsPage
     );
 }
@@ -766,8 +776,9 @@ function applyNeedFilters() {
     const village = document.getElementById("needVillageFilter").value;
     const status = document.getElementById("needStatusFilter").value;
     const priority = document.getElementById("needPriorityFilter").value;
+    const notes = document.getElementById("needNotesFilter").value;
 
-    currentNeedFilters = { name, phone, item, village, status, priority };
+    currentNeedFilters = { name, phone, item, village, status, priority, notes };
     currentNeedsPage = 1;
     completedNeedsPage = 1;
     refreshNeedsHistoryViews();
@@ -780,7 +791,8 @@ function clearNeedFilters() {
     document.getElementById("needVillageFilter").value = "";
     document.getElementById("needStatusFilter").value = "";
     document.getElementById("needPriorityFilter").value = "";
-    currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "" };
+    document.getElementById("needNotesFilter").value = "";
+    currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "", notes: "" };
     currentNeedsPage = 1;
     completedNeedsPage = 1;
     refreshNeedsHistoryViews();

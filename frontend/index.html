@@ -277,7 +277,7 @@
         <button class="tab active" data-tab-target="inventory" onclick="switchTab('inventory', event)">المخزون</button>
         <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
         <button class="tab" data-tab-target="needs" onclick="switchTab('needs', event)">الاحتياجات</button>
-        <button class="tab" data-tab-target="families" onclick="switchTab('families', event)">العائلات</button>
+        <button class="tab"  data-tab-target="families" onclick="switchTab('families', event)">العائلات</button>
         <button class="tab" data-tab-target="tasks" onclick="switchTab('tasks', event)">المهام</button>
         <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
     </div>
@@ -460,6 +460,9 @@
                 </div>
                 <div class="filter-group">
                     <input id="needItemFilter" placeholder="المادة" oninput="applyNeedFilters()">
+                </div>
+                <div class="filter-group">
+                    <input id="needNotesFilter" placeholder="الملاحظات" oninput="applyNeedFilters()">
                 </div>
                 <div class="filter-group">
                     <select id="needVillageFilter" onchange="applyNeedFilters()">
