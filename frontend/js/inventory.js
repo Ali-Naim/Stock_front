@@ -57,6 +57,9 @@ async function loadItems() {
         const createItemBtn = document.getElementById("createItemBtn");
         if (createItemBtn) createItemBtn.classList.toggle("hidden", !isAdmin);
 
+        const exportInventoryBtn = document.getElementById("exportInventoryBtn");
+        if (exportInventoryBtn) exportInventoryBtn.classList.toggle("hidden", !isAdmin);
+
         const formCard = document.getElementById("inventoryFormCard");
         if (formCard) formCard.classList.toggle("hidden", isReadOnly);
 
@@ -261,6 +264,24 @@ async function confirmSetQty() {
     }
 }
 
+function exportInventoryExcel() {
+    if (!window.XLSX) return alert("مكتبة Excel غير محملة");
+
+    const nonZero = inventory.filter((item) => Number(item.quantity) > 0);
+    if (nonZero.length === 0) return alert("لا توجد منتجات بكمية متوفرة للتصدير");
+
+    const rows = nonZero.map((item) => ({ "المنتج": item.name, "الكمية": item.quantity }));
+    const ws = XLSX.utils.json_to_sheet(rows, { header: ["المنتج", "الكمية"] });
+    ws["!cols"] = [{ wch: 30 }, { wch: 12 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "المخزون");
+
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `مخزون_${date}.xlsx`);
+}
+
+window.exportInventoryExcel = exportInventoryExcel;
 window.openSetQtyModal = openSetQtyModal;
 window.closeSetQtyModal = closeSetQtyModal;
 window.confirmSetQty = confirmSetQty;

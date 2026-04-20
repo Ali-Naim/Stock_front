@@ -281,7 +281,7 @@
         <button class="tab" data-tab-target="tasks" onclick="switchTab('tasks', event)">المهام</button>
         <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
     </div>
-
+ٍ
     <div id="inventory" class="section active">
         <div class="section-intro">
             <div>
@@ -305,7 +305,10 @@
             <button class="add" onclick="addItem()">إضافة الكمية</button>
         </div>
 
-        <h3>سجل المخزون</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+            <h3 style="margin:0;">سجل المخزون</h3>
+            <button id="exportInventoryBtn" class="done hidden" type="button" onclick="exportInventoryExcel()" style="background:#1d7044;">تصدير Excel</button>
+        </div>
         <div id="inventoryList"></div>
     </div>
 
