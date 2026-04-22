@@ -1,11 +1,91 @@
-﻿function addToOrder() {
+﻿function filterOrderFamilies() {
+    const villageId = document.getElementById("orderVillageUI")?.value || "";
+    const query = (document.getElementById("orderFamilySearch")?.value || "").trim().toLowerCase();
+    const dropdown = document.getElementById("orderFamilyDropdown");
+    if (!dropdown) return;
+
+    if (!query) {
+        dropdown.classList.add("hidden");
+        dropdown.innerHTML = "";
+        return;
+    }
+
+    const filtered = (families || [])
+        .filter((f) => {
+            if (villageId && String(f.village_id ?? f.villageId ?? "") !== villageId) return false;
+            return getFamilyDisplayName(f).toLowerCase().includes(query);
+        })
+        .slice(0, 12);
+
+    if (!filtered.length) {
+        dropdown.innerHTML = `<div class="family-picker-empty">لا توجد نتائج</div>`;
+        dropdown.classList.remove("hidden");
+        return;
+    }
+
+    dropdown.innerHTML = filtered
+        .map((f) => {
+            const name = getFamilyDisplayName(f);
+            const village = f.village_name ?? f.villageName ?? getVillageNameById(f.village_id ?? f.villageId ?? "");
+            const phone = f.phone_number ?? f.phoneNumber ?? "";
+            const meta = [village, phone].filter(Boolean).join(" · ");
+            return `<div class="family-picker-option" onmousedown="selectOrderFamily(${f.id})">
+                <strong>${escapeHtml(name)}</strong>
+                ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+            </div>`;
+        })
+        .join("");
+    dropdown.classList.remove("hidden");
+}
+
+function selectOrderFamily(familyId) {
+    const family = (families || []).find((f) => Number(f.id) === Number(familyId));
+    if (!family) return;
+    selectedOrderFamily = family;
+
+    const name = getFamilyDisplayName(family);
+    const villageName = family.village_name ?? family.villageName ?? getVillageNameById(family.village_id ?? family.villageId ?? "");
+    const phone = family.phone_number ?? family.phoneNumber ?? "";
+    const people = family.people_count ?? family.peopleCount ?? "";
+
+    document.getElementById("orderName").value = name;
+    document.getElementById("orderPhone").value = phone;
+    document.getElementById("orderVillage").value = villageName;
+
+    const metaParts = [villageName, phone, people ? `${people} أفراد` : ""].filter(Boolean);
+    document.getElementById("orderSelectedFamilyName").textContent = name;
+    document.getElementById("orderSelectedFamilyMeta").textContent = metaParts.join(" · ");
+    document.getElementById("orderSelectedFamilyCard")?.classList.remove("hidden");
+
+    document.getElementById("orderFamilySearch").value = "";
+    const dropdown = document.getElementById("orderFamilyDropdown");
+    if (dropdown) { dropdown.classList.add("hidden"); dropdown.innerHTML = ""; }
+}
+
+function clearSelectedOrderFamily() {
+    selectedOrderFamily = null;
+    document.getElementById("orderName").value = "";
+    document.getElementById("orderPhone").value = "";
+    document.getElementById("orderVillage").value = "";
+    document.getElementById("orderSelectedFamilyCard")?.classList.add("hidden");
+    const search = document.getElementById("orderFamilySearch");
+    if (search) { search.value = ""; setTimeout(() => search.focus(), 0); }
+}
+
+function hideOrderFamilyDropdown() {
+    setTimeout(() => {
+        document.getElementById("orderFamilyDropdown")?.classList.add("hidden");
+    }, 150);
+}
+
+function addToOrder() {
     const orderName = String(document.getElementById("orderName").value).trim();
     const village = document.getElementById("orderVillage").value;
     const itemId = document.getElementById("orderItem").value;
     const qty = Number(document.getElementById("orderQty").value);
 
-    if (!orderName) return alert("أدخل اسم الطلب أو العميل");
-    if (!village) return alert("اختر القرية");
+    if (!orderName) return alert("اختر عائلة أولاً");
+    if (!village) return alert("اختر عائلة أولاً");
     if (!itemId) return alert("اختر المنتج");
     if (!qty || qty <= 0) return alert("أدخل كمية صحيحة أكبر من صفر");
 
@@ -101,15 +181,15 @@ async function submitOrder() {
         const phoneNumber = String(document.getElementById("orderPhone").value).trim();
         const village = document.getElementById("orderVillage").value;
         const isRegistered = document.getElementById("orderRegistered").value === "true";
-        if (!orderName) return alert("أدخل اسم الطلب أو العميل قبل الحفظ");
-        if (!phoneNumber) return alert("أدخل رقم الهاتف قبل الحفظ");
-        if (!village) return alert("اختر القرية قبل الحفظ");
+        if (!orderName) return alert("اختر عائلة أولاً");
+        if (!village) return alert("اختر عائلة أولاً");
 
         const orderRecord = {
             order_name: orderName,
-            phone_number: phoneNumber,
+            phone_number: phoneNumber || null,
             village,
             is_registered: isRegistered,
+            family_id: selectedOrderFamily ? Number(selectedOrderFamily.id) : null,
             source_need_id: pendingOrderSourceNeedId || null,
             items: currentOrder.map((item) => ({ id: item.id, name: item.name, qty: item.qty })),
             is_saved: editingOrderId ? undefined : false,
@@ -146,6 +226,24 @@ async function setOrderStatus(orderId, status) {
     replaceOrderCard(orderId);
     try {
         await api.updateOrder(orderId, { status });
+
+        if (status === "done" && order.family_id) {
+            try {
+                await api.createFamilyDistribution(order.family_id, {
+                    type: "local",
+                    items: (order.items || []).map((item) => ({ item_id: item.id, quantity: item.qty })),
+                    distributed_at: new Date().toISOString(),
+                });
+                if (typeof familyDistributionsCache !== "undefined") {
+                    familyDistributionsCache[String(order.family_id)] = null;
+                }
+                if (typeof familyStatsCache !== "undefined") {
+                    familyStatsCache[String(order.family_id)] = null;
+                }
+            } catch (distErr) {
+                console.error("Failed to auto-create distribution:", distErr);
+            }
+        }
     } catch (err) {
         console.error("Error updating order status:", err);
         order.status = prev;
@@ -190,12 +288,17 @@ async function setOrderDateToToday(orderId) {
 function cancelEdit() {
     editingOrderId = null;
     pendingOrderSourceNeedId = null;
+    selectedOrderFamily = null;
     currentOrder = [];
     document.getElementById("orderName").value = "";
     document.getElementById("orderPhone").value = "";
     document.getElementById("orderVillage").value = "";
-    document.getElementById("orderRegistered").value = "false";
+    document.getElementById("orderRegistered").value = "true";
     document.getElementById("orderQty").value = "";
+    document.getElementById("orderFamilySearch").value = "";
+    document.getElementById("orderVillageUI").value = "";
+    document.getElementById("orderFamilyDropdown")?.classList.add("hidden");
+    document.getElementById("orderSelectedFamilyCard")?.classList.add("hidden");
     updateOrderSourceBadge();
     renderOrder();
     document.querySelector("#orders .button-group .done").textContent = "تأكيد الطلب";
@@ -496,6 +599,10 @@ function goToOrdersPage(page) {
 }
 
 window.goToOrdersPage = goToOrdersPage;
+window.filterOrderFamilies = filterOrderFamilies;
+window.selectOrderFamily = selectOrderFamily;
+window.clearSelectedOrderFamily = clearSelectedOrderFamily;
+window.hideOrderFamilyDropdown = hideOrderFamilyDropdown;
 
 function applyFilters() {
     const nameFilter = document.getElementById("nameFilter").value;

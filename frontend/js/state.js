@@ -22,6 +22,8 @@ let ordersPage = 1;
 let ordersTotalCount = 0;
 const ORDER_PAGE_SIZE = 20;
 let editingNeedId = null;
+let selectedNeedFamily = null;
+let selectedOrderFamily = null;
 let needToOrderId = null;
 let pendingOrderSourceNeedId = null;
 

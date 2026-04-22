@@ -561,6 +561,88 @@ button {
     margin: 0;
 }
 
+.family-picker-wrap {
+    position: relative;
+}
+
+.family-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    z-index: 200;
+    background: #fff;
+    border: 1px solid var(--border-strong, #d1d5db);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.family-picker-option {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: background 0.12s;
+}
+
+.family-picker-option:last-child {
+    border-bottom: none;
+}
+
+.family-picker-option:hover {
+    background: #f0f5ff;
+}
+
+.family-picker-option strong {
+    font-size: 0.95rem;
+    color: var(--primary-strong);
+}
+
+.family-picker-option small {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.family-picker-empty {
+    padding: 12px 16px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+.need-selected-family-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #eef4ff;
+    border: 1px solid rgba(18,58,122,0.18);
+}
+
+.need-selected-family-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.need-selected-family-info strong {
+    color: var(--primary-strong);
+    font-size: 0.95rem;
+}
+
+.need-selected-family-info small {
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
 .need-item-preview {
     margin: 14px 0 10px;
     padding: 14px 16px;
@@ -1098,6 +1180,16 @@ button {
     overflow-y: auto;
 }
 
+.distributions-history-modal-card {
+    width: min(100%, 1020px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.families-import-modal-card {
+    width: min(100%, 680px);
+}
+
 .relations-add-card {
     margin-top: 12px;
 }
@@ -1182,14 +1274,27 @@ button {
 
 .families-actions-cell {
     white-space: nowrap;
-    min-width: 168px;
+    width: 172px;
 }
 
 .families-actions {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+.families-actions .icon-btn {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    border-radius: 9px;
+}
+
+.families-actions .icon-btn svg {
+    width: 14px;
+    height: 14px;
 }
 
 .icon-btn {

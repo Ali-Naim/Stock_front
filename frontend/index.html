@@ -245,6 +245,47 @@
     </div>
 </div>
 
+<div id="familiesExcelImportModal" class="modal-overlay" onclick="closeFamiliesExcelImportModal(event)">
+    <div class="modal-card families-import-modal-card" role="dialog" aria-modal="true" aria-labelledby="familiesImportTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="familiesImportTitle">استيراد عائلات من Excel</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeFamiliesExcelImportModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">
+            الأعمدة المطلوبة: <strong>first_name</strong> و<strong>last_name</strong> و<strong>village</strong>.
+            الاختيارية: <strong>phone_number</strong>، <strong>people_count</strong>، <strong>notes</strong>، <strong>distribution_type</strong> (local أو municipality).
+            أي عمود آخر يُعامَل كاسم مادة من المخزون والقيمة هي الكمية الموزعة.
+        </p>
+        <div class="import-needs-box">
+            <input id="familiesExcelFile" type="file" accept=".xlsx,.xls,.csv">
+            <button class="done" type="button" onclick="importFamiliesExcel()">استيراد الملف</button>
+        </div>
+        <div id="familiesImportResult" class="needs-import-result hidden"></div>
+        <div class="modal-actions">
+            <button class="filter-clear" type="button" onclick="closeFamiliesExcelImportModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<div id="distributionsHistoryModal" class="modal-overlay" onclick="closeDistributionsHistoryModal(event)">
+    <div class="modal-card distributions-history-modal-card" role="dialog" aria-modal="true" aria-labelledby="distributionsHistoryModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="distributionsHistoryModalTitle">سجل التوزيعات</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeDistributionsHistoryModal()" aria-label="إغلاق">×</button>
+        </div>
+        <div id="distributionsHistoryContent"></div>
+        <div class="modal-actions">
+            <button class="filter-clear" type="button" onclick="closeDistributionsHistoryModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
 <div class="mobile-tab-bar" aria-label="التنقل السريع">
     <button class="mobile-tab-button active" data-tab-target="inventory" onclick="switchTab('inventory', event)">
         <span>المخزون</span>
@@ -324,19 +365,33 @@
         <div class="card">
             <h3>إنشاء طلب جديد</h3>
             <p id="orderCreatorLabel" class="order-creator-label"></p>
+
+            <!-- Hidden fields — populated by the family picker -->
+            <input id="orderName" type="hidden">
+            <input id="orderPhone" type="hidden">
+            <input id="orderVillage" type="hidden">
+            <input id="orderRegistered" type="hidden" value="true">
+
             <div class="form-grid">
-                <input id="orderName" placeholder="اسم الطلب أو العميل">
-                <input id="orderPhone" placeholder="رقم الهاتف">
-                <select id="orderVillage">
-                    <option value="">اختر القرية</option>
+                <select id="orderVillageUI" onchange="filterOrderFamilies()">
+                    <option value="">كل القرى</option>
                 </select>
-                <select id="orderRegistered">
-                    <option value="false">غير مسجل سابقًا</option>
-                    <option value="true">مسجل سابقًا</option>
-                </select>
+                <div class="family-picker-wrap">
+                    <input id="orderFamilySearch" placeholder="ابحث باسم الأب..." oninput="filterOrderFamilies()" onblur="hideOrderFamilyDropdown()" autocomplete="off">
+                    <div id="orderFamilyDropdown" class="family-picker-dropdown hidden"></div>
+                </div>
                 <select id="orderItem"></select>
                 <input id="orderQty" type="number" placeholder="الكمية">
             </div>
+
+            <div id="orderSelectedFamilyCard" class="need-selected-family-card hidden">
+                <div class="need-selected-family-info">
+                    <strong id="orderSelectedFamilyName"></strong>
+                    <small id="orderSelectedFamilyMeta"></small>
+                </div>
+                <button type="button" class="close-btn" onclick="clearSelectedOrderFamily()" aria-label="إلغاء الاختيار">×</button>
+            </div>
+
             <div id="orderSourceBadge" class="order-source-badge hidden">هذا الطلب قادم من صفحة الاحتياجات</div>
             <button class="add" onclick="addToOrder()">إضافة إلى الطلب</button>
         </div>
@@ -413,13 +468,20 @@
 
         <div class="card">
             <h3>إضافة احتياج جديد</h3>
+
+            <!-- Hidden fields populated by the family picker -->
+            <input id="needFamilyName" type="hidden">
+            <input id="needPhone" type="hidden">
+            <input id="needPeopleCount" type="hidden" value="1">
+
             <div class="form-grid needs-form-grid">
-                <input id="needFamilyName" placeholder="اسم العائلة">
-                <input id="needPhone" placeholder="رقم الهاتف">
-                <select id="needVillage">
-                    <option value="">اختر القرية</option>
+                <select id="needVillage" onchange="filterNeedFamilies()">
+                    <option value="">كل القرى</option>
                 </select>
-                <input id="needPeopleCount" type="number" min="1" placeholder="عدد الأفراد">
+                <div class="family-picker-wrap">
+                    <input id="needFamilySearch" placeholder="ابحث باسم الأب..." oninput="filterNeedFamilies()" onblur="hideNeedFamilyDropdown()" autocomplete="off">
+                    <div id="needFamilyDropdown" class="family-picker-dropdown hidden"></div>
+                </div>
                 <select id="needPriority">
                     <option value="normal">عادي</option>
                     <option value="medium">متوسط</option>
@@ -428,6 +490,15 @@
                 <select id="needItem"></select>
                 <input id="needQty" type="number" min="1" placeholder="الكمية المطلوبة">
             </div>
+
+            <div id="needSelectedFamilyCard" class="need-selected-family-card hidden">
+                <div class="need-selected-family-info">
+                    <strong id="needSelectedFamilyName"></strong>
+                    <small id="needSelectedFamilyMeta"></small>
+                </div>
+                <button type="button" class="close-btn" onclick="clearSelectedNeedFamily()" aria-label="إلغاء الاختيار">×</button>
+            </div>
+
             <textarea id="needNotes" class="need-notes-input" rows="3" placeholder="ملاحظات (اختياري)"></textarea>
             <div class="need-item-preview">
                 <small>المادة المختارة</small>
@@ -535,6 +606,7 @@
                 </div>
                 <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
                 <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
+                <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button">استيراد Excel</button>
             </div>
         </div>
 

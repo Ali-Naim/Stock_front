@@ -1,16 +1,98 @@
-﻿function addNeedItem() {
+﻿function filterNeedFamilies() {
+    const villageId = document.getElementById("needVillage")?.value || "";
+    const query = (document.getElementById("needFamilySearch")?.value || "").trim().toLowerCase();
+    const dropdown = document.getElementById("needFamilyDropdown");
+    if (!dropdown) return;
+
+    if (!query) {
+        dropdown.classList.add("hidden");
+        dropdown.innerHTML = "";
+        return;
+    }
+
+    const filtered = (families || [])
+        .filter((f) => {
+            if (villageId && String(f.village_id ?? f.villageId ?? "") !== villageId) return false;
+            return getFamilyDisplayName(f).toLowerCase().includes(query);
+        })
+        .slice(0, 12);
+
+    if (!filtered.length) {
+        dropdown.innerHTML = `<div class="family-picker-empty">لا توجد نتائج</div>`;
+        dropdown.classList.remove("hidden");
+        return;
+    }
+
+    dropdown.innerHTML = filtered
+        .map((f) => {
+            const name = getFamilyDisplayName(f);
+            const village = f.village_name ?? f.villageName ?? getVillageNameById(f.village_id ?? f.villageId ?? "");
+            const phone = f.phone_number ?? f.phoneNumber ?? "";
+            const meta = [village, phone].filter(Boolean).join(" · ");
+            return `<div class="family-picker-option" onmousedown="selectNeedFamily(${f.id})">
+                <strong>${escapeHtml(name)}</strong>
+                ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+            </div>`;
+        })
+        .join("");
+    dropdown.classList.remove("hidden");
+}
+
+function selectNeedFamily(familyId) {
+    const family = (families || []).find((f) => Number(f.id) === Number(familyId));
+    if (!family) return;
+    selectedNeedFamily = family;
+
+    const name = getFamilyDisplayName(family);
+    const village = family.village_name ?? family.villageName ?? getVillageNameById(family.village_id ?? family.villageId ?? "");
+    const phone = family.phone_number ?? family.phoneNumber ?? "";
+    const people = family.people_count ?? family.peopleCount ?? 1;
+
+    document.getElementById("needFamilyName").value = name;
+    document.getElementById("needPhone").value = phone;
+    document.getElementById("needPeopleCount").value = people;
+    if (family.village_id) document.getElementById("needVillage").value = String(family.village_id);
+
+    const metaParts = [village, phone, `${people} أفراد`].filter(Boolean);
+    const nameEl = document.getElementById("needSelectedFamilyName");
+    const metaEl = document.getElementById("needSelectedFamilyMeta");
+    const card = document.getElementById("needSelectedFamilyCard");
+    if (nameEl) nameEl.textContent = name;
+    if (metaEl) metaEl.textContent = metaParts.join(" · ");
+    if (card) card.classList.remove("hidden");
+
+    const search = document.getElementById("needFamilySearch");
+    if (search) search.value = "";
+    const dropdown = document.getElementById("needFamilyDropdown");
+    if (dropdown) { dropdown.classList.add("hidden"); dropdown.innerHTML = ""; }
+}
+
+function clearSelectedNeedFamily() {
+    selectedNeedFamily = null;
+    document.getElementById("needFamilyName").value = "";
+    document.getElementById("needPhone").value = "";
+    document.getElementById("needPeopleCount").value = "1";
+    document.getElementById("needVillage").value = "";
+    document.getElementById("needSelectedFamilyCard")?.classList.add("hidden");
+    const search = document.getElementById("needFamilySearch");
+    if (search) { search.value = ""; setTimeout(() => search.focus(), 0); }
+}
+
+function hideNeedFamilyDropdown() {
+    setTimeout(() => {
+        document.getElementById("needFamilyDropdown")?.classList.add("hidden");
+    }, 150);
+}
+
+function addNeedItem() {
     const familyName = String(document.getElementById("needFamilyName").value).trim();
-    const phoneNumber = String(document.getElementById("needPhone").value).trim();
     const village = document.getElementById("needVillage").value;
-    const peopleCount = Number(document.getElementById("needPeopleCount").value);
     const priority = document.getElementById("needPriority").value;
     const itemId = document.getElementById("needItem").value;
     const qty = Number(document.getElementById("needQty").value);
 
-    if (!familyName) return alert("أدخل اسم العائلة");
-    if (!phoneNumber) return alert("أدخل رقم الهاتف");
+    if (!familyName) return alert("اختر عائلة أولاً");
     if (!village) return alert("اختر القرية");
-    if (!peopleCount || peopleCount <= 0) return alert("أدخل عدد الأفراد");
     if (!priority) return alert("اختر الأولوية");
     if (!itemId) return alert("اختر المنتج");
     if (!qty || qty <= 0) return alert("أدخل الكمية المطلوبة");
@@ -65,14 +147,12 @@ async function submitNeed() {
     const familyName = String(document.getElementById("needFamilyName").value).trim();
     const phoneNumber = String(document.getElementById("needPhone").value).trim();
     const villageId = document.getElementById("needVillage").value;
-    const peopleCount = Number(document.getElementById("needPeopleCount").value);
+    const peopleCount = Number(document.getElementById("needPeopleCount").value) || 1;
     const priority = document.getElementById("needPriority").value;
     const notes = String(document.getElementById("needNotes").value ?? "").trim();
 
-    if (!familyName) return alert("أدخل اسم العائلة");
-    if (!phoneNumber) return alert("أدخل رقم الهاتف");
+    if (!familyName) return alert("اختر عائلة أولاً");
     if (!villageId) return alert("اختر القرية");
-    if (!peopleCount || peopleCount <= 0) return alert("أدخل عدد أفراد صحيح");
     if (!priority) return alert("اختر الأولوية");
 
     const payload = {
@@ -105,15 +185,19 @@ async function submitNeed() {
 
 function cancelNeedEdit() {
     editingNeedId = null;
+    selectedNeedFamily = null;
     currentNeedItems = [];
     document.getElementById("needFamilyName").value = "";
     document.getElementById("needPhone").value = "";
     document.getElementById("needVillage").value = "";
-    document.getElementById("needPeopleCount").value = "";
+    document.getElementById("needPeopleCount").value = "1";
     document.getElementById("needPriority").value = "normal";
     document.getElementById("needNotes").value = "";
     document.getElementById("needItem").value = "";
     document.getElementById("needQty").value = "";
+    document.getElementById("needFamilySearch").value = "";
+    document.getElementById("needFamilyDropdown")?.classList.add("hidden");
+    document.getElementById("needSelectedFamilyCard")?.classList.add("hidden");
     document.getElementById("submitNeedBtn").textContent = "حفظ الاحتياج";
     document.getElementById("cancelNeedEditBtn").style.display = "none";
     updateNeedItemPreview();
@@ -128,10 +212,31 @@ async function editNeed(needId) {
         document.getElementById("needFamilyName").value = data.family_name || "";
         document.getElementById("needPhone").value = data.phone_number || "";
         document.getElementById("needVillage").value = data.village_id || "";
-        document.getElementById("needPeopleCount").value = data.people_count || "";
+        document.getElementById("needPeopleCount").value = data.people_count || "1";
         document.getElementById("needPriority").value = data.priority || "normal";
         document.getElementById("needNotes").value = data.notes || "";
         currentNeedItems = (data.items || []).map((item) => ({ id: item.id, name: item.name, qty: item.qty }));
+
+        // Try to find and select the matching family from the registry
+        const matchedFamily = (families || []).find(
+            (f) =>
+                String(f.village_id ?? f.villageId ?? "") === String(data.village_id ?? "") &&
+                getFamilyDisplayName(f).trim().toLowerCase() === String(data.family_name ?? "").trim().toLowerCase(),
+        );
+        if (matchedFamily) {
+            selectNeedFamily(matchedFamily.id);
+        } else {
+            // Show the stored data in the card even if no registry match
+            selectedNeedFamily = null;
+            const nameEl = document.getElementById("needSelectedFamilyName");
+            const metaEl = document.getElementById("needSelectedFamilyMeta");
+            const card = document.getElementById("needSelectedFamilyCard");
+            if (nameEl) nameEl.textContent = data.family_name || "";
+            const village = getVillageNameById(data.village_id ?? "");
+            if (metaEl) metaEl.textContent = [village, data.phone_number].filter(Boolean).join(" · ");
+            if (card) card.classList.remove("hidden");
+        }
+
         document.getElementById("submitNeedBtn").textContent = "تحديث الاحتياج";
         document.getElementById("cancelNeedEditBtn").style.display = "inline-flex";
         updateNeedItemPreview();
@@ -801,3 +906,7 @@ function clearNeedFilters() {
 // Debounce text-input searches so we don't fire an API call on every keystroke
 window.applyNeedFilters = debounce(applyNeedFilters, 350);
 window.applyCompletedNeedsSearch = debounce(applyCompletedNeedsSearch, 350);
+window.filterNeedFamilies = filterNeedFamilies;
+window.selectNeedFamily = selectNeedFamily;
+window.clearSelectedNeedFamily = clearSelectedNeedFamily;
+window.hideNeedFamilyDropdown = hideNeedFamilyDropdown;

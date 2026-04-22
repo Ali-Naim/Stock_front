@@ -101,6 +101,9 @@ function fillVillageInputs() {
     const orderVillage = document.getElementById("orderVillage");
     if (orderVillage) orderVillage.innerHTML = getOrderVillageOptions();
 
+    const orderVillageUI = document.getElementById("orderVillageUI");
+    if (orderVillageUI) orderVillageUI.innerHTML = getVillageOptions("", "كل القرى");
+
     const needVillage = document.getElementById("needVillage");
     if (needVillage) needVillage.innerHTML = getVillageOptions();
 

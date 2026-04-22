@@ -3,6 +3,8 @@ let familyStatsCache = {};
 let editingFamilyId = null;
 let relationFamilyId = null;
 let familyRelationsCache = {};
+let familiesPage = 1;
+const FAMILIES_PAGE_SIZE = 25;
 
 function getFamilyDisplayName(family) {
     const first = family?.father_first_name ?? family?.fatherFirstName ?? family?.first_name ?? "";
@@ -459,6 +461,7 @@ function readFamilyFiltersFromUi() {
 
 function applyFamilyFilters() {
     currentFamilyFilters = readFamilyFiltersFromUi();
+    familiesPage = 1;
     renderFamilies();
 }
 
@@ -546,35 +549,39 @@ async function loadFamilyDistributions(familyId, { force = false } = {}) {
     }
 }
 
-async function toggleFamilyDistributions(familyId) {
-    const container = document.getElementById(`familyDists_${familyId}`);
-    const detailRow = document.getElementById(`familyDetailRow_${familyId}`);
-    if (!container) return;
+async function openDistributionsHistoryModal(familyId) {
+    const id = Number(familyId);
+    if (!id) return;
 
-    const expanded = container.dataset.expanded === "true";
-    if (expanded) {
-        container.dataset.expanded = "false";
-        container.innerHTML = "";
-        if (detailRow) detailRow.classList.add("hidden");
-        return;
-    }
+    const family = (families || []).find((row) => Number(row.id) === id);
+    const title = document.getElementById("distributionsHistoryModalTitle");
+    if (title) title.textContent = `سجل التوزيعات: ${getFamilyDisplayName(family)}`;
 
-    container.dataset.expanded = "true";
-    if (detailRow) detailRow.classList.remove("hidden");
-    container.innerHTML = `<div class="card distribution-empty">جارٍ التحميل...</div>`;
-    const distributions = await loadFamilyDistributions(familyId);
-    container.innerHTML = renderFamilyDistributions(distributions);
+    const container = document.getElementById("distributionsHistoryContent");
+    if (container) container.innerHTML = `<div class="card distribution-empty">جارٍ التحميل...</div>`;
+
+    document.getElementById("distributionsHistoryModal")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+
+    const distributions = await loadFamilyDistributions(id);
+    if (container) container.innerHTML = renderFamilyDistributions(distributions);
 
     const stats = {
         count: Array.isArray(distributions) ? distributions.length : 0,
         lastAt: Array.isArray(distributions) && distributions.length ? distributions[0]?.distributed_at || distributions[0]?.created_at : "",
     };
-    familyStatsCache[String(familyId)] = stats;
+    familyStatsCache[String(id)] = stats;
 
-    const countEl = document.getElementById(`familyDistCount_${familyId}`);
+    const countEl = document.getElementById(`familyDistCount_${id}`);
     if (countEl) countEl.textContent = String(stats.count ?? 0);
-    const lastEl = document.getElementById(`familyLastDist_${familyId}`);
+    const lastEl = document.getElementById(`familyLastDist_${id}`);
     if (lastEl) lastEl.textContent = stats.lastAt ? formatDate(stats.lastAt) : "-";
+}
+
+function closeDistributionsHistoryModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("distributionsHistoryModal")?.classList.remove("active");
+    document.body.style.overflow = "";
 }
 
 async function hydrateFamilyStatsIfMissing() {
@@ -619,15 +626,45 @@ async function hydrateFamilyStatsIfMissing() {
     }
 }
 
+function renderFamiliesPagination(totalCount) {
+    const totalPages = Math.ceil(totalCount / FAMILIES_PAGE_SIZE);
+    if (totalPages <= 1) return "";
+    const pageStart = (familiesPage - 1) * FAMILIES_PAGE_SIZE + 1;
+    const pageEnd = Math.min(totalCount, familiesPage * FAMILIES_PAGE_SIZE);
+    return `
+        <div class="needs-pagination">
+            <small class="needs-pagination-info">عرض ${pageStart}–${pageEnd} من أصل ${totalCount}</small>
+            <div class="needs-pagination-actions">
+                <button type="button" class="done" onclick="goToFamiliesPage(${familiesPage - 1})" ${familiesPage <= 1 ? "disabled" : ""}>السابق</button>
+                <span class="needs-pagination-page">صفحة ${familiesPage} من ${totalPages}</span>
+                <button type="button" class="done" onclick="goToFamiliesPage(${familiesPage + 1})" ${familiesPage >= totalPages ? "disabled" : ""}>التالي</button>
+            </div>
+        </div>`;
+}
+
+function goToFamiliesPage(page) {
+    const total = getFilteredFamilies().length;
+    const totalPages = Math.max(1, Math.ceil(total / FAMILIES_PAGE_SIZE));
+    familiesPage = Math.max(1, Math.min(Number(page), totalPages));
+    renderFamilies();
+    document.getElementById("familiesList")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function renderFamilies() {
     const container = document.getElementById("familiesList");
     if (!container) return;
 
-    const list = getFilteredFamilies();
-    if (!list.length) {
+    const allFiltered = getFilteredFamilies();
+    if (!allFiltered.length) {
         container.innerHTML = renderEmptyState("لا توجد عائلات مطابقة للبحث.");
         return;
     }
+
+    const totalPages = Math.max(1, Math.ceil(allFiltered.length / FAMILIES_PAGE_SIZE));
+    if (familiesPage > totalPages) familiesPage = totalPages;
+
+    const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
+    const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
 
     container.innerHTML = `
         <div class="needs-table-wrap families-table-wrap">
@@ -686,7 +723,7 @@ function renderFamilies() {
                                             <button class="icon-btn" type="button" onclick="openFamilyEditModal(${id})" aria-label="تعديل بيانات العائلة">
                                                 ${iconSvg("edit")}
                                             </button>
-                                            <button class="icon-btn" type="button" onclick="toggleFamilyDistributions(${id})" aria-label="عرض السجل">
+                                            <button class="icon-btn" type="button" onclick="openDistributionsHistoryModal(${id})" aria-label="عرض السجل">
                                                 ${iconSvg("list")}
                                             </button>
                                             <button class="icon-btn icon-btn-danger" type="button" onclick="deleteFamily(${id})" aria-label="حذف العائلة">
@@ -695,17 +732,13 @@ function renderFamilies() {
                                         </div>
                                     </td>
                                 </tr>
-                                <tr id="familyDetailRow_${id}" class="family-detail-row hidden">
-                                    <td colspan="7" class="family-detail-cell">
-                                        <div id="familyDists_${id}" class="family-dists" data-expanded="false"></div>
-                                    </td>
-                                </tr>
                             `;
                         })
                         .join("")}
                 </tbody>
             </table>
         </div>
+        ${renderFamiliesPagination(allFiltered.length)}
     `;
 }
 
@@ -788,6 +821,147 @@ async function ensureFamiliesLoaded() {
     await refreshFamilies({ silent: true });
 }
 
+function setFamiliesImportResult(msg, type = "info") {
+    const el = document.getElementById("familiesImportResult");
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `needs-import-result${type === "error" ? " error" : type === "success" ? " success" : ""}`;
+    el.classList.remove("hidden");
+}
+
+function openFamiliesExcelImportModal() {
+    const result = document.getElementById("familiesImportResult");
+    if (result) { result.textContent = ""; result.classList.add("hidden"); }
+    const input = document.getElementById("familiesExcelFile");
+    if (input) input.value = "";
+    document.getElementById("familiesExcelImportModal")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+}
+
+function closeFamiliesExcelImportModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("familiesExcelImportModal")?.classList.remove("active");
+    document.body.style.overflow = "";
+}
+
+async function importFamiliesExcel() {
+    try {
+        const input = document.getElementById("familiesExcelFile");
+        const file = input?.files?.[0];
+        if (!file) return setFamiliesImportResult("اختر ملف Excel أولًا", "error");
+        if (!window.XLSX) return setFamiliesImportResult("مكتبة قراءة Excel غير متوفرة", "error");
+
+        const buffer = await file.arrayBuffer();
+        const workbook = window.XLSX.read(buffer, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        if (!rows.length) return setFamiliesImportResult("الملف فارغ أو لا يحتوي على بيانات", "error");
+
+        const headers = Object.keys(rows[0]);
+        const normalizedHeaders = headers.map(normalizeHeader);
+
+        const requiredHeaders = ["first_name", "last_name", "village"];
+        const missingHeaders = requiredHeaders.filter((h) => !normalizedHeaders.includes(h));
+        if (missingHeaders.length) {
+            return setFamiliesImportResult(`الأعمدة الأساسية مفقودة: ${missingHeaders.join(", ")}`, "error");
+        }
+
+        const headerMap = Object.fromEntries(headers.map((h) => [normalizeHeader(h), h]));
+        const coreHeaders = new Set(["first_name", "last_name", "phone_number", "village", "people_count", "notes", "distribution_type"]);
+        const itemHeaders = headers.filter((h) => !coreHeaders.has(normalizeHeader(h)));
+
+        const villageMap = new Map((villages || []).map((v) => [v.name.trim().toLowerCase(), v]));
+        const inventoryMap = new Map((inventory || []).map((item) => [item.name.trim().toLowerCase(), item]));
+
+        const validatedRows = [];
+        const errors = [];
+
+        rows.forEach((row, idx) => {
+            const firstName = String(row[headerMap.first_name] ?? "").trim();
+            const lastName = String(row[headerMap.last_name] ?? "").trim();
+            const phone = String(row[headerMap.phone_number] ?? "").trim();
+            const villageName = String(row[headerMap.village] ?? "").trim();
+            const peopleRaw = row[headerMap.people_count];
+            const people = String(peopleRaw ?? "").trim() === "" ? 1 : Number(peopleRaw);
+            const notes = String(row[headerMap.notes] ?? "").trim();
+            const distType = normalizeDistributionType(row[headerMap.distribution_type] ?? "local");
+
+            if (!firstName || !lastName) {
+                errors.push(`السطر ${idx + 2}: الاسم والكنية مطلوبان`);
+                return;
+            }
+            if (!Number.isFinite(people) || people <= 0) {
+                errors.push(`السطر ${idx + 2}: عدد الأفراد يجب أن يكون رقمًا أكبر من صفر`);
+                return;
+            }
+
+            const village = villageMap.get(villageName.toLowerCase());
+            if (!village) {
+                errors.push(`السطر ${idx + 2}: القرية غير موجودة (${villageName})`);
+                return;
+            }
+
+            const items = [];
+            let itemError = false;
+            for (const header of itemHeaders) {
+                const qty = Number(row[header]);
+                if (!qty || qty <= 0) continue;
+                const item = inventoryMap.get(String(header).trim().toLowerCase());
+                if (!item) {
+                    errors.push(`السطر ${idx + 2}: المادة غير موجودة في المخزون (${header})`);
+                    itemError = true;
+                    break;
+                }
+                items.push({ item_id: item.id, quantity: qty });
+            }
+            if (itemError) return;
+
+            validatedRows.push({ firstName, lastName, phone, village, people, notes, distType, items });
+        });
+
+        if (errors.length) return setFamiliesImportResult(errors.slice(0, 8).join(" | "), "error");
+
+        setFamiliesImportResult(`جارٍ الاستيراد (0 / ${validatedRows.length})...`, "info");
+
+        let done = 0;
+        let failed = 0;
+        for (const r of validatedRows) {
+            try {
+                const created = await api.createFamily({
+                    father_first_name: r.firstName,
+                    father_last_name: r.lastName,
+                    phone_number: r.phone || null,
+                    people_count: r.people,
+                    village_id: Number(r.village.id),
+                });
+                const familyId = created?.id ?? created?.data?.[0]?.id;
+                if (familyId && r.items.length) {
+                    const distPayload = { type: r.distType, items: r.items };
+                    if (r.notes) distPayload.notes = r.notes;
+                    await api.createFamilyDistribution(familyId, distPayload);
+                }
+                done++;
+            } catch (e) {
+                console.error("Row import failed:", e);
+                failed++;
+            }
+            setFamiliesImportResult(`جارٍ الاستيراد (${done + failed} / ${validatedRows.length})...`, "info");
+        }
+
+        if (input) input.value = "";
+        const msg = failed
+            ? `تم استيراد ${done} عائلة بنجاح، فشل ${failed}`
+            : `تم استيراد ${done} عائلة بنجاح`;
+        setFamiliesImportResult(msg, failed ? "error" : "success");
+        await refreshFamilies({ silent: true });
+    } catch (err) {
+        console.error("Error importing families Excel:", err);
+        setFamiliesImportResult(err.message || "فشل استيراد ملف Excel", "error");
+    }
+}
+
+window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
 window.applyFamilyFilters = applyFamilyFilters;
 window.clearFamilyFilters = clearFamilyFilters;
@@ -798,7 +972,11 @@ window.closeDistributionModal = closeDistributionModal;
 window.addDistributionItem = addDistributionItem;
 window.removeDistributionItem = removeDistributionItem;
 window.submitDistribution = submitDistribution;
-window.toggleFamilyDistributions = toggleFamilyDistributions;
+window.openDistributionsHistoryModal = openDistributionsHistoryModal;
+window.closeDistributionsHistoryModal = closeDistributionsHistoryModal;
+window.openFamiliesExcelImportModal = openFamiliesExcelImportModal;
+window.closeFamiliesExcelImportModal = closeFamiliesExcelImportModal;
+window.importFamiliesExcel = importFamiliesExcel;
 window.openFamilyEditModal = openFamilyEditModal;
 window.closeFamilyEditModal = closeFamilyEditModal;
 window.submitFamilyEdit = submitFamilyEdit;
