@@ -1251,7 +1251,7 @@ button {
 }
 
 .families-table {
-    min-width: 1180px;
+    min-width: 1380px;
 }
 
 .families-table-wrap {
@@ -1295,6 +1295,54 @@ button {
 .families-actions .icon-btn svg {
     width: 14px;
     height: 14px;
+}
+
+.families-file-cell {
+    white-space: nowrap;
+    color: var(--muted);
+}
+
+.families-form-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-neutral {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 4px;
+    cursor: pointer;
+    font-size: 0.92rem;
+    color: var(--text);
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    flex-shrink: 0;
 }
 
 .icon-btn {

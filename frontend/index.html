@@ -190,7 +190,7 @@
             </div>
             <button class="close-btn" type="button" onclick="closeFamilyEditModal()" aria-label="إغلاق">×</button>
         </div>
-        <p class="modal-copy">يمكنك تعديل الاسم، رقم الهاتف، عدد الأفراد والقرية.</p>
+        <p class="modal-copy">يمكنك تعديل الاسم، رقم الهاتف، عدد الأفراد، القرية، رقم الملف وحالة الاستمارة.</p>
 
         <div class="form-grid family-edit-form-grid">
             <input id="editFatherFirstName" placeholder="اسم الأب">
@@ -200,7 +200,12 @@
             <select id="editFamilyVillage">
                 <option value="">اختر القرية</option>
             </select>
+            <input id="editFamilyFileNumber" placeholder="رقم الملف (اختياري)">
         </div>
+        <label class="checkbox-label">
+            <input id="editFamilyFormFilled" type="checkbox">
+            تم ملء الاستمارة
+        </label>
 
         <div class="modal-actions">
             <button class="done" type="button" onclick="submitFamilyEdit()">حفظ التعديل</button>
@@ -587,7 +592,12 @@
                 <select id="familyVillage">
                     <option value="">اختر القرية</option>
                 </select>
+                <input id="familyFileNumber" placeholder="رقم الملف (اختياري)">
             </div>
+            <label class="checkbox-label">
+                <input id="familyFormFilled" type="checkbox">
+                تم ملء الاستمارة
+            </label>
             <button class="add" type="button" onclick="createFamily()">حفظ العائلة</button>
         </div>
 

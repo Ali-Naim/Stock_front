@@ -269,6 +269,8 @@ function openFamilyEditModal(familyId) {
     const phone = family.phone_number ?? family.phoneNumber ?? family.father_phone ?? family.fatherPhone ?? "";
     const people = family.people_count ?? family.peopleCount ?? family.members_count ?? family.membersCount ?? 1;
     const villageId = family.village_id ?? family.villageId ?? "";
+    const fileNumber = family.file_number ?? family.fileNumber ?? "";
+    const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
 
     const title = document.getElementById("familyEditModalTitle");
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
@@ -278,6 +280,10 @@ function openFamilyEditModal(familyId) {
     document.getElementById("editFamilyPhone").value = String(phone ?? "");
     document.getElementById("editFamilyPeopleCount").value = String(people ?? "");
     fillFamilyEditVillageSelect(String(villageId ?? ""));
+    const fileNumberEl = document.getElementById("editFamilyFileNumber");
+    if (fileNumberEl) fileNumberEl.value = String(fileNumber ?? "");
+    const formFilledEl = document.getElementById("editFamilyFormFilled");
+    if (formFilledEl) formFilledEl.checked = Boolean(isFormFilled);
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -299,6 +305,8 @@ async function submitFamilyEdit() {
     const phone = document.getElementById("editFamilyPhone")?.value?.trim() || "";
     const peopleCount = Number(document.getElementById("editFamilyPeopleCount")?.value);
     const villageId = document.getElementById("editFamilyVillage")?.value || "";
+    const fileNumber = document.getElementById("editFamilyFileNumber")?.value?.trim() || null;
+    const isFormFilled = document.getElementById("editFamilyFormFilled")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -312,6 +320,8 @@ async function submitFamilyEdit() {
             phone_number: phone || null,
             people_count: peopleCount,
             village_id: Number(villageId),
+            file_number: fileNumber,
+            is_form_filled: isFormFilled,
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
@@ -675,6 +685,8 @@ function renderFamilies() {
                         <th>رقم الهاتف</th>
                         <th>عدد الأفراد</th>
                         <th>القرية</th>
+                        <th>رقم الملف</th>
+                        <th>استمارة</th>
                         <th>آخر توزيع</th>
                         <th>عدد التوزيعات</th>
                         <th>إجراءات</th>
@@ -702,6 +714,9 @@ function renderFamilies() {
                             const last = stats.lastAt ? formatDate(stats.lastAt) : "-";
                             const count = Number.isFinite(stats.count) && stats.count > 0 ? String(stats.count) : "0";
 
+                            const fileNumber = family.file_number ?? family.fileNumber ?? "";
+                            const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
+
                             return `
                                 <tr class="family-row">
                                     <td>
@@ -710,6 +725,8 @@ function renderFamilies() {
                                     <td class="families-phone-cell">${escapeHtml(phone || "-")}</td>
                                     <td class="families-people-cell">${escapeHtml(people)}</td>
                                     <td>${escapeHtml(villageName)}</td>
+                                    <td class="families-file-cell">${escapeHtml(fileNumber || "-")}</td>
+                                    <td class="families-form-cell">${isFormFilled ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
                                     <td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>
                                     <td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>
                                     <td class="families-actions-cell">
@@ -766,6 +783,8 @@ async function createFamily() {
     const phone = document.getElementById("familyPhone")?.value?.trim() || "";
     const peopleCount = Number(document.getElementById("familyPeopleCount")?.value);
     const villageId = document.getElementById("familyVillage")?.value || "";
+    const fileNumber = document.getElementById("familyFileNumber")?.value?.trim() || null;
+    const isFormFilled = document.getElementById("familyFormFilled")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -779,6 +798,8 @@ async function createFamily() {
             phone_number: phone || null,
             people_count: peopleCount,
             village_id: Number(villageId),
+            file_number: fileNumber,
+            is_form_filled: isFormFilled,
         });
 
         document.getElementById("fatherFirstName").value = "";
@@ -786,6 +807,10 @@ async function createFamily() {
         document.getElementById("familyPhone").value = "";
         document.getElementById("familyPeopleCount").value = "";
         document.getElementById("familyVillage").value = "";
+        const fileNumberEl = document.getElementById("familyFileNumber");
+        if (fileNumberEl) fileNumberEl.value = "";
+        const formFilledEl = document.getElementById("familyFormFilled");
+        if (formFilledEl) formFilledEl.checked = false;
 
         await refreshFamilies({ silent: true });
     } catch (error) {
