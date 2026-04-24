@@ -466,6 +466,8 @@ function readFamilyFiltersFromUi() {
     return {
         name: document.getElementById("familyNameFilter")?.value?.trim() || "",
         village: document.getElementById("familyVillageFilter")?.value || "",
+        formFilled: document.getElementById("familyFormFilledFilter")?.value || "",
+        fileNumber: document.getElementById("familyFileNumberFilter")?.value || "",
     };
 }
 
@@ -478,18 +480,29 @@ function applyFamilyFilters() {
 function clearFamilyFilters() {
     const name = document.getElementById("familyNameFilter");
     const village = document.getElementById("familyVillageFilter");
+    const formFilled = document.getElementById("familyFormFilledFilter");
+    const fileNumber = document.getElementById("familyFileNumberFilter");
     if (name) name.value = "";
     if (village) village.value = "";
-    currentFamilyFilters = { name: "", village: "" };
+    if (formFilled) formFilled.value = "";
+    if (fileNumber) fileNumber.value = "";
+    currentFamilyFilters = { name: "", village: "", formFilled: "", fileNumber: "" };
     renderFamilies();
 }
 
 function getFilteredFamilies() {
     const nameQuery = String(currentFamilyFilters?.name || "").toLowerCase();
     const villageId = String(currentFamilyFilters?.village || "");
+    const formFilledFilter = String(currentFamilyFilters?.formFilled || "");
+    const fileNumberFilter = String(currentFamilyFilters?.fileNumber || "");
 
     return (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
+        if (formFilledFilter === "yes" && !Boolean(family.is_form_filled ?? family.isFormFilled)) return false;
+        if (formFilledFilter === "no" && Boolean(family.is_form_filled ?? family.isFormFilled)) return false;
+        const fileNum = String(family.file_number ?? family.fileNumber ?? "").trim();
+        if (fileNumberFilter === "yes" && !fileNum) return false;
+        if (fileNumberFilter === "no" && fileNum) return false;
         if (!nameQuery) return true;
         const text = `${getFamilyDisplayName(family)} ${family?.father_phone ?? ""}`.toLowerCase();
         return text.includes(nameQuery);

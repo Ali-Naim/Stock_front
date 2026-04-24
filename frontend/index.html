@@ -618,6 +618,22 @@
                     </select>
                     <small>القرية</small>
                 </div>
+                <div class="filter-group">
+                    <select id="familyFormFilledFilter" onchange="applyFamilyFilters()">
+                        <option value="">الكل</option>
+                        <option value="yes">ملأوا الاستمارة</option>
+                        <option value="no">لم يملأوا</option>
+                    </select>
+                    <small>الاستمارة</small>
+                </div>
+                <div class="filter-group">
+                    <select id="familyFileNumberFilter" onchange="applyFamilyFilters()">
+                        <option value="">الكل</option>
+                        <option value="yes">لديهم رقم ملف</option>
+                        <option value="no">بدون رقم ملف</option>
+                    </select>
+                    <small>رقم الملف</small>
+                </div>
                 <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
                 <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
                 <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button">استيراد Excel</button>
