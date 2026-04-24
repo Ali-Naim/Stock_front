@@ -310,6 +310,9 @@
     <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports', event)">
         <span>التقارير</span>
     </button>
+    <button class="mobile-tab-button" data-tab-target="analytics" onclick="switchTab('analytics', event)">
+        <span>الإحصاءات</span>
+    </button>
 </div>
 
 <div class="container">
@@ -326,6 +329,7 @@
         <button class="tab"  data-tab-target="families" onclick="switchTab('families', event)">العائلات</button>
         <button class="tab" data-tab-target="tasks" onclick="switchTab('tasks', event)">المهام</button>
         <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
+        <button class="tab" data-tab-target="analytics" onclick="switchTab('analytics', event)">الإحصاءات</button>
     </div>
 ٍ
     <div id="inventory" class="section active">
@@ -754,6 +758,20 @@
 
         <div id="reportContainer"></div>
     </div>
+
+    <div id="analytics" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">الإحصاءات</p>
+                <h2>إحصاءات العائلات</h2>
+            </div>
+            <p>نسبة ملء الاستمارات ونسبة تسجيل أرقام الملفات لكل قرية.</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+            <button class="done" type="button" onclick="renderAnalytics()">تحديث</button>
+        </div>
+        <div id="analyticsContent"></div>
+    </div>
 </div>
 </div>
 
@@ -771,6 +789,7 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 <script src="js/needs.js"></script>
 <script src="js/families.js"></script>
 <script src="js/reports.js"></script>
+<script src="js/analytics.js"></script>
 <script src="js/tasks.js"></script>
 <script src="js/ui-enhance.js"></script>
 <script src="js/init.js"></script>

@@ -33,6 +33,9 @@ function switchTab(tabName) {
     if (tabName === "tasks" && typeof loadTasks === "function") {
         loadTasks();
     }
+    if (tabName === "analytics" && typeof ensureAnalyticsLoaded === "function") {
+        ensureAnalyticsLoaded();
+    }
 }
 
 function renderEmptyState(message) {

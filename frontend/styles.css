@@ -1535,6 +1535,94 @@ tr.task-row-done td {
     white-space: nowrap;
 }
 
+/* Analytics page */
+.analytics-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.analytics-summary-card {
+    text-align: center;
+}
+
+.analytics-summary-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary-strong);
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.analytics-summary-label {
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+}
+
+.analytics-pct-badge {
+    display: inline-block;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 1px 8px;
+    vertical-align: middle;
+}
+
+.analytics-pct-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.analytics-pct-primary {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.analytics-track {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.analytics-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.analytics-village-table {
+    min-width: 750px;
+}
+
+.analytics-num {
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary-strong);
+    white-space: nowrap;
+}
+
+.analytics-bar-cell {
+    min-width: 140px;
+}
+
+.analytics-bar-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.analytics-total-row td {
+    background: #f1f5f9;
+    border-top: 2px solid #cbd5e1;
+    font-weight: 800;
+}
+
 /* Daily task checkbox in create form */
 .task-daily-toggle {
     display: flex;

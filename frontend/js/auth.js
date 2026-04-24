@@ -1,11 +1,11 @@
 const AUTH_STORAGE_KEY = "stock_auth_session_v1";
 
 const ROLE_TAB_ALLOWLIST = {
-    admin:       ["inventory", "orders", "needs", "families", "reports", "tasks"],
-    call_center: ["inventory", "needs", "orders", "families", "tasks"],
-    data_entry:  ["inventory", "needs", "orders", "families", "tasks"],
-    stock:       ["inventory", "orders", "families", "reports", "tasks"],
-    interaction: ["inventory", "orders", "families", "tasks"],
+    admin:       ["inventory", "orders", "needs", "families", "reports", "tasks", "analytics"],
+    call_center: ["inventory", "needs", "orders", "families", "tasks", "analytics"],
+    data_entry:  ["inventory", "needs", "orders", "families", "tasks", "analytics"],
+    stock:       ["inventory", "orders", "families", "reports", "tasks", "analytics"],
+    interaction: ["inventory", "orders", "families", "tasks", "analytics"],
 };
 
 function getApiBase() {
