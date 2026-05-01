@@ -634,8 +634,16 @@
                     </select>
                     <small>رقم الملف</small>
                 </div>
+                <div class="filter-group">
+                    <select id="familyDuplicateFilter" onchange="applyFamilyFilters()">
+                        <option value="">الكل</option>
+                        <option value="yes">المكررة فقط</option>
+                    </select>
+                    <small>التكرار</small>
+                </div>
                 <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
                 <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
+                <button id="exportFamiliesBtn" onclick="exportFamiliesExcel()" class="filter-clear" type="button">تصدير Excel</button>
                 <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button">استيراد Excel</button>
             </div>
         </div>

@@ -468,6 +468,7 @@ function readFamilyFiltersFromUi() {
         village: document.getElementById("familyVillageFilter")?.value || "",
         formFilled: document.getElementById("familyFormFilledFilter")?.value || "",
         fileNumber: document.getElementById("familyFileNumberFilter")?.value || "",
+        duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
     };
 }
 
@@ -478,16 +479,37 @@ function applyFamilyFilters() {
 }
 
 function clearFamilyFilters() {
-    const name = document.getElementById("familyNameFilter");
-    const village = document.getElementById("familyVillageFilter");
-    const formFilled = document.getElementById("familyFormFilledFilter");
-    const fileNumber = document.getElementById("familyFileNumberFilter");
-    if (name) name.value = "";
-    if (village) village.value = "";
-    if (formFilled) formFilled.value = "";
-    if (fileNumber) fileNumber.value = "";
-    currentFamilyFilters = { name: "", village: "", formFilled: "", fileNumber: "" };
+    ["familyNameFilter", "familyVillageFilter", "familyFormFilledFilter", "familyFileNumberFilter", "familyDuplicateFilter"]
+        .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
+    currentFamilyFilters = { name: "", village: "", formFilled: "", fileNumber: "", duplicate: "" };
     renderFamilies();
+}
+
+function getDuplicateFamilyIds() {
+    const nameVillageMap = {};
+    const fileNumberMap = {};
+    const ids = new Set();
+
+    (families || []).forEach((f) => {
+        const nameKey = `${getFamilyDisplayName(f).trim().toLowerCase()}__${String(f.village_id ?? f.villageId ?? "")}`;
+        if (!nameVillageMap[nameKey]) nameVillageMap[nameKey] = [];
+        nameVillageMap[nameKey].push(f.id);
+
+        const fileNum = String(f.file_number ?? f.fileNumber ?? "").trim();
+        if (fileNum) {
+            if (!fileNumberMap[fileNum]) fileNumberMap[fileNum] = [];
+            fileNumberMap[fileNum].push(f.id);
+        }
+    });
+
+    Object.values(nameVillageMap).forEach((group) => {
+        if (group.length > 1) group.forEach((id) => ids.add(String(id)));
+    });
+    Object.values(fileNumberMap).forEach((group) => {
+        if (group.length > 1) group.forEach((id) => ids.add(String(id)));
+    });
+
+    return ids;
 }
 
 function getFilteredFamilies() {
@@ -495,6 +517,8 @@ function getFilteredFamilies() {
     const villageId = String(currentFamilyFilters?.village || "");
     const formFilledFilter = String(currentFamilyFilters?.formFilled || "");
     const fileNumberFilter = String(currentFamilyFilters?.fileNumber || "");
+    const duplicateFilter = String(currentFamilyFilters?.duplicate || "");
+    const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
 
     return (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
@@ -503,6 +527,7 @@ function getFilteredFamilies() {
         const fileNum = String(family.file_number ?? family.fileNumber ?? "").trim();
         if (fileNumberFilter === "yes" && !fileNum) return false;
         if (fileNumberFilter === "no" && fileNum) return false;
+        if (duplicateIds && !duplicateIds.has(String(family.id))) return false;
         if (!nameQuery) return true;
         const text = `${getFamilyDisplayName(family)} ${family?.father_phone ?? ""}`.toLowerCase();
         return text.includes(nameQuery);
@@ -688,6 +713,7 @@ function renderFamilies() {
 
     const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
     const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
+    const duplicateIds = getDuplicateFamilyIds();
 
     container.innerHTML = `
         <div class="needs-table-wrap families-table-wrap">
@@ -730,10 +756,13 @@ function renderFamilies() {
                             const fileNumber = family.file_number ?? family.fileNumber ?? "";
                             const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
 
+                            const isDuplicate = duplicateIds.has(String(id));
+
                             return `
-                                <tr class="family-row">
+                                <tr class="family-row${isDuplicate ? " family-row-duplicate" : ""}">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
+                                        ${isDuplicate ? '<span class="badge badge-warning">مكرر</span>' : ""}
                                     </td>
                                     <td class="families-phone-cell">${escapeHtml(phone || "-")}</td>
                                     <td class="families-people-cell">${escapeHtml(people)}</td>
@@ -999,6 +1028,100 @@ async function importFamiliesExcel() {
     }
 }
 
+async function exportFamiliesExcel() {
+    const btn = document.getElementById("exportFamiliesBtn");
+    const filtered = getFilteredFamilies();
+    if (!filtered.length) return alert("لا توجد عائلات للتصدير");
+
+    if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
+
+    try {
+        // Fetch distributions for families not yet cached
+        await Promise.all(filtered.map(async (f) => {
+            const key = String(f.id);
+            if (!familyDistributionsCache[key]) {
+                try {
+                    const data = await api.getFamilyDistributions(f.id);
+                    familyDistributionsCache[key] = Array.isArray(data) ? data : data?.data || [];
+                } catch (_) {
+                    familyDistributionsCache[key] = [];
+                }
+            }
+        }));
+
+        // Collect all unique item names across all distributions
+        const allItemNames = new Set();
+        filtered.forEach((f) => {
+            (familyDistributionsCache[String(f.id)] || []).forEach((dist) => {
+                (dist.items || []).forEach((item) => {
+                    if (item.item_name) allItemNames.add(item.item_name);
+                });
+            });
+        });
+        const itemNames = Array.from(allItemNames).sort((a, b) => a.localeCompare(b, "ar"));
+
+        const header = [
+            "رقم الملف", "الاسم", "الكنية", "رقم الهاتف",
+            "القرية", "عدد الأفراد", "نوع التوزيع",
+            ...itemNames,
+        ];
+
+        const dataRows = filtered.map((f) => {
+            const dists = familyDistributionsCache[String(f.id)] || [];
+
+            // Aggregate item totals
+            const itemTotals = {};
+            dists.forEach((dist) => {
+                (dist.items || []).forEach((item) => {
+                    if (item.item_name) {
+                        itemTotals[item.item_name] = (itemTotals[item.item_name] || 0) + (item.quantity || 0);
+                    }
+                });
+            });
+
+            // Most recent distribution type
+            const lastType = dists.length ? getDistributionTypeLabel(dists[0].type) : "";
+
+            return [
+                f.file_number ?? f.fileNumber ?? "",
+                f.father_first_name ?? f.fatherFirstName ?? "",
+                f.father_last_name ?? f.fatherLastName ?? "",
+                f.phone_number ?? f.phoneNumber ?? "",
+                getVillageNameById(f.village_id ?? f.villageId ?? ""),
+                f.people_count ?? f.peopleCount ?? "",
+                lastType,
+                ...itemNames.map((name) => itemTotals[name] || 0),
+            ];
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+        ws["!views"] = [{ rightToLeft: true }];
+
+        const colWidths = header.map((_, ci) => {
+            const vals = [header[ci], ...dataRows.map((r) => r[ci])];
+            const max = Math.max(...vals.map((v) => String(v ?? "").length));
+            return { wch: Math.max(max + 2, 10) };
+        });
+        ws["!cols"] = colWidths;
+
+        // Bold header row
+        const range = XLSX.utils.decode_range(ws["!ref"]);
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const cell = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (ws[cell]) ws[cell].s = { font: { bold: true } };
+        }
+
+        XLSX.utils.book_append_sheet(wb, ws, "العائلات");
+        XLSX.writeFile(wb, `عائلات_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+        console.error("Export failed:", err);
+        alert("فشل التصدير");
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "تصدير Excel"; }
+    }
+}
+
 window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
 window.applyFamilyFilters = applyFamilyFilters;
@@ -1012,6 +1135,7 @@ window.removeDistributionItem = removeDistributionItem;
 window.submitDistribution = submitDistribution;
 window.openDistributionsHistoryModal = openDistributionsHistoryModal;
 window.closeDistributionsHistoryModal = closeDistributionsHistoryModal;
+window.exportFamiliesExcel = exportFamiliesExcel;
 window.openFamiliesExcelImportModal = openFamiliesExcelImportModal;
 window.closeFamiliesExcelImportModal = closeFamiliesExcelImportModal;
 window.importFamiliesExcel = importFamiliesExcel;
