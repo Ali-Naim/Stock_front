@@ -465,6 +465,7 @@ async function submitDistribution() {
 function readFamilyFiltersFromUi() {
     return {
         name: document.getElementById("familyNameFilter")?.value?.trim() || "",
+        fileNumberSearch: document.getElementById("familyFileNumberSearch")?.value?.trim() || "",
         village: document.getElementById("familyVillageFilter")?.value || "",
         formFilled: document.getElementById("familyFormFilledFilter")?.value || "",
         fileNumber: document.getElementById("familyFileNumberFilter")?.value || "",
@@ -479,16 +480,15 @@ function applyFamilyFilters() {
 }
 
 function clearFamilyFilters() {
-    ["familyNameFilter", "familyVillageFilter", "familyFormFilledFilter", "familyFileNumberFilter", "familyDuplicateFilter"]
+    ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter", "familyFileNumberFilter", "familyDuplicateFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", village: "", formFilled: "", fileNumber: "", duplicate: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", duplicate: "" };
     renderFamilies();
 }
 
-function getDuplicateFamilyIds() {
+function getDuplicateMap() {
     const nameVillageMap = {};
     const fileNumberMap = {};
-    const ids = new Set();
 
     (families || []).forEach((f) => {
         const nameKey = `${getFamilyDisplayName(f).trim().toLowerCase()}__${String(f.village_id ?? f.villageId ?? "")}`;
@@ -502,18 +502,31 @@ function getDuplicateFamilyIds() {
         }
     });
 
+    // Map<String(id), Set<reason>>
+    const result = new Map();
+    const mark = (id, reason) => {
+        const key = String(id);
+        if (!result.has(key)) result.set(key, new Set());
+        result.get(key).add(reason);
+    };
+
     Object.values(nameVillageMap).forEach((group) => {
-        if (group.length > 1) group.forEach((id) => ids.add(String(id)));
+        if (group.length > 1) group.forEach((id) => mark(id, "name_village"));
     });
     Object.values(fileNumberMap).forEach((group) => {
-        if (group.length > 1) group.forEach((id) => ids.add(String(id)));
+        if (group.length > 1) group.forEach((id) => mark(id, "file_number"));
     });
 
-    return ids;
+    return result;
+}
+
+function getDuplicateFamilyIds() {
+    return new Set(getDuplicateMap().keys());
 }
 
 function getFilteredFamilies() {
     const nameQuery = String(currentFamilyFilters?.name || "").toLowerCase();
+    const fileNumberSearch = String(currentFamilyFilters?.fileNumberSearch || "").toLowerCase();
     const villageId = String(currentFamilyFilters?.village || "");
     const formFilledFilter = String(currentFamilyFilters?.formFilled || "");
     const fileNumberFilter = String(currentFamilyFilters?.fileNumber || "");
@@ -527,6 +540,7 @@ function getFilteredFamilies() {
         const fileNum = String(family.file_number ?? family.fileNumber ?? "").trim();
         if (fileNumberFilter === "yes" && !fileNum) return false;
         if (fileNumberFilter === "no" && fileNum) return false;
+        if (fileNumberSearch && !fileNum.toLowerCase().includes(fileNumberSearch)) return false;
         if (duplicateIds && !duplicateIds.has(String(family.id))) return false;
         if (!nameQuery) return true;
         const text = `${getFamilyDisplayName(family)} ${family?.father_phone ?? ""}`.toLowerCase();
@@ -713,7 +727,7 @@ function renderFamilies() {
 
     const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
     const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
-    const duplicateIds = getDuplicateFamilyIds();
+    const duplicateMap = getDuplicateMap();
 
     container.innerHTML = `
         <div class="needs-table-wrap families-table-wrap">
@@ -756,13 +770,19 @@ function renderFamilies() {
                             const fileNumber = family.file_number ?? family.fileNumber ?? "";
                             const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
 
-                            const isDuplicate = duplicateIds.has(String(id));
+                            const dupReasons = duplicateMap.get(String(id));
+                            const isDuplicate = Boolean(dupReasons?.size);
+                            const dupBadges = isDuplicate ? [...dupReasons].map((r) =>
+                                r === "file_number"
+                                    ? '<span class="badge badge-warning">مكرر: رقم الملف</span>'
+                                    : '<span class="badge badge-warning">مكرر: اسم + قرية</span>'
+                            ).join(" ") : "";
 
                             return `
                                 <tr class="family-row${isDuplicate ? " family-row-duplicate" : ""}">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
-                                        ${isDuplicate ? '<span class="badge badge-warning">مكرر</span>' : ""}
+                                        ${dupBadges}
                                     </td>
                                     <td class="families-phone-cell">${escapeHtml(phone || "-")}</td>
                                     <td class="families-people-cell">${escapeHtml(people)}</td>
