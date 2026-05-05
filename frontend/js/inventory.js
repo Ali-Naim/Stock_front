@@ -6,6 +6,9 @@ async function createItem() {
     const itemName = String(document.getElementById("newItemName").value).trim();
     if (!itemName) return alert("أدخل اسم المنتج");
 
+    const typeIdRaw = document.getElementById("newItemType")?.value;
+    const typeId = typeIdRaw ? Number(typeIdRaw) : null;
+
     try {
         const existingItem = inventory.find((item) => item.name.trim().toLowerCase() === itemName.toLowerCase());
         if (existingItem) {
@@ -14,7 +17,10 @@ async function createItem() {
             return alert("هذا المنتج موجود بالفعل وتم اختياره");
         }
 
-        const data = await api.createInventoryItem({ name: itemName, quantity: 0 });
+        const payload = { name: itemName, quantity: 0 };
+        if (typeId) payload.type_id = typeId;
+
+        const data = await api.createInventoryItem(payload);
 
         await loadItems();
         closeItemModal();
@@ -28,6 +34,64 @@ async function createItem() {
     }
 }
 
+function _getTypeName(typeId) {
+    if (!typeId) return null;
+    return itemTypes.find((t) => String(t.id) === String(typeId))?.name || null;
+}
+
+function _groupInventoryByType(items) {
+    const groups = new Map();
+    const uncategorized = [];
+
+    items.forEach((item) => {
+        const typeId = item.type_id || null;
+        const typeName = _getTypeName(typeId);
+        if (typeId && typeName) {
+            if (!groups.has(typeId)) groups.set(typeId, { id: typeId, name: typeName, items: [] });
+            groups.get(typeId).items.push(item);
+        } else {
+            uncategorized.push(item);
+        }
+    });
+
+    const sorted = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    if (uncategorized.length > 0) sorted.push({ id: null, name: null, items: uncategorized });
+    return sorted;
+}
+
+function _renderInventoryCard(item, canAdjustQty, isAdmin, reserved) {
+    const reservedBadge = reserved > 0
+        ? `<span class="inv-reserved"><i class="bi bi-clock"></i> ${reserved} محجوز</span>`
+        : "";
+    const qtyClass = item.quantity === 0 ? "inventory-readonly-qty qty-zero"
+        : item.quantity <= 5 ? "inventory-readonly-qty qty-low"
+        : "inventory-readonly-qty";
+
+    if (canAdjustQty) {
+        return `
+        <div class="card inventory-readonly-card inventory-editable-card" data-inventory-item-id="${item.id}"
+             onclick="openSetQtyModal(${item.id})" role="button" tabindex="0"
+             onkeydown="if(event.key==='Enter'||event.key===' ') openSetQtyModal(${item.id})">
+            ${isAdmin ? `<button class="inventory-delete-btn" type="button" title="حذف"
+                onclick="event.stopPropagation(); deleteItem(${item.id})" aria-label="حذف">
+                <i class="bi bi-trash"></i></button>` : ""}
+            <button class="inventory-delete-btn" type="button" title="سجل الحركة"
+                onclick="event.stopPropagation(); openInvLogsModal(${item.id}, '${escapeHtml(item.name)}')" aria-label="سجل الحركة"
+                style="left:8px;right:auto;background:#0f3a79;">
+                <i class="bi bi-clock-history"></i></button>
+            <span class="${qtyClass}">${item.quantity}</span>
+            <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
+            ${reservedBadge}
+        </div>`;
+    }
+    return `
+    <div class="card inventory-readonly-card" data-inventory-item-id="${item.id}">
+        <span class="${qtyClass}">${item.quantity}</span>
+        <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
+        ${reservedBadge}
+    </div>`;
+}
+
 async function loadItems() {
     try {
         const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
@@ -37,7 +101,6 @@ async function loadItems() {
         let reservedByItemId = new Map();
         try {
             const pendingRes = await api.getOrders({ status: "pending", limit: 500 });
-            // getOrders returns a paginated { data, total } object, not a plain array
             const pendingOrders = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.data || []);
             pendingOrders.forEach((order) => {
                 (order?.items || []).forEach((item) => {
@@ -70,8 +133,15 @@ async function loadItems() {
         qtyInput?.toggleAttribute?.("disabled", !canAdjustQty);
         addQtyBtn?.toggleAttribute?.("disabled", !canAdjustQty);
 
-        const data = await api.getInventory();
+        const [data, typesData] = await Promise.all([
+            api.getInventory(),
+            api.getItemTypes().catch(() => []),
+        ]);
         inventory = data || [];
+        itemTypes = typesData || [];
+
+        _refreshItemTypeSelects();
+        renderItemTypesManager();
 
         const list = document.getElementById("inventoryList");
         const orderSelect = document.getElementById("orderItem");
@@ -97,8 +167,6 @@ async function loadItems() {
             return;
         }
 
-        // Keep stock + needs selects filled with all items.
-        // For orders, show only currently-available items (quantity > 0).
         const availableForOrders = inventory.filter((item) => Number(item.quantity) > 0);
 
         inventory.forEach((item) => {
@@ -120,34 +188,139 @@ async function loadItems() {
             return;
         }
 
-        list.innerHTML = `<div class="inventory-readonly-grid">${listInventory.map((item) => {
-            const reserved = reservedByItemId.get(String(item.id)) || 0;
-            const reservedBadge = reserved > 0 ? `<small class="inv-reserved">(${reserved} محجوز)</small>` : "";
-            if (canAdjustQty) {
-                return `
-                <div class="card inventory-readonly-card inventory-editable-card" data-inventory-item-id="${item.id}"
-                     onclick="openSetQtyModal(${item.id})" role="button" tabindex="0"
-                     onkeydown="if(event.key==='Enter'||event.key===' ') openSetQtyModal(${item.id})">
-                    ${isAdmin ? `<button class="inventory-delete-btn" type="button" title="حذف"
-                        onclick="event.stopPropagation(); deleteItem(${item.id})" aria-label="حذف">×</button>` : ""}
-                    <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
-                    <span class="inventory-readonly-qty">${item.quantity}</span>
-                    ${reservedBadge}
-                    <small class="inv-edit-hint">اضغط للتعديل</small>
-                </div>`;
-            }
+        const groups = _groupInventoryByType(listInventory);
+
+        const renderGroup = (group) => {
+            const cards = group.items.map((item) => {
+                const reserved = reservedByItemId.get(String(item.id)) || 0;
+                return _renderInventoryCard(item, canAdjustQty, isAdmin, reserved);
+            }).join("");
             return `
-                <div class="card inventory-readonly-card" data-inventory-item-id="${item.id}">
-                    <strong class="inventory-readonly-name">${escapeHtml(item.name)}</strong>
-                    <span class="inventory-readonly-qty">${item.quantity}</span>
-                    ${reservedBadge}
+                <div class="inventory-type-group">
+                    <div class="inventory-type-header">
+                        <span class="inventory-type-header-name">${escapeHtml(group.name || "بدون تصنيف")}</span>
+                        <span class="inventory-type-count">${group.items.length} منتج</span>
+                    </div>
+                    <div class="inventory-type-body">
+                        <div class="inventory-readonly-grid">${cards}</div>
+                    </div>
                 </div>`;
-        }).join("")}</div>`;
+        };
+
+        if (groups.length === 1 && groups[0].id === null) {
+            list.innerHTML = `<div class="inventory-readonly-grid">${listInventory.map((item) => {
+                const reserved = reservedByItemId.get(String(item.id)) || 0;
+                return _renderInventoryCard(item, canAdjustQty, isAdmin, reserved);
+            }).join("")}</div>`;
+        } else {
+            list.innerHTML = groups.map(renderGroup).join("");
+        }
 
         updateNeedItemPreview();
     } catch (err) {
         console.error("Error loading inventory:", err);
         document.getElementById("inventoryList").innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل المخزون</div>`;
+    }
+}
+
+function _refreshItemTypeSelects() {
+    const newItemTypeSelect = document.getElementById("newItemType");
+    if (newItemTypeSelect) {
+        const current = newItemTypeSelect.value;
+        newItemTypeSelect.innerHTML = `<option value="">بدون تصنيف</option>` +
+            itemTypes.map((t) => `<option value="${t.id}" ${String(t.id) === String(current) ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("");
+    }
+}
+
+function renderItemTypesManager() {
+    const card = document.getElementById("itemTypesManagerCard");
+    if (!card) return;
+
+    const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+    const isAdmin = roles.includes("admin");
+
+    if (!isAdmin) {
+        card.classList.add("hidden");
+        return;
+    }
+
+    card.classList.remove("hidden");
+    const countByType = {};
+    inventory.forEach((item) => {
+        if (item.type_id) countByType[item.type_id] = (countByType[item.type_id] || 0) + 1;
+    });
+
+    card.innerHTML = `
+        <div class="item-type-manager-header">
+            <h3>أنواع المنتجات</h3>
+        </div>
+        <div class="item-type-add-row">
+            <input id="newTypeName" placeholder="اسم النوع الجديد"
+                   onkeydown="if(event.key==='Enter') addItemType()">
+            <button class="done" type="button" onclick="addItemType()">
+                <i class="bi bi-plus-lg"></i> إضافة
+            </button>
+        </div>
+        <div class="item-type-list">
+            ${itemTypes.length === 0
+                ? `<p class="muted-text">لا توجد أنواع بعد — أضف أول نوع لتنظيم المخزون</p>`
+                : itemTypes.map((t) => `
+                    <div class="item-type-row">
+                        <div class="item-type-row-info">
+                            <span class="item-type-name">${escapeHtml(t.name)}</span>
+                            <span class="item-type-item-count">${countByType[t.id] || 0} منتج</span>
+                        </div>
+                        <div class="item-type-actions">
+                            <button class="item-type-btn-edit" type="button" title="تعديل الاسم"
+                                    onclick="renameItemType(${t.id}, '${escapeHtml(t.name)}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="item-type-btn-delete" type="button" title="حذف"
+                                    onclick="deleteItemType(${t.id}, '${escapeHtml(t.name)}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>`).join("")}
+        </div>`;
+}
+
+async function addItemType() {
+    const input = document.getElementById("newTypeName");
+    const name = input?.value.trim();
+    if (!name) return alert("أدخل اسم النوع");
+
+    try {
+        await api.createItemType({ name });
+        input.value = "";
+        await loadItems();
+    } catch (err) {
+        console.error("Error creating item type:", err);
+        alert("فشل إضافة النوع");
+    }
+}
+
+async function renameItemType(id, currentName) {
+    const newName = prompt("الاسم الجديد للنوع:", currentName);
+    if (!newName || newName.trim() === currentName.trim()) return;
+
+    try {
+        await api.updateItemType(id, { name: newName.trim() });
+        await loadItems();
+    } catch (err) {
+        console.error("Error renaming item type:", err);
+        alert("فشل تعديل النوع");
+    }
+}
+
+async function deleteItemType(id, name) {
+    if (!confirm(`هل تريد حذف النوع "${name}"؟ ستفقد المنتجات المرتبطة به تصنيفها.`)) return;
+
+    try {
+        await api.deleteItemType(id);
+        await loadItems();
+    } catch (err) {
+        console.error("Error deleting item type:", err);
+        alert("فشل حذف النوع");
     }
 }
 
@@ -209,7 +382,7 @@ async function deleteItem(id) {
         await loadItems();
     } catch (err) {
         console.error("Error deleting item:", err);
-        alert("فشل حذف العنصر");
+        alert(err.message || "فشل حذف العنصر");
     }
 }
 
@@ -225,6 +398,29 @@ function openSetQtyModal(itemId) {
 
     const input = document.getElementById("setQtyInput");
     input.value = item.quantity;
+
+    const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+    const isAdmin = roles.includes("admin");
+
+    const typeRow = document.getElementById("setQtyTypeRow");
+    const typeSelect = document.getElementById("setQtyTypeSelect");
+    const renameRow = document.getElementById("setQtyRenameRow");
+    const nameInput = document.getElementById("setQtyNameInput");
+
+    if (isAdmin && typeRow && typeSelect) {
+        typeSelect.innerHTML = `<option value="">بدون تصنيف</option>` +
+            itemTypes.map((t) => `<option value="${t.id}" ${String(t.id) === String(item.type_id ?? "") ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("");
+        typeRow.classList.remove("hidden");
+    } else if (typeRow) {
+        typeRow.classList.add("hidden");
+    }
+
+    if (isAdmin && renameRow && nameInput) {
+        nameInput.value = item.name;
+        renameRow.classList.remove("hidden");
+    } else if (renameRow) {
+        renameRow.classList.add("hidden");
+    }
 
     document.getElementById("setQtyModal").classList.add("active");
     document.body.style.overflow = "hidden";
@@ -252,8 +448,26 @@ async function confirmSetQty() {
     const newQty = Number(document.getElementById("setQtyInput").value);
     if (!Number.isFinite(newQty) || newQty < 0) return alert("أدخل كمية صحيحة (صفر أو أكثر)");
 
+    const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+    const isAdmin = roles.includes("admin");
+
+    const payload = { quantity: newQty };
+
+    if (isAdmin) {
+        const typeSelectEl = document.getElementById("setQtyTypeSelect");
+        if (typeSelectEl) {
+            payload.type_id = typeSelectEl.value ? Number(typeSelectEl.value) : null;
+        }
+        const nameInputEl = document.getElementById("setQtyNameInput");
+        if (nameInputEl) {
+            const newName = nameInputEl.value.trim();
+            const item = inventory.find((e) => String(e.id) === String(_setQtyItemId));
+            if (newName && newName !== item?.name) payload.name = newName;
+        }
+    }
+
     try {
-        await api.updateInventoryItem(_setQtyItemId, { quantity: newQty });
+        await api.updateInventoryItem(_setQtyItemId, payload);
         document.getElementById("setQtyModal").classList.remove("active");
         document.body.style.overflow = "";
         _setQtyItemId = null;
@@ -270,9 +484,13 @@ function exportInventoryExcel() {
     const nonZero = inventory.filter((item) => Number(item.quantity) > 0);
     if (nonZero.length === 0) return alert("لا توجد منتجات بكمية متوفرة للتصدير");
 
-    const rows = nonZero.map((item) => ({ "المنتج": item.name, "الكمية": item.quantity }));
-    const ws = XLSX.utils.json_to_sheet(rows, { header: ["المنتج", "الكمية"] });
-    ws["!cols"] = [{ wch: 30 }, { wch: 12 }];
+    const rows = nonZero.map((item) => ({
+        "النوع": _getTypeName(item.type_id) || "بدون تصنيف",
+        "المنتج": item.name,
+        "الكمية": item.quantity,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows, { header: ["النوع", "المنتج", "الكمية"] });
+    ws["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 12 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "المخزون");
@@ -286,3 +504,6 @@ window.openSetQtyModal = openSetQtyModal;
 window.closeSetQtyModal = closeSetQtyModal;
 window.confirmSetQty = confirmSetQty;
 window.stepSetQty = stepSetQty;
+window.addItemType = addItemType;
+window.renameItemType = renameItemType;
+window.deleteItemType = deleteItemType;

@@ -1,4 +1,28 @@
-﻿function debounce(fn, delay = 300) {
+﻿const TAB_LABELS = {
+    inventory: "المخزون",
+    orders: "الطلبات",
+    needs: "الاحتياجات",
+    families: "العائلات",
+    tasks: "المهام",
+    reports: "التقارير",
+    analytics: "الإحصاءات",
+};
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const isOpen = sidebar?.classList.toggle("open");
+    overlay?.classList.toggle("active", isOpen);
+    document.body.style.overflow = isOpen ? "hidden" : "";
+}
+
+function closeSidebar() {
+    document.getElementById("sidebar")?.classList.remove("open");
+    document.getElementById("sidebarOverlay")?.classList.remove("active");
+    document.body.style.overflow = "";
+}
+
+function debounce(fn, delay = 300) {
     let timer;
     return function (...args) {
         clearTimeout(timer);
@@ -22,6 +46,11 @@ function switchTab(tabName) {
     });
 
     setActiveTabState(tabName);
+
+    const titleEl = document.getElementById("topbarTitle");
+    if (titleEl) titleEl.textContent = TAB_LABELS[tabName] || tabName;
+
+    if (window.innerWidth <= 900) closeSidebar();
 
     if (tabName === "orders" && (!currentFilters.dateFrom && !currentFilters.dateTo)) {
         setTodayDateFilters();

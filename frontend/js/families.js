@@ -271,6 +271,7 @@ function openFamilyEditModal(familyId) {
     const villageId = family.village_id ?? family.villageId ?? "";
     const fileNumber = family.file_number ?? family.fileNumber ?? "";
     const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
+    const municipalityRegistered = family.municipality_registered ?? family.municipalityRegistered ?? false;
 
     const title = document.getElementById("familyEditModalTitle");
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
@@ -284,6 +285,8 @@ function openFamilyEditModal(familyId) {
     if (fileNumberEl) fileNumberEl.value = String(fileNumber ?? "");
     const formFilledEl = document.getElementById("editFamilyFormFilled");
     if (formFilledEl) formFilledEl.checked = Boolean(isFormFilled);
+    const muniEl = document.getElementById("editFamilyMunicipalityRegistered");
+    if (muniEl) muniEl.checked = Boolean(municipalityRegistered);
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -307,6 +310,7 @@ async function submitFamilyEdit() {
     const villageId = document.getElementById("editFamilyVillage")?.value || "";
     const fileNumber = document.getElementById("editFamilyFileNumber")?.value?.trim() || null;
     const isFormFilled = document.getElementById("editFamilyFormFilled")?.checked ?? false;
+    const municipalityRegistered = document.getElementById("editFamilyMunicipalityRegistered")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -322,6 +326,7 @@ async function submitFamilyEdit() {
             village_id: Number(villageId),
             file_number: fileNumber,
             is_form_filled: isFormFilled,
+            municipality_registered: municipalityRegistered,
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
@@ -469,6 +474,7 @@ function readFamilyFiltersFromUi() {
         village: document.getElementById("familyVillageFilter")?.value || "",
         formFilled: document.getElementById("familyFormFilledFilter")?.value || "",
         fileNumber: document.getElementById("familyFileNumberFilter")?.value || "",
+        municipality: document.getElementById("familyMunicipalityFilter")?.value || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
     };
 }
@@ -480,10 +486,29 @@ function applyFamilyFilters() {
 }
 
 function clearFamilyFilters() {
-    ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter", "familyFileNumberFilter", "familyDuplicateFilter"]
+    ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
+     "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", duplicate: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "" };
+    familiesSortCol = "";
+    familiesSortDir = "asc";
     renderFamilies();
+}
+
+function sortFamiliesBy(col) {
+    if (familiesSortCol === col) {
+        familiesSortDir = familiesSortDir === "asc" ? "desc" : "asc";
+    } else {
+        familiesSortCol = col;
+        familiesSortDir = "asc";
+    }
+    familiesPage = 1;
+    renderFamilies();
+}
+
+function _sortIcon(col) {
+    if (familiesSortCol !== col) return `<span class="sort-icon">↕</span>`;
+    return familiesSortDir === "asc" ? `<span class="sort-icon active">↑</span>` : `<span class="sort-icon active">↓</span>`;
 }
 
 function getDuplicateMap() {
@@ -530,21 +555,52 @@ function getFilteredFamilies() {
     const villageId = String(currentFamilyFilters?.village || "");
     const formFilledFilter = String(currentFamilyFilters?.formFilled || "");
     const fileNumberFilter = String(currentFamilyFilters?.fileNumber || "");
+    const municipalityFilter = String(currentFamilyFilters?.municipality || "");
     const duplicateFilter = String(currentFamilyFilters?.duplicate || "");
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
 
-    return (families || []).filter((family) => {
+    const filtered = (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
         if (formFilledFilter === "yes" && !Boolean(family.is_form_filled ?? family.isFormFilled)) return false;
         if (formFilledFilter === "no" && Boolean(family.is_form_filled ?? family.isFormFilled)) return false;
+        const muniReg = Boolean(family.municipality_registered ?? family.municipalityRegistered ?? false);
+        if (municipalityFilter === "yes" && !muniReg) return false;
+        if (municipalityFilter === "no" && muniReg) return false;
         const fileNum = String(family.file_number ?? family.fileNumber ?? "").trim();
         if (fileNumberFilter === "yes" && !fileNum) return false;
         if (fileNumberFilter === "no" && fileNum) return false;
         if (fileNumberSearch && !fileNum.toLowerCase().includes(fileNumberSearch)) return false;
         if (duplicateIds && !duplicateIds.has(String(family.id))) return false;
         if (!nameQuery) return true;
-        const text = `${getFamilyDisplayName(family)} ${family?.father_phone ?? ""}`.toLowerCase();
+        const text = `${getFamilyDisplayName(family)} ${family?.phone_number ?? ""}`.toLowerCase();
         return text.includes(nameQuery);
+    });
+
+    if (!familiesSortCol) return filtered;
+    return [...filtered].sort((a, b) => {
+        let va, vb;
+        switch (familiesSortCol) {
+            case "name":
+                va = getFamilyDisplayName(a).toLowerCase();
+                vb = getFamilyDisplayName(b).toLowerCase();
+                break;
+            case "village":
+                va = getVillageNameById(a.village_id ?? "").toLowerCase();
+                vb = getVillageNameById(b.village_id ?? "").toLowerCase();
+                break;
+            case "people":
+                va = Number(a.people_count ?? 0);
+                vb = Number(b.people_count ?? 0);
+                break;
+            case "distributions":
+                va = Number(a.distribution_count ?? familyStatsCache[String(a.id)]?.count ?? 0);
+                vb = Number(b.distribution_count ?? familyStatsCache[String(b.id)]?.count ?? 0);
+                break;
+            default: return 0;
+        }
+        if (va < vb) return familiesSortDir === "asc" ? -1 : 1;
+        if (va > vb) return familiesSortDir === "asc" ? 1 : -1;
+        return 0;
     });
 }
 
@@ -734,14 +790,15 @@ function renderFamilies() {
             <table class="needs-table families-table">
                 <thead>
                     <tr>
-                        <th>الأب</th>
+                        <th class="sortable-th" onclick="sortFamiliesBy('name')">الأب ${_sortIcon('name')}</th>
                         <th>رقم الهاتف</th>
-                        <th>عدد الأفراد</th>
-                        <th>القرية</th>
+                        <th class="sortable-th" onclick="sortFamiliesBy('people')">الأفراد ${_sortIcon('people')}</th>
+                        <th class="sortable-th" onclick="sortFamiliesBy('village')">القرية ${_sortIcon('village')}</th>
                         <th>رقم الملف</th>
                         <th>استمارة</th>
+                        <th>البلدية</th>
                         <th>آخر توزيع</th>
-                        <th>عدد التوزيعات</th>
+                        <th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>
                         <th>إجراءات</th>
                     </tr>
                 </thead>
@@ -769,6 +826,7 @@ function renderFamilies() {
 
                             const fileNumber = family.file_number ?? family.fileNumber ?? "";
                             const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
+                            const isMuniReg = family.municipality_registered ?? family.municipalityRegistered ?? false;
 
                             const dupReasons = duplicateMap.get(String(id));
                             const isDuplicate = Boolean(dupReasons?.size);
@@ -789,6 +847,7 @@ function renderFamilies() {
                                     <td>${escapeHtml(villageName)}</td>
                                     <td class="families-file-cell">${escapeHtml(fileNumber || "-")}</td>
                                     <td class="families-form-cell">${isFormFilled ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
+                                    <td class="families-muni-cell">${isMuniReg ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
                                     <td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>
                                     <td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>
                                     <td class="families-actions-cell">
@@ -847,6 +906,7 @@ async function createFamily() {
     const villageId = document.getElementById("familyVillage")?.value || "";
     const fileNumber = document.getElementById("familyFileNumber")?.value?.trim() || null;
     const isFormFilled = document.getElementById("familyFormFilled")?.checked ?? false;
+    const municipalityRegistered = document.getElementById("familyMunicipalityRegistered")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -862,6 +922,7 @@ async function createFamily() {
             village_id: Number(villageId),
             file_number: fileNumber,
             is_form_filled: isFormFilled,
+            municipality_registered: municipalityRegistered,
         });
 
         document.getElementById("fatherFirstName").value = "";
@@ -873,6 +934,8 @@ async function createFamily() {
         if (fileNumberEl) fileNumberEl.value = "";
         const formFilledEl = document.getElementById("familyFormFilled");
         if (formFilledEl) formFilledEl.checked = false;
+        const muniEl = document.getElementById("familyMunicipalityRegistered");
+        if (muniEl) muniEl.checked = false;
 
         await refreshFamilies({ silent: true });
     } catch (error) {
@@ -1142,6 +1205,7 @@ async function exportFamiliesExcel() {
     }
 }
 
+window.sortFamiliesBy = sortFamiliesBy;
 window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
 window.applyFamilyFilters = applyFamilyFilters;

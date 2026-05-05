@@ -1,11 +1,14 @@
 ﻿let villages = [];
 let inventory = [];
+let itemTypes = [];
 let currentOrder = [];
 let currentNeedItems = [];
 let currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
 let currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "", notes: "" };
 let families = [];
 let currentFamilyFilters = { name: "", village: "" };
+let familiesSortCol = "";
+let familiesSortDir = "asc";
 let currentDistributionItems = [];
 let distributionFamilyId = null;
 let familyDistributionsCache = {};

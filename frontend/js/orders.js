@@ -226,24 +226,6 @@ async function setOrderStatus(orderId, status) {
     replaceOrderCard(orderId);
     try {
         await api.updateOrder(orderId, { status });
-
-        if (status === "done" && order.family_id) {
-            try {
-                await api.createFamilyDistribution(order.family_id, {
-                    type: "local",
-                    items: (order.items || []).map((item) => ({ item_id: item.id, quantity: item.qty })),
-                    distributed_at: new Date().toISOString(),
-                });
-                if (typeof familyDistributionsCache !== "undefined") {
-                    familyDistributionsCache[String(order.family_id)] = null;
-                }
-                if (typeof familyStatsCache !== "undefined") {
-                    familyStatsCache[String(order.family_id)] = null;
-                }
-            } catch (distErr) {
-                console.error("Failed to auto-create distribution:", distErr);
-            }
-        }
     } catch (err) {
         console.error("Error updating order status:", err);
         order.status = prev;

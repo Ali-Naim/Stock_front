@@ -45,6 +45,35 @@
 </div>
 
 <div id="appRoot">
+
+<!-- Distribution detail dialog -->
+<div id="distDetailModal" class="modal-overlay" onclick="closeDistDetailModal(event)">
+    <div class="modal-card dist-detail-modal-card" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">التقارير</p>
+                <h3 id="distDetailModalTitle">تفاصيل التوزيعات</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeDistDetailModal()" aria-label="إغلاق">×</button>
+        </div>
+        <div id="distDetailContent" style="overflow-y:auto;max-height:65vh;"></div>
+    </div>
+</div>
+
+<!-- Inventory logs dialog -->
+<div id="invLogsModal" class="modal-overlay" onclick="closeInvLogsModal(event)">
+    <div class="modal-card dist-detail-modal-card" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">المخزون</p>
+                <h3 id="invLogsModalTitle">سجل حركة المخزون</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeInvLogsModal()" aria-label="إغلاق">×</button>
+        </div>
+        <div id="invLogsContent" style="overflow-y:auto;max-height:65vh;"></div>
+    </div>
+</div>
+
 <div id="itemModal" class="modal-overlay" onclick="closeItemModal(event)">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -56,6 +85,9 @@
         </div>
         <p class="modal-copy">أضف المنتج مرة واحدة ثم استخدمه في الطلبات واحتياجات العائلات.</p>
         <input id="newItemName" placeholder="اسم المنتج">
+        <select id="newItemType">
+            <option value="">بدون تصنيف</option>
+        </select>
         <div class="modal-actions">
             <button class="done" type="button" onclick="createItem()">حفظ المنتج</button>
             <button class="filter-clear" type="button" onclick="closeItemModal()">إلغاء</button>
@@ -67,7 +99,7 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="setQtyModalTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div>
-                <p class="section-kicker">تعديل المخزون</p>
+                <p class="section-kicker">تعديل المنتج</p>
                 <h3 id="setQtyModalTitle">تعديل الكمية</h3>
             </div>
             <button class="close-btn" type="button" onclick="closeSetQtyModal()" aria-label="إغلاق">×</button>
@@ -78,6 +110,14 @@
             <input id="setQtyInput" type="number" min="0" placeholder="الكمية"
                    onkeydown="if(event.key==='Enter') confirmSetQty()">
             <button class="add" type="button" onclick="stepSetQty(1)">+</button>
+        </div>
+        <div id="setQtyTypeRow" class="hidden" style="margin-top:12px;">
+            <label style="font-size:0.85rem;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">نوع المنتج</label>
+            <select id="setQtyTypeSelect" style="width:100%;"></select>
+        </div>
+        <div id="setQtyRenameRow" class="hidden" style="margin-top:12px;">
+            <label style="font-size:0.85rem;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">اسم المنتج</label>
+            <input id="setQtyNameInput" type="text" placeholder="اسم المنتج" style="width:100%;">
         </div>
         <div class="modal-actions">
             <button class="done" type="button" onclick="confirmSetQty()">تأكيد</button>
@@ -202,10 +242,16 @@
             </select>
             <input id="editFamilyFileNumber" placeholder="رقم الملف (اختياري)">
         </div>
-        <label class="checkbox-label">
-            <input id="editFamilyFormFilled" type="checkbox">
-            تم ملء الاستمارة
-        </label>
+        <div class="family-checkboxes">
+            <label class="checkbox-label">
+                <input id="editFamilyFormFilled" type="checkbox">
+                تم ملء الاستمارة
+            </label>
+            <label class="checkbox-label">
+                <input id="editFamilyMunicipalityRegistered" type="checkbox">
+                مسجل بالبلدية
+            </label>
+        </div>
 
         <div class="modal-actions">
             <button class="done" type="button" onclick="submitFamilyEdit()">حفظ التعديل</button>
@@ -291,73 +337,72 @@
     </div>
 </div>
 
-<div class="mobile-tab-bar" aria-label="التنقل السريع">
-    <button class="mobile-tab-button active" data-tab-target="inventory" onclick="switchTab('inventory', event)">
-        <span>المخزون</span>
-    </button>
-    <button class="mobile-tab-button" data-tab-target="orders" onclick="switchTab('orders', event)">
-        <span>الطلبات</span>
-    </button>
-    <button class="mobile-tab-button" data-tab-target="needs" onclick="switchTab('needs', event)">
-        <span>الاحتياجات</span>
-    </button>
-    <button class="mobile-tab-button" data-tab-target="families" onclick="switchTab('families', event)">
-        <span>العائلات</span>
-    </button>
-    <button class="mobile-tab-button" data-tab-target="tasks" onclick="switchTab('tasks', event)">
-        <span>المهام</span>
-    </button>
-    <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports', event)">
-        <span>التقارير</span>
-    </button>
-    <button class="mobile-tab-button" data-tab-target="analytics" onclick="switchTab('analytics', event)">
-        <span>الإحصاءات</span>
-    </button>
-</div>
-
-<div class="container">
-    <div class="app-bar">
-        <div class="auth-user">
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <i class="bi bi-box-seam sidebar-brand-icon"></i>
+        <span class="sidebar-brand-text">إدارة المخزون</span>
+    </div>
+    <nav class="sidebar-nav">
+        <button class="sidebar-nav-item active" data-tab-target="inventory" onclick="switchTab('inventory')"><i class="bi bi-boxes"></i><span>المخزون</span></button>
+        <button class="sidebar-nav-item" data-tab-target="orders" onclick="switchTab('orders')"><i class="bi bi-cart3"></i><span>الطلبات</span></button>
+        <button class="sidebar-nav-item" data-tab-target="needs" onclick="switchTab('needs')"><i class="bi bi-clipboard-check"></i><span>الاحتياجات</span></button>
+        <button class="sidebar-nav-item" data-tab-target="families" onclick="switchTab('families')"><i class="bi bi-people-fill"></i><span>العائلات</span></button>
+        <button class="sidebar-nav-item" data-tab-target="tasks" onclick="switchTab('tasks')"><i class="bi bi-check2-all"></i><span>المهام</span></button>
+        <button class="sidebar-nav-item" data-tab-target="reports" onclick="switchTab('reports')"><i class="bi bi-file-bar-graph-fill"></i><span>التقارير</span></button>
+        <button class="sidebar-nav-item" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <i class="bi bi-person-circle"></i>
             <span id="authUserLabel" class="auth-user-label"></span>
         </div>
-        <button id="logoutBtn" class="filter-clear" type="button">تسجيل خروج</button>
+        <button id="logoutBtn" class="sidebar-logout-btn" type="button">
+            <i class="bi bi-box-arrow-left"></i><span>تسجيل خروج</span>
+        </button>
     </div>
-    <div class="tabs desktop-tabs">
-        <button class="tab active" data-tab-target="inventory" onclick="switchTab('inventory', event)">المخزون</button>
-        <button class="tab" data-tab-target="orders" onclick="switchTab('orders', event)">الطلبات</button>
-        <button class="tab" data-tab-target="needs" onclick="switchTab('needs', event)">الاحتياجات</button>
-        <button class="tab"  data-tab-target="families" onclick="switchTab('families', event)">العائلات</button>
-        <button class="tab" data-tab-target="tasks" onclick="switchTab('tasks', event)">المهام</button>
-        <button class="tab" data-tab-target="reports" onclick="switchTab('reports', event)">التقارير</button>
-        <button class="tab" data-tab-target="analytics" onclick="switchTab('analytics', event)">الإحصاءات</button>
-    </div>
-ٍ
-    <div id="inventory" class="section active">
-        <div class="section-intro">
-            <div>
-                <p class="section-kicker">المخزون</p>
-                <h2>إدارة المنتجات والكميات</h2>
-            </div>
-            <p>أضف المنتجات، عدّل الكميات، وتابع المتوفر من شاشة واحدة.</p>
-        </div>
+</aside>
 
-        <div id="inventoryFormCard" class="card">
-            <h3>إضافة مخزون</h3>
-            <div class="inventory-actions">
-                <button id="createItemBtn" class="done" type="button" onclick="openItemModal()">+ منتج جديد</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<div class="dashboard-main">
+    <div class="dashboard-topbar">
+        <button class="topbar-menu-btn" type="button" onclick="toggleSidebar()" aria-label="القائمة">
+            <i class="bi bi-list"></i>
+        </button>
+        <h1 class="topbar-title" id="topbarTitle">المخزون</h1>
+    </div>
+    <div class="dashboard-content">
+        <div class="container">
+    <div id="inventory" class="section active">
+
+        <div id="itemTypesManagerCard" class="card hidden"></div>
+
+        <div id="inventoryFormCard" class="card inventory-form-card">
+            <div class="inventory-form-header">
+                <h3>إضافة مخزون</h3>
+                <button id="createItemBtn" class="inv-new-item-btn done" type="button" onclick="openItemModal()">
+                    <i class="bi bi-plus-lg"></i> منتج جديد
+                </button>
             </div>
-            <div class="form-grid">
+            <div class="inventory-add-row">
                 <select id="name" required>
                     <option value="">اختر المنتج</option>
                 </select>
-                <input id="qty" type="number" placeholder="الكمية">
+                <input id="qty" type="number" placeholder="الكمية" min="1">
+                <button class="add inv-add-btn" onclick="addItem()">إضافة</button>
             </div>
-            <button class="add" onclick="addItem()">إضافة الكمية</button>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-            <h3 style="margin:0;">سجل المخزون</h3>
-            <button id="exportInventoryBtn" class="done hidden" type="button" onclick="exportInventoryExcel()" style="background:#1d7044;">تصدير Excel</button>
+        <div class="inventory-list-header">
+            <h3>المخزون</h3>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                <button id="invLogsBtn" class="inv-export-btn" type="button" onclick="openInvLogsModal()">
+                    <i class="bi bi-clock-history"></i> سجل الحركة
+                </button>
+                <button id="exportInventoryBtn" class="inv-export-btn hidden" type="button" onclick="exportInventoryExcel()">
+                    <i class="bi bi-file-earmark-excel"></i> تصدير
+                </button>
+            </div>
         </div>
         <div id="inventoryList"></div>
     </div>
@@ -598,10 +643,16 @@
                 </select>
                 <input id="familyFileNumber" placeholder="رقم الملف (اختياري)">
             </div>
-            <label class="checkbox-label">
-                <input id="familyFormFilled" type="checkbox">
-                تم ملء الاستمارة
-            </label>
+            <div class="family-checkboxes">
+                <label class="checkbox-label">
+                    <input id="familyFormFilled" type="checkbox">
+                    تم ملء الاستمارة
+                </label>
+                <label class="checkbox-label">
+                    <input id="familyMunicipalityRegistered" type="checkbox">
+                    مسجل بالبلدية
+                </label>
+            </div>
             <button class="add" type="button" onclick="createFamily()">حفظ العائلة</button>
         </div>
 
@@ -636,6 +687,14 @@
                         <option value="no">بدون رقم ملف</option>
                     </select>
                     <small>رقم الملف</small>
+                </div>
+                <div class="filter-group">
+                    <select id="familyMunicipalityFilter" onchange="applyFamilyFilters()">
+                        <option value="">الكل</option>
+                        <option value="yes">مسجلون بالبلدية</option>
+                        <option value="no">غير مسجلين</option>
+                    </select>
+                    <small>البلدية</small>
                 </div>
                 <div class="filter-group">
                     <select id="familyDuplicateFilter" onchange="applyFamilyFilters()">
@@ -779,27 +838,56 @@
             </div>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
                 <button class="done" onclick="generateRangeReport()">إنشاء التقرير</button>
-                <button id="downloadExcelBtn" class="done" style="display:none;background:#1d7044;" onclick="downloadReportAsExcel()">تحميل Excel</button>
+                <button id="downloadExcelBtn" class="done hidden" style="background:#1d7044;" onclick="downloadReportAsExcel()">
+                    <i class="bi bi-file-earmark-excel"></i> تحميل Excel
+                </button>
+                <button id="distDetailBtn" class="done hidden" style="background:#7c3aed;" onclick="openDistributionDetailDialog()">
+                    <i class="bi bi-list-ul"></i> تفاصيل التوزيعات
+                </button>
             </div>
         </div>
 
         <div id="reportContainer"></div>
+
+        <div class="card" style="margin-top:1.5rem;">
+            <h3>تقرير العائلات</h3>
+            <p style="color:var(--muted);font-size:0.9rem;margin:4px 0 14px;">ملخص الأفراد والتسجيل حسب القرية — يعمل على بيانات العائلات المحملة.</p>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                <button class="done" type="button" onclick="generateFamilyReport()">إنشاء التقرير</button>
+                <button id="downloadFamilyReportBtn" class="done hidden" style="background:#1d7044;" type="button" onclick="downloadFamilyReportExcel()">
+                    <i class="bi bi-file-earmark-excel"></i> تحميل Excel
+                </button>
+            </div>
+        </div>
+        <div id="familyReportContainer"></div>
     </div>
 
     <div id="analytics" class="section">
         <div class="section-intro">
             <div>
                 <p class="section-kicker">الإحصاءات</p>
-                <h2>إحصاءات العائلات</h2>
+                <h2>إحصاءات العائلات والتوزيعات</h2>
             </div>
-            <p>نسبة ملء الاستمارات ونسبة تسجيل أرقام الملفات لكل قرية.</p>
+            <p>مؤشرات شاملة عن العائلات والتوزيعات لكل قرية.</p>
         </div>
         <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
-            <button class="done" type="button" onclick="renderAnalytics()">تحديث</button>
+            <button class="done" type="button" onclick="ensureAnalyticsLoaded()">تحديث</button>
         </div>
         <div id="analyticsContent"></div>
     </div>
+        </div>
+    </div>
 </div>
+
+<nav class="mobile-tab-bar" aria-label="التنقل السريع">
+    <button class="mobile-tab-button active" data-tab-target="inventory" onclick="switchTab('inventory')"><i class="bi bi-boxes"></i><span>المخزون</span></button>
+    <button class="mobile-tab-button" data-tab-target="orders" onclick="switchTab('orders')"><i class="bi bi-cart3"></i><span>الطلبات</span></button>
+    <button class="mobile-tab-button" data-tab-target="needs" onclick="switchTab('needs')"><i class="bi bi-clipboard-check"></i><span>الاحتياجات</span></button>
+    <button class="mobile-tab-button" data-tab-target="families" onclick="switchTab('families')"><i class="bi bi-people-fill"></i><span>العائلات</span></button>
+    <button class="mobile-tab-button" data-tab-target="tasks" onclick="switchTab('tasks')"><i class="bi bi-check2-all"></i><span>المهام</span></button>
+    <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports')"><i class="bi bi-file-bar-graph-fill"></i><span>التقارير</span></button>
+    <button class="mobile-tab-button" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
+</nav>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>

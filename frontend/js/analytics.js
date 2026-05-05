@@ -5,66 +5,107 @@ async function ensureAnalyticsLoaded() {
     renderAnalytics();
 }
 
-function analyticsProgressBar(pct, type) {
-    const color = type === "success" ? "#16a34a" : "var(--primary)";
-    return `<div class="analytics-track"><div class="analytics-fill" style="width:${pct}%;background:${color}"></div></div>`;
+function analyticsProgressBar(pct, color) {
+    const bg = color || "var(--primary)";
+    return `<div class="analytics-track"><div class="analytics-fill" style="width:${pct}%;background:${bg}"></div></div>`;
+}
+
+function _pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
+function _hasFile(f) { return String(f.file_number ?? f.fileNumber ?? "").trim().length > 0; }
+function _hasFilled(f) { return Boolean(f.is_form_filled ?? f.isFormFilled ?? false); }
+function _isMuni(f) { return Boolean(f.municipality_registered ?? f.municipalityRegistered ?? false); }
+function _distCount(f) {
+    const fromApi = Number(f.distribution_count ?? f.distributions_count ?? NaN);
+    if (Number.isFinite(fromApi)) return fromApi;
+    return Number(familyStatsCache?.[String(f.id)]?.count ?? 0);
 }
 
 function renderAnalytics() {
     const container = document.getElementById("analyticsContent");
     if (!container) return;
 
-    const allFamilies = families || [];
-    if (!allFamilies.length) {
+    const all = families || [];
+    if (!all.length) {
         container.innerHTML = `<div class="card">لا توجد بيانات. افتح تبويب العائلات أولاً أو اضغط تحديث.</div>`;
         return;
     }
 
-    const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
-    const hasFile = (f) => String(f.file_number ?? f.fileNumber ?? "").trim().length > 0;
-    const hasFilled = (f) => Boolean(f.is_form_filled ?? f.isFormFilled ?? false);
+    const total         = all.length;
+    const totalPeople   = all.reduce((s, f) => s + Number(f.people_count ?? 1), 0);
+    const avgPeople     = total ? (totalPeople / total).toFixed(1) : 0;
+    const totalFilled   = all.filter(_hasFilled).length;
+    const totalFile     = all.filter(_hasFile).length;
+    const totalMuni     = all.filter(_isMuni).length;
+    const totalWithDist = all.filter((f) => _distCount(f) > 0).length;
 
-    const total = allFamilies.length;
-    const totalFilled = allFamilies.filter(hasFilled).length;
-    const totalFile = allFamilies.filter(hasFile).length;
-    const filledPct = pct(totalFilled, total);
-    const filePct = pct(totalFile, total);
+    const filledPct = _pct(totalFilled, total);
+    const filePct   = _pct(totalFile, total);
+    const muniPct   = _pct(totalMuni, total);
+    const distPct   = _pct(totalWithDist, total);
 
     // Group by village
     const byVillage = {};
-    allFamilies.forEach((f) => {
+    all.forEach((f) => {
         const vid = String(f.village_id ?? f.villageId ?? "");
         if (!byVillage[vid]) byVillage[vid] = [];
         byVillage[vid].push(f);
     });
 
     const rows = Object.entries(byVillage)
-        .map(([vid, fams]) => ({
-            name: getVillageNameById(vid),
-            count: fams.length,
-            filled: fams.filter(hasFilled).length,
-            fileNo: fams.filter(hasFile).length,
-        }))
+        .map(([vid, fams]) => {
+            const people     = fams.reduce((s, f) => s + Number(f.people_count ?? 1), 0);
+            const filled     = fams.filter(_hasFilled).length;
+            const fileNo     = fams.filter(_hasFile).length;
+            const muni       = fams.filter(_isMuni).length;
+            const withDist   = fams.filter((f) => _distCount(f) > 0).length;
+            return {
+                name: getVillageNameById(vid),
+                count: fams.length,
+                people,
+                avg: fams.length ? (people / fams.length).toFixed(1) : 0,
+                filled, fileNo, muni, withDist,
+            };
+        })
         .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 
+    const maxPeople = Math.max(...rows.map((r) => r.people), 1);
+
     container.innerHTML = `
+        <!-- Summary cards -->
         <div class="analytics-summary-grid">
             <div class="card analytics-summary-card">
                 <div class="analytics-summary-value">${total}</div>
                 <div class="analytics-summary-label">إجمالي العائلات</div>
             </div>
             <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalPeople.toLocaleString("ar")}</div>
+                <div class="analytics-summary-label">إجمالي الأفراد</div>
+                <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;">متوسط ${avgPeople} فرد/عائلة</div>
+            </div>
+            <div class="card analytics-summary-card">
                 <div class="analytics-summary-value">${totalFilled} <span class="analytics-pct-badge analytics-pct-success">${filledPct}%</span></div>
                 <div class="analytics-summary-label">ملأوا الاستمارة</div>
-                ${analyticsProgressBar(filledPct, "success")}
+                ${analyticsProgressBar(filledPct, "#16a34a")}
+            </div>
+            <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalMuni} <span class="analytics-pct-badge analytics-pct-primary">${muniPct}%</span></div>
+                <div class="analytics-summary-label">مسجلون بالبلدية</div>
+                ${analyticsProgressBar(muniPct)}
             </div>
             <div class="card analytics-summary-card">
                 <div class="analytics-summary-value">${totalFile} <span class="analytics-pct-badge analytics-pct-primary">${filePct}%</span></div>
                 <div class="analytics-summary-label">لديهم رقم ملف</div>
-                ${analyticsProgressBar(filePct, "primary")}
+                ${analyticsProgressBar(filePct)}
+            </div>
+            <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalWithDist} <span class="analytics-pct-badge analytics-pct-success">${distPct}%</span></div>
+                <div class="analytics-summary-label">تلقوا توزيعاً</div>
+                ${analyticsProgressBar(distPct, "#16a34a")}
             </div>
         </div>
 
+
+        <!-- Detailed village table -->
         <div class="card" style="margin-top:1.25rem;">
             <h3 style="margin-bottom:1rem;">تفاصيل حسب القرية</h3>
             <div class="report-table-wrap">
@@ -72,47 +113,67 @@ function renderAnalytics() {
                     <thead>
                         <tr>
                             <th>القرية</th>
-                            <th>عدد العائلات</th>
-                            <th>ملأوا الاستمارة</th>
-                            <th>نسبة الاستمارة</th>
-                            <th>لديهم رقم ملف</th>
-                            <th>نسبة رقم الملف</th>
+                            <th>عائلات</th>
+                            <th>أفراد</th>
+                            <th>متوسط</th>
+                            <th>استمارة %</th>
+                            <th>بلدية %</th>
+                            <th>رقم ملف %</th>
+                            <th>توزيع %</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${rows.map((r) => {
-                            const fp = pct(r.filled, r.count);
-                            const np = pct(r.fileNo, r.count);
+                            const fp  = _pct(r.filled,   r.count);
+                            const mp  = _pct(r.muni,     r.count);
+                            const np  = _pct(r.fileNo,   r.count);
+                            const dp  = _pct(r.withDist, r.count);
                             return `
-                                <tr>
-                                    <td><strong>${escapeHtml(r.name)}</strong></td>
-                                    <td class="analytics-num">${r.count}</td>
-                                    <td class="analytics-num">${r.filled}</td>
-                                    <td class="analytics-bar-cell">
-                                        ${analyticsProgressBar(fp, "success")}
-                                        <span class="analytics-bar-label">${fp}%</span>
-                                    </td>
-                                    <td class="analytics-num">${r.fileNo}</td>
-                                    <td class="analytics-bar-cell">
-                                        ${analyticsProgressBar(np, "primary")}
-                                        <span class="analytics-bar-label">${np}%</span>
-                                    </td>
-                                </tr>`;
+                            <tr>
+                                <td><strong>${escapeHtml(r.name)}</strong></td>
+                                <td class="analytics-num">${r.count}</td>
+                                <td class="analytics-num">${r.people}</td>
+                                <td class="analytics-num">${r.avg}</td>
+                                <td class="analytics-bar-cell">
+                                    ${analyticsProgressBar(fp, "#16a34a")}
+                                    <span class="analytics-bar-label">${fp}%</span>
+                                </td>
+                                <td class="analytics-bar-cell">
+                                    ${analyticsProgressBar(mp)}
+                                    <span class="analytics-bar-label">${mp}%</span>
+                                </td>
+                                <td class="analytics-bar-cell">
+                                    ${analyticsProgressBar(np)}
+                                    <span class="analytics-bar-label">${np}%</span>
+                                </td>
+                                <td class="analytics-bar-cell">
+                                    ${analyticsProgressBar(dp, "#16a34a")}
+                                    <span class="analytics-bar-label">${dp}%</span>
+                                </td>
+                            </tr>`;
                         }).join("")}
                     </tbody>
                     <tfoot>
                         <tr class="analytics-total-row">
                             <td><strong>الإجمالي</strong></td>
                             <td class="analytics-num">${total}</td>
-                            <td class="analytics-num">${totalFilled}</td>
+                            <td class="analytics-num">${totalPeople}</td>
+                            <td class="analytics-num">${avgPeople}</td>
                             <td class="analytics-bar-cell">
-                                ${analyticsProgressBar(filledPct, "success")}
+                                ${analyticsProgressBar(filledPct, "#16a34a")}
                                 <span class="analytics-bar-label">${filledPct}%</span>
                             </td>
-                            <td class="analytics-num">${totalFile}</td>
                             <td class="analytics-bar-cell">
-                                ${analyticsProgressBar(filePct, "primary")}
+                                ${analyticsProgressBar(muniPct)}
+                                <span class="analytics-bar-label">${muniPct}%</span>
+                            </td>
+                            <td class="analytics-bar-cell">
+                                ${analyticsProgressBar(filePct)}
                                 <span class="analytics-bar-label">${filePct}%</span>
+                            </td>
+                            <td class="analytics-bar-cell">
+                                ${analyticsProgressBar(distPct, "#16a34a")}
+                                <span class="analytics-bar-label">${distPct}%</span>
                             </td>
                         </tr>
                     </tfoot>

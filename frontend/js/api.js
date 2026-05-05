@@ -39,6 +39,11 @@ const api = {
     updateInventoryItem: (id, payload) => apiRequest(`/inventory/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteInventoryItem: (id) => apiRequest(`/inventory/${id}`, { method: "DELETE" }),
 
+    getItemTypes: () => apiRequest("/item-types"),
+    createItemType: (payload) => apiRequest("/item-types", { method: "POST", body: JSON.stringify(payload) }),
+    updateItemType: (id, payload) => apiRequest(`/item-types/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    deleteItemType: (id) => apiRequest(`/item-types/${id}`, { method: "DELETE" }),
+
     getOrders: (params = {}) => apiRequest(`/orders${toQueryString({ limit: ORDER_PAGE_SIZE, ...params })}`),
     getOrderById: (id) => apiRequest(`/orders/${id}`),
     createOrder: (payload) => apiRequest("/orders", { method: "POST", body: JSON.stringify(payload) }),
@@ -74,4 +79,6 @@ const api = {
     deleteTask: (id) => apiRequest(`/tasks/${id}`, { method: "DELETE" }),
 
     getRangeReport: (from, to) => apiRequest(`/reports/orders-by-range${toQueryString({ from, to })}`),
+    getDistributionsDetail: (from, to) => apiRequest(`/reports/distributions-detail${toQueryString({ from, to })}`),
+    getInventoryLogs: (itemId) => apiRequest(`/reports/inventory-logs${toQueryString({ item_id: itemId || "" })}`)
 };
