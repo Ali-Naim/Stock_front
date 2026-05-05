@@ -8,7 +8,6 @@ async function generateRangeReport() {
     if (reportFrom > reportTo) return alert("يجب أن يكون تاريخ البداية قبل أو يساوي تاريخ النهاية");
 
     document.getElementById("downloadExcelBtn")?.classList.add("hidden");
-    document.getElementById("distDetailBtn")?.classList.add("hidden");
     _lastReportData = null;
 
     try {
@@ -61,7 +60,6 @@ async function generateRangeReport() {
 
         _lastReportData = { reportData, sortedItems, itemTotals, rangeLabel, reportFrom, reportTo };
         document.getElementById("downloadExcelBtn")?.classList.remove("hidden");
-        document.getElementById("distDetailBtn")?.classList.remove("hidden");
     } catch (err) {
         console.error("Error generating report:", err);
         document.getElementById("reportContainer").innerHTML = `<div class="card" style="background:#fff1f1">فشل إنشاء التقرير</div>`;
@@ -300,12 +298,178 @@ function downloadReportAsExcel() {
 }
 
 let _lastFamilyReportData = null;
+let _familyDistItemTotalsByFamily = {};
+let _familyDistItemNames = [];
+let _familyDistFamiliesSnapshot = [];
+let _lastFamilyGapReportData = null;
+
+async function loadFamilyDistributionItemTotals(familyList = []) {
+    _familyDistItemTotalsByFamily = {};
+    _familyDistItemNames = [];
+    _familyDistFamiliesSnapshot = Array.isArray(familyList) ? familyList.slice() : [];
+
+    const stockItemNames = new Set((inventory || []).map((item) => String(item.name || "").trim()).filter(Boolean));
+    const allItemNames = new Set(stockItemNames);
+    const CHUNK = 8;
+
+    for (let i = 0; i < _familyDistFamiliesSnapshot.length; i += CHUNK) {
+        const chunk = _familyDistFamiliesSnapshot.slice(i, i + CHUNK);
+        await Promise.all(chunk.map(async (family) => {
+            const familyId = Number(family.id);
+            if (!familyId) return;
+            const key = String(familyId);
+            const totals = {};
+            try {
+                const rows = await api.getFamilyDistributions(familyId);
+                const distributions = Array.isArray(rows) ? rows : [];
+                distributions.forEach((dist) => {
+                    (Array.isArray(dist.items) ? dist.items : []).forEach((line) => {
+                        const itemName = String(line.item_name || "").trim();
+                        if (!itemName) return;
+                        if (!stockItemNames.has(itemName)) return;
+                        const qty = Number(line.quantity || 0);
+                        totals[itemName] = (totals[itemName] || 0) + qty;
+                    });
+                });
+            } catch (error) {
+                console.warn("Failed to load family distributions for report:", familyId, error?.message || error);
+            }
+            _familyDistItemTotalsByFamily[key] = totals;
+        }));
+    }
+
+    _familyDistItemNames = Array.from(allItemNames).sort((a, b) => a.localeCompare(b, "ar"));
+}
+
+async function renderFamilyDistributionGapReport() {
+    const container = document.getElementById("familyGapResults");
+    if (!container) return;
+
+    const itemValue = String(document.getElementById("familyGapItem")?.value || "");
+    const minQtyRaw = Number(document.getElementById("familyGapMinQty")?.value);
+    const minQty = Number.isFinite(minQtyRaw) && minQtyRaw >= 0 ? minQtyRaw : 2;
+    const downloadBtn = document.getElementById("downloadFamilyGapBtn");
+    if (downloadBtn) downloadBtn.classList.add("hidden");
+
+    if (!itemValue) {
+        container.innerHTML = renderEmptyState("اختر المادة أولاً ثم اضغط عرض.");
+        return;
+    }
+
+    container.innerHTML = `<div class="card">جارٍ تحميل نتائج التوزيعات...</div>`;
+    await loadFamilyDistributionItemTotals(_familyDistFamiliesSnapshot);
+
+    const rows = [];
+    let peopleTotal = 0;
+    let familiesTotal = 0;
+
+    _familyDistFamiliesSnapshot.forEach((family) => {
+        const familyId = String(family.id);
+        const map = _familyDistItemTotalsByFamily[familyId] || {};
+        const itemQty = Number(map[itemValue] || 0);
+        const allQty = Object.values(map).reduce((sum, val) => sum + Number(val || 0), 0);
+        const peopleCount = Number(family.people_count ?? 1) || 1;
+
+        let include = false;
+        if (itemValue === "__any__") {
+            include = allQty <= 0;
+        } else {
+            include = itemQty < minQty;
+        }
+        if (!include) return;
+
+        familiesTotal += 1;
+        peopleTotal += peopleCount;
+        rows.push({
+            name: getFamilyDisplayName(family),
+            phone: String(family.phone_number ?? family.phoneNumber ?? "-"),
+            village: getVillageNameById(String(family.village_id ?? "")),
+            people: peopleCount,
+            qty: itemValue === "__any__" ? allQty : itemQty,
+        });
+    });
+
+    rows.sort((a, b) => (a.qty - b.qty) || a.name.localeCompare(b.name, "ar"));
+
+    if (!rows.length) {
+        container.innerHTML = renderEmptyState("لا توجد عائلات مطابقة لهذا الشرط.");
+        return;
+    }
+
+    const itemLabel = itemValue === "__any__" ? "أي توزيع" : itemValue;
+    const bodyHtml = rows.map((row) => `
+        <tr>
+            <td>${escapeHtml(row.name)}</td>
+            <td>${escapeHtml(row.phone || "-")}</td>
+            <td>${escapeHtml(row.village)}</td>
+            <td style="text-align:center;">${row.people}</td>
+            <td style="text-align:center;">${row.qty}</td>
+        </tr>
+    `).join("");
+
+    container.innerHTML = `
+        <div class="card" style="margin-top:0.75rem;">
+            <div style="margin-bottom:0.6rem;color:var(--muted);font-weight:700;">
+                العائلات المطابقة: ${familiesTotal} • مجموع الأفراد: ${peopleTotal}
+            </div>
+            <div class="report-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>اسم العائلة</th>
+                            <th>رقم الهاتف</th>
+                            <th>القرية</th>
+                            <th style="text-align:center;">عدد الأفراد</th>
+                            <th style="text-align:center;">المستلم من ${escapeHtml(itemLabel)}</th>
+                        </tr>
+                    </thead>
+                    <tbody>${bodyHtml}</tbody>
+                    <tfoot>
+                        <tr style="background:#f4f8fe;font-weight:800;">
+                            <td>المجموع</td>
+                            <td></td>
+                            <td style="text-align:center;">${peopleTotal}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    `;
+
+    _lastFamilyGapReportData = { rows, itemLabel, minQty, familiesTotal, peopleTotal };
+    if (downloadBtn) downloadBtn.classList.remove("hidden");
+}
+
+function downloadFamilyGapExcel() {
+    if (!_lastFamilyGapReportData || !window.XLSX) return;
+    const { rows, itemLabel, minQty } = _lastFamilyGapReportData;
+
+    const header = ["اسم العائلة", "رقم الهاتف", "القرية", "عدد الأفراد", `المستلم من ${itemLabel}`];
+    const dataRows = rows.map((r) => [r.name, r.phone || "-", r.village, r.people, r.qty]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+    ws["!views"] = [{ rightToLeft: true }];
+    ws["!cols"] = [{ wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 18 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "فجوة التوزيعات");
+    XLSX.writeFile(wb, `فجوة_التوزيع_${itemLabel}_${minQty}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
 
 async function generateFamilyReport() {
     const container = document.getElementById("familyReportContainer");
     const downloadBtn = document.getElementById("downloadFamilyReportBtn");
     _lastFamilyReportData = null;
     if (downloadBtn) downloadBtn.classList.add("hidden");
+
+    // Fetch stock items only when the report is explicitly requested.
+    try {
+        const stockRows = await api.getInventory();
+        inventory = Array.isArray(stockRows) ? stockRows : [];
+    } catch (error) {
+        console.warn("Could not refresh stock items for family report:", error?.message || error);
+        inventory = Array.isArray(inventory) ? inventory : [];
+    }
 
     if (typeof ensureFamiliesLoaded === "function") await ensureFamiliesLoaded();
 
@@ -398,7 +562,53 @@ async function generateFamilyReport() {
                         <tbody>${rowsHtml}${totRow}</tbody>
                     </table>
                 </div>
+            </div>
+            <div class="card" style="margin-top:1rem;">
+                <h4 style="margin-bottom:0.8rem;">العائلات التي لم تستلم أو استلمت أقل من حد معين</h4>
+                <div class="form-grid" style="grid-template-columns: 1fr 160px auto;">
+                    <select id="familyGapItem"></select>
+                    <input id="familyGapMinQty" type="number" min="0" step="1" value="2" placeholder="الحد الأدنى">
+                    <button class="done" type="button" onclick="renderFamilyDistributionGapReport()" style="min-height:50px;">عرض</button>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
+                    <button id="downloadFamilyGapBtn" class="done hidden" type="button" style="background:#1d7044;" onclick="downloadFamilyGapExcel()">
+                        <i class="bi bi-file-earmark-excel"></i> تحميل Excel
+                    </button>
+                </div>
+                <small style="color:var(--muted);display:block;margin-top:0.4rem;">
+                    مثال: لاختيار "planket" وحد أدنى 2 سيظهر من استلم أقل من 2 (بما فيهم 0).
+                </small>
+                <div id="familyGapResults" style="margin-top:0.6rem;">
+                    <div class="card">اختر المادة والحد الأدنى ثم اضغط عرض.</div>
+                </div>
             </div>`;
+    }
+
+    _familyDistFamiliesSnapshot = Array.isArray(all) ? all.slice() : [];
+    _lastFamilyGapReportData = null;
+    const gapSelect = document.getElementById("familyGapItem");
+    if (gapSelect) {
+        gapSelect.innerHTML = [
+            `<option value="">اختر المادة</option>`,
+            `<option value="__any__">لم يستلموا أي توزيع</option>`,
+            ..._familyDistItemNames.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+        ].join("");
+    }
+    if (gapSelect && _familyDistItemNames.length === 0) {
+        // Item list must come from stock items, not distribution history.
+        const stockNames = (inventory || []).map((it) => String(it.name || "").trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, "ar"));
+        gapSelect.innerHTML = [
+            `<option value="">اختر المادة</option>`,
+            `<option value="__any__">لم يستلموا أي توزيع</option>`,
+            ...stockNames.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+        ].join("");
+    } else if (gapSelect) {
+        const stockNames = (inventory || []).map((it) => String(it.name || "").trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, "ar"));
+        gapSelect.innerHTML = [
+            `<option value="">اختر المادة</option>`,
+            `<option value="__any__">لم يستلموا أي توزيع</option>`,
+            ...stockNames.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+        ].join("");
     }
 
     if (downloadBtn) downloadBtn.classList.remove("hidden");
@@ -459,4 +669,6 @@ window.openDistributionDetailDialog = openDistributionDetailDialog;
 window.closeDistDetailModal = closeDistDetailModal;
 window.openInvLogsModal = openInvLogsModal;
 window.closeInvLogsModal = closeInvLogsModal;
+window.renderFamilyDistributionGapReport = renderFamilyDistributionGapReport;
+window.downloadFamilyGapExcel = downloadFamilyGapExcel;
 

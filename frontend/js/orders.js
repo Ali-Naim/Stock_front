@@ -174,7 +174,21 @@ async function applyInventoryForItems(items = []) {
 }
 
 async function submitOrder() {
+    if (submitOrder._isSubmitting) return;
     if (currentOrder.length === 0) return alert("لا توجد عناصر في الطلب");
+
+    const submitBtn = document.querySelector("#orders .button-group .done");
+    const cancelBtn = document.getElementById("cancelEditBtn");
+    const prevSubmitText = submitBtn?.textContent || "تأكيد الطلب";
+
+    submitOrder._isSubmitting = true;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "جارٍ الحفظ...";
+        submitBtn.style.opacity = "0.8";
+        submitBtn.style.cursor = "wait";
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
 
     try {
         const orderName = String(document.getElementById("orderName").value).trim();
@@ -216,6 +230,15 @@ async function submitOrder() {
     } catch (err) {
         console.error("Error submitting order:", err);
         alert(err.message || "فشل حفظ الطلب");
+    } finally {
+        submitOrder._isSubmitting = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = prevSubmitText;
+            submitBtn.style.opacity = "";
+            submitBtn.style.cursor = "";
+        }
+        if (cancelBtn) cancelBtn.disabled = false;
     }
 }
 async function setOrderStatus(orderId, status) {
@@ -511,6 +534,100 @@ function replaceOrderCard(orderId) {
     card.remove();
 }
 
+let ordersRealtimeTimer = null;
+let ordersRealtimeInFlight = false;
+let ordersRealtimeErrorCount = 0;
+const ORDERS_REALTIME_INTERVAL_MS = 3000;
+
+function isOrdersTabActive() {
+    return document.getElementById("orders")?.classList.contains("active");
+}
+
+function _snapshotOrderForSync(order) {
+    if (!order) return null;
+    return {
+        id: order.id,
+        status: order.status,
+        is_saved: Boolean(order.is_saved),
+        created_at: order.created_at || "",
+        order_name: order.order_name || "",
+        village: order.village || "",
+        items: JSON.stringify(order.items || []),
+    };
+}
+
+function _hasOrdersListChanged(next = [], current = []) {
+    if (next.length !== current.length) return true;
+    const byId = new Map(current.map((o) => [String(o.id), _snapshotOrderForSync(o)]));
+    for (const order of next) {
+        const prev = byId.get(String(order.id));
+        const now = _snapshotOrderForSync(order);
+        if (!prev) return true;
+        if (JSON.stringify(prev) !== JSON.stringify(now)) return true;
+    }
+    return false;
+}
+
+async function syncOrdersRealtime() {
+    if (!isOrdersTabActive()) return;
+    if (ordersRealtimeInFlight) return;
+    if (submitOrder?._isSubmitting || editingOrderId || inlineEditingOrderId) return;
+
+    ordersRealtimeInFlight = true;
+    try {
+        const result = await api.getOrders({
+            name: currentFilters.name?.trim() || undefined,
+            village: currentFilters.village || undefined,
+            status: currentFilters.status || undefined,
+            saved: currentFilters.saved === "saved" ? "true" : currentFilters.saved === "unsaved" ? "false" : undefined,
+            registered: currentFilters.registered === "registered" ? "true" : currentFilters.registered === "not_registered" ? "false" : undefined,
+            dateFrom: currentFilters.dateFrom || undefined,
+            dateTo: currentFilters.dateTo || undefined,
+            page: ordersPage,
+        });
+
+        const nextHistory = result?.data || [];
+        const nextTotal = result?.total ?? 0;
+        const changed = _hasOrdersListChanged(nextHistory, currentOrdersData) || Number(nextTotal) !== Number(ordersTotalCount);
+        if (!changed) {
+            ordersRealtimeErrorCount = 0;
+            return;
+        }
+
+        currentOrdersData = nextHistory;
+        ordersTotalCount = nextTotal;
+        updateOrderCountLabel();
+
+        const container = document.getElementById("orderHistory");
+        if (!container) return;
+        if (!nextHistory.length) {
+            container.innerHTML = renderEmptyState("لا توجد سجلات طلبات بعد");
+        } else {
+            container.innerHTML = nextHistory.map(buildOrderCardHtml).join("");
+        }
+        renderOrderPagination();
+        ordersRealtimeErrorCount = 0;
+    } catch (err) {
+        ordersRealtimeErrorCount += 1;
+        if (ordersRealtimeErrorCount <= 2) {
+            console.warn("Orders realtime sync failed:", err?.message || err);
+        }
+    } finally {
+        ordersRealtimeInFlight = false;
+    }
+}
+
+function startOrdersRealtimeSync() {
+    if (ordersRealtimeTimer) return;
+    ordersRealtimeTimer = setInterval(syncOrdersRealtime, ORDERS_REALTIME_INTERVAL_MS);
+}
+
+function stopOrdersRealtimeSync() {
+    if (!ordersRealtimeTimer) return;
+    clearInterval(ordersRealtimeTimer);
+    ordersRealtimeTimer = null;
+}
+
 async function loadOrderHistory(nameFilter = "", villageFilter = "", statusFilter = "", savedFilter = "", registeredFilter = "", dateFrom = "", dateTo = "") {
     try {
         const result = await api.getOrders({
@@ -615,3 +732,5 @@ function clearFilters() {
 
 // Debounce text-input searches so we don't fire an API call on every keystroke
 window.applyFilters = debounce(applyFilters, 350);
+window.startOrdersRealtimeSync = startOrdersRealtimeSync;
+window.stopOrdersRealtimeSync = stopOrdersRealtimeSync;

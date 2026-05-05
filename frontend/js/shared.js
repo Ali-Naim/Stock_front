@@ -55,6 +55,11 @@ function switchTab(tabName) {
     if (tabName === "orders" && (!currentFilters.dateFrom && !currentFilters.dateTo)) {
         setTodayDateFilters();
     }
+    if (tabName === "orders" && typeof startOrdersRealtimeSync === "function") {
+        startOrdersRealtimeSync();
+    } else if (tabName !== "orders" && typeof stopOrdersRealtimeSync === "function") {
+        stopOrdersRealtimeSync();
+    }
 
     if (tabName === "families" && typeof ensureFamiliesLoaded === "function") {
         ensureFamiliesLoaded();
