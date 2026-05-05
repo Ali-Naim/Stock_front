@@ -1441,6 +1441,22 @@ button {
     min-width: 110px;
 }
 
+.village-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent, #1a56db);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+.village-link-btn:hover {
+    color: var(--accent-dark, #1035a0);
+    text-decoration: underline;
+}
+
 .need-items-cell {
     min-width: 340px;
     line-height: 1.7;

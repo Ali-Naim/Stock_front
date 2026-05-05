@@ -604,7 +604,7 @@ function getFilteredFamilies() {
     });
 }
 
-function renderFamilyDistributions(distributions = []) {
+function renderFamilyDistributions(distributions = [], familyId = null) {
     if (!Array.isArray(distributions) || !distributions.length) {
         return `<div class="card distribution-empty">لا يوجد سجل توزيعات بعد.</div>`;
     }
@@ -618,6 +618,7 @@ function renderFamilyDistributions(distributions = []) {
                         <th>النوع</th>
                         <th>المواد</th>
                         <th>ملاحظات</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -635,12 +636,16 @@ function renderFamilyDistributions(distributions = []) {
                                       .join("<br>")
                                 : "-";
                             const notes = dist.notes || dist.note || "";
+                            const deleteBtn = familyId && dist.id
+                                ? `<button class="delete dist-delete-btn" title="حذف التوزيع" onclick="deleteDistribution(${familyId}, ${dist.id}, this)">×</button>`
+                                : "";
                             return `
                                 <tr>
                                     <td class="needs-date-cell">${escapeHtml(time ? formatDate(time) : "-")}</td>
                                     <td>${escapeHtml(getDistributionTypeLabel(dist.type))}</td>
                                     <td class="need-items-cell">${itemsText || "-"}</td>
                                     <td class="need-notes-cell">${escapeHtml(notes || "-")}</td>
+                                    <td style="text-align:center;">${deleteBtn}</td>
                                 </tr>
                             `;
                         })
@@ -649,6 +654,24 @@ function renderFamilyDistributions(distributions = []) {
             </table>
         </div>
     `;
+}
+
+async function deleteDistribution(familyId, distId, btn) {
+    if (!confirm("هل تريد حذف هذا التوزيع وإعادة الكميات إلى المخزون؟")) return;
+    if (btn) { btn.disabled = true; btn.textContent = "..."; }
+    try {
+        await api.deleteFamilyDistribution(familyId, distId);
+        const key = String(familyId);
+        familyDistributionsCache[key] = null;
+        const distributions = await loadFamilyDistributions(familyId, { force: true });
+        const container = document.getElementById("distributionsHistoryContent");
+        if (container) container.innerHTML = renderFamilyDistributions(distributions, familyId);
+        await refreshFamilies({ silent: true });
+    } catch (err) {
+        console.error("Failed to delete distribution:", err);
+        alert("فشل حذف التوزيع");
+        if (btn) { btn.disabled = false; btn.textContent = "×"; }
+    }
 }
 
 async function loadFamilyDistributions(familyId, { force = false } = {}) {
@@ -682,7 +705,7 @@ async function openDistributionsHistoryModal(familyId) {
     document.body.style.overflow = "hidden";
 
     const distributions = await loadFamilyDistributions(id);
-    if (container) container.innerHTML = renderFamilyDistributions(distributions);
+    if (container) container.innerHTML = renderFamilyDistributions(distributions, id);
 
     const stats = {
         count: Array.isArray(distributions) ? distributions.length : 0,
@@ -1217,6 +1240,7 @@ window.closeDistributionModal = closeDistributionModal;
 window.addDistributionItem = addDistributionItem;
 window.removeDistributionItem = removeDistributionItem;
 window.submitDistribution = submitDistribution;
+window.deleteDistribution = deleteDistribution;
 window.openDistributionsHistoryModal = openDistributionsHistoryModal;
 window.closeDistributionsHistoryModal = closeDistributionsHistoryModal;
 window.exportFamiliesExcel = exportFamiliesExcel;

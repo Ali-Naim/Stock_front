@@ -11,19 +11,33 @@ async function generateRangeReport() {
     _lastReportData = null;
 
     try {
-        const report = await api.getRangeReport(reportFrom, reportTo);
-        const reportData = report?.villages || {};
-        const sortedItems = report?.items || [];
-        if (sortedItems.length === 0) {
-            document.getElementById("reportContainer").innerHTML = renderEmptyState("لا توجد طلبات مكتملة ضمن هذه الفترة");
+        const rows = await api.getDistributionsDetail(reportFrom, reportTo);
+        const distributions = Array.isArray(rows) ? rows : [];
+        if (!distributions.length) {
+            document.getElementById("reportContainer").innerHTML = renderEmptyState("لا توجد توزيعات ضمن هذه الفترة");
             return;
         }
 
+        // Aggregate by village → item → total qty
+        const reportData = {};
+        const itemSet = new Set();
+        distributions.forEach((dist) => {
+            const village = dist.village || "غير محدد";
+            if (!reportData[village]) reportData[village] = {};
+            (Array.isArray(dist.items) ? dist.items : []).forEach((line) => {
+                const name = String(line.item_name || "").trim();
+                if (!name) return;
+                itemSet.add(name);
+                reportData[village][name] = (reportData[village][name] || 0) + Number(line.quantity || 0);
+            });
+        });
+
+        const sortedItems = Array.from(itemSet).sort((a, b) => a.localeCompare(b, "ar"));
         const itemTotals = Object.fromEntries(sortedItems.map((item) => [item, 0]));
 
         let rowsHtml = "";
         Object.keys(reportData).sort((a, b) => a.localeCompare(b, "ar")).forEach((village) => {
-            rowsHtml += `<tr><td>${escapeHtml(village)}</td>`;
+            rowsHtml += `<tr><td><button class="village-link-btn" type="button" data-village="${escapeHtml(village)}" onclick="openVillageDistDetailDialog(this.dataset.village)">${escapeHtml(village)}</button></td>`;
             sortedItems.forEach((itemName) => {
                 const qty = reportData[village][itemName] || 0;
                 itemTotals[itemName] += qty;
@@ -58,7 +72,7 @@ async function generateRangeReport() {
                 </div>
             </div>`;
 
-        _lastReportData = { reportData, sortedItems, itemTotals, rangeLabel, reportFrom, reportTo };
+        _lastReportData = { reportData, sortedItems, itemTotals, rangeLabel, reportFrom, reportTo, distributions };
         document.getElementById("downloadExcelBtn")?.classList.remove("hidden");
     } catch (err) {
         console.error("Error generating report:", err);
@@ -70,6 +84,89 @@ function closeDistDetailModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById("distDetailModal")?.classList.remove("active");
     document.body.style.overflow = "";
+}
+
+async function openVillageDistDetailDialog(villageName) {
+    if (!_lastReportData) return;
+    const { reportFrom, reportTo } = _lastReportData;
+
+    const modal = document.getElementById("distDetailModal");
+    const title = document.getElementById("distDetailModalTitle");
+    const content = document.getElementById("distDetailContent");
+    if (!modal || !content) return;
+
+    if (title) title.textContent = `توزيعات قرية ${villageName} (${reportFrom} → ${reportTo})`;
+    content.innerHTML = `<div class="card">جارٍ تحميل التوزيعات...</div>`;
+    modal.classList.add("active");
+    document.body.style.overflow = "hidden";
+
+    try {
+        const distributions = (_lastReportData.distributions || []).filter(
+            (d) => (d.village || "غير محدد") === villageName,
+        );
+
+        if (!distributions.length) {
+            content.innerHTML = renderEmptyState("لا توجد توزيعات لهذه القرية في هذه الفترة.");
+            return;
+        }
+
+        const itemNames = Array.from(
+            new Set(
+                distributions.flatMap((d) => (Array.isArray(d.items) ? d.items : [])
+                    .map((line) => String(line.item_name || "").trim())
+                    .filter(Boolean),
+                ),
+            ),
+        ).sort((a, b) => a.localeCompare(b, "ar"));
+
+        const itemTotals = Object.fromEntries(itemNames.map((n) => [n, 0]));
+
+        const linesHtml = distributions.map((dist) => {
+            const rowMap = Object.fromEntries(itemNames.map((n) => [n, 0]));
+            (Array.isArray(dist.items) ? dist.items : []).forEach((line) => {
+                const n = String(line.item_name || "").trim();
+                if (!n) return;
+                const qty = Number(line.quantity || 0);
+                rowMap[n] = (rowMap[n] || 0) + qty;
+                itemTotals[n] = (itemTotals[n] || 0) + qty;
+            });
+            const itemCells = itemNames.map((n) => `<td style="text-align:center;">${rowMap[n] || 0}</td>`).join("");
+            return `
+                <tr>
+                    <td class="needs-date-cell">${escapeHtml(dist.distributed_at ? formatDate(dist.distributed_at) : "-")}</td>
+                    <td>${escapeHtml(dist.family_name || "-")}</td>
+                    ${itemCells}
+                </tr>`;
+        }).join("");
+
+        const totalsCells = itemNames.map((n) => `<td style="text-align:center;font-weight:800;">${itemTotals[n] || 0}</td>`).join("");
+
+        content.innerHTML = `
+            <div class="card">
+                <div class="report-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>العائلة</th>
+                                ${itemNames.map((n) => `<th style="text-align:center;">${escapeHtml(n)}</th>`).join("")}
+                            </tr>
+                        </thead>
+                        <tbody>${linesHtml}</tbody>
+                        <tfoot>
+                            <tr style="background:#f4f8fe;font-weight:800;">
+                                <td>المجموع</td>
+                                <td></td>
+                                ${totalsCells}
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>`;
+    } catch (error) {
+        console.error("Error loading village distribution detail:", error);
+        content.innerHTML = `<div class="card" style="background:#fff1f1">فشل تحميل التوزيعات</div>`;
+    }
 }
 
 async function openDistributionDetailDialog() {
@@ -666,6 +763,7 @@ function setTodayDateFilters() {
 }
 
 window.openDistributionDetailDialog = openDistributionDetailDialog;
+window.openVillageDistDetailDialog = openVillageDistDetailDialog;
 window.closeDistDetailModal = closeDistDetailModal;
 window.openInvLogsModal = openInvLogsModal;
 window.closeInvLogsModal = closeInvLogsModal;
