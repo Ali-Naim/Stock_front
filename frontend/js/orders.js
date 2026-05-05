@@ -244,14 +244,19 @@ async function submitOrder() {
 async function setOrderStatus(orderId, status) {
     const order = currentOrdersData.find(o => String(o.id) === String(orderId));
     if (!order) return;
+
+    const card = document.querySelector(`[data-order-id="${orderId}"]`);
+    if (card) card.classList.add("order-card-loading");
+
     const prev = order.status;
-    order.status = status;
-    replaceOrderCard(orderId);
     try {
         await api.updateOrder(orderId, { status });
+        order.status = status;
+        replaceOrderCard(orderId);
     } catch (err) {
         console.error("Error updating order status:", err);
         order.status = prev;
+        if (card) card.classList.remove("order-card-loading");
         replaceOrderCard(orderId);
         alert("فشل تحديث حالة الطلب");
     }
@@ -345,6 +350,11 @@ async function saveInlineEdit(orderId) {
 
     if (updatedItems.length === 0) return alert("يجب أن يحتوي الطلب على عنصر واحد على الأقل");
 
+    const card = document.querySelector(`[data-order-id="${orderId}"]`);
+    const saveBtn = card?.querySelector(".inline-actions .add");
+    if (card) card.classList.add("order-card-loading");
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "جارٍ الحفظ..."; }
+
     try {
         const originalOrder = await api.getOrderById(orderId);
 
@@ -354,12 +364,13 @@ async function saveInlineEdit(orderId) {
 
         await api.updateOrder(orderId, { order_name: newName, village: newVillage, items: updatedItems });
 
-        alert("تم تحديث الطلب بنجاح");
         inlineEditingOrderId = null;
         await loadItems();
         await loadOrderHistory(currentFilters.name, currentFilters.village, currentFilters.status, currentFilters.saved, currentFilters.registered, currentFilters.dateFrom, currentFilters.dateTo);
     } catch (err) {
         console.error("Error saving inline edit:", err);
+        if (card) card.classList.remove("order-card-loading");
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "حفظ"; }
         alert(err.message || "فشل حفظ التعديلات");
     }
 }
