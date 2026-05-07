@@ -742,6 +742,14 @@
                     </select>
                     <small>الحظر</small>
                 </div>
+                <div class="filter-group">
+                    <input id="familyDistMinFilter" type="number" min="0" placeholder="من" oninput="applyFamilyFilters()" style="width:60px;">
+                    <small>توزيعات (من)</small>
+                </div>
+                <div class="filter-group">
+                    <input id="familyDistMaxFilter" type="number" min="0" placeholder="إلى" oninput="applyFamilyFilters()" style="width:60px;">
+                    <small>توزيعات (إلى)</small>
+                </div>
                 <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
                 <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
                 <button id="exportFamiliesBtn" onclick="exportFamiliesExcel()" class="filter-clear" type="button">تصدير Excel</button>

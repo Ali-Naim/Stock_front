@@ -4,7 +4,7 @@ let editingFamilyId = null;
 let relationFamilyId = null;
 let familyRelationsCache = {};
 let familiesPage = 1;
-const FAMILIES_PAGE_SIZE = 25;
+const FAMILIES_PAGE_SIZE = 100;
 
 function getFamilyDisplayName(family) {
     const first = family?.father_first_name ?? family?.fatherFirstName ?? family?.first_name ?? "";
@@ -488,6 +488,8 @@ function readFamilyFiltersFromUi() {
         housingType: document.getElementById("familyHousingTypeFilter")?.value || "",
         blocked: document.getElementById("familyBlockedFilter")?.value || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
+        distMin: document.getElementById("familyDistMinFilter")?.value?.trim() || "",
+        distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
     };
 }
 
@@ -500,9 +502,9 @@ function applyFamilyFilters() {
 function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
-     "familyHousingTypeFilter", "familyBlockedFilter"]
+     "familyHousingTypeFilter", "familyBlockedFilter", "familyDistMinFilter", "familyDistMaxFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", distMin: "", distMax: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     renderFamilies();
@@ -573,6 +575,8 @@ function getFilteredFamilies() {
     const housingTypeFilter = String(currentFamilyFilters?.housingType || "");
     const blockedFilter = String(currentFamilyFilters?.blocked || "");
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
+    const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
+    const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
 
     const filtered = (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
@@ -593,6 +597,11 @@ function getFilteredFamilies() {
         const blocked = Boolean(family.is_blocked ?? family.isBlocked ?? false);
         if (blockedFilter === "yes" && !blocked) return false;
         if (blockedFilter === "no" && blocked) return false;
+        if (distMin !== null || distMax !== null) {
+            const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
+            if (distMin !== null && cnt < distMin) return false;
+            if (distMax !== null && cnt > distMax) return false;
+        }
         if (!nameQuery) return true;
         const text = `${getFamilyDisplayName(family)} ${family?.phone_number ?? ""}`.toLowerCase();
         return text.includes(nameQuery);
@@ -1177,8 +1186,10 @@ async function importFamiliesExcel() {
 
 async function exportFamiliesExcel() {
     const btn = document.getElementById("exportFamiliesBtn");
-    const filtered = getFilteredFamilies();
-    if (!filtered.length) return alert("لا توجد عائلات للتصدير");
+    const allFiltered = getFilteredFamilies();
+    if (!allFiltered.length) return alert("لا توجد عائلات للتصدير");
+    const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
+    const filtered = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
 
     if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
 
