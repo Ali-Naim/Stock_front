@@ -1186,10 +1186,8 @@ async function importFamiliesExcel() {
 
 async function exportFamiliesExcel() {
     const btn = document.getElementById("exportFamiliesBtn");
-    const allFiltered = getFilteredFamilies();
-    if (!allFiltered.length) return alert("لا توجد عائلات للتصدير");
-    const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
-    const filtered = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
+    const filtered = getFilteredFamilies();
+    if (!filtered.length) return alert("لا توجد عائلات للتصدير");
 
     if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
 
