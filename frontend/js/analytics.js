@@ -14,6 +14,7 @@ function _pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
 function _hasFile(f) { return String(f.file_number ?? f.fileNumber ?? "").trim().length > 0; }
 function _hasFilled(f) { return Boolean(f.is_form_filled ?? f.isFormFilled ?? false); }
 function _isMuni(f) { return Boolean(f.municipality_registered ?? f.municipalityRegistered ?? false); }
+function _housingType(f) { return f.housing_type ?? f.housingType ?? null; }
 function _distCount(f) {
     const fromApi = Number(f.distribution_count ?? f.distributions_count ?? NaN);
     if (Number.isFinite(fromApi)) return fromApi;
@@ -37,11 +38,15 @@ function renderAnalytics() {
     const totalFile     = all.filter(_hasFile).length;
     const totalMuni     = all.filter(_isMuni).length;
     const totalWithDist = all.filter((f) => _distCount(f) > 0).length;
+    const totalHouse    = all.filter((f) => _housingType(f) === "house").length;
+    const totalShelter  = all.filter((f) => _housingType(f) === "shelter_center").length;
 
-    const filledPct = _pct(totalFilled, total);
-    const filePct   = _pct(totalFile, total);
-    const muniPct   = _pct(totalMuni, total);
-    const distPct   = _pct(totalWithDist, total);
+    const filledPct  = _pct(totalFilled, total);
+    const filePct    = _pct(totalFile, total);
+    const muniPct    = _pct(totalMuni, total);
+    const distPct    = _pct(totalWithDist, total);
+    const housePct   = _pct(totalHouse, total);
+    const shelterPct = _pct(totalShelter, total);
 
     // Group by village
     const byVillage = {};
@@ -58,12 +63,14 @@ function renderAnalytics() {
             const fileNo     = fams.filter(_hasFile).length;
             const muni       = fams.filter(_isMuni).length;
             const withDist   = fams.filter((f) => _distCount(f) > 0).length;
+            const house      = fams.filter((f) => _housingType(f) === "house").length;
+            const shelter    = fams.filter((f) => _housingType(f) === "shelter_center").length;
             return {
                 name: getVillageNameById(vid),
                 count: fams.length,
                 people,
                 avg: fams.length ? (people / fams.length).toFixed(1) : 0,
-                filled, fileNo, muni, withDist,
+                filled, fileNo, muni, withDist, house, shelter,
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, "ar"));
@@ -102,6 +109,16 @@ function renderAnalytics() {
                 <div class="analytics-summary-label">تلقوا توزيعاً</div>
                 ${analyticsProgressBar(distPct, "#16a34a")}
             </div>
+            <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalHouse} <span class="analytics-pct-badge analytics-pct-primary">${housePct}%</span></div>
+                <div class="analytics-summary-label">يسكنون في منزل</div>
+                ${analyticsProgressBar(housePct, "#0369a1")}
+            </div>
+            <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalShelter} <span class="analytics-pct-badge analytics-pct-primary">${shelterPct}%</span></div>
+                <div class="analytics-summary-label">في مركز إيواء</div>
+                ${analyticsProgressBar(shelterPct, "#7c3aed")}
+            </div>
         </div>
 
 
@@ -120,6 +137,8 @@ function renderAnalytics() {
                             <th>بلدية %</th>
                             <th>رقم ملف %</th>
                             <th>توزيع %</th>
+                            <th>منازل</th>
+                            <th>مراكز إيواء</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -150,6 +169,8 @@ function renderAnalytics() {
                                     ${analyticsProgressBar(dp, "#16a34a")}
                                     <span class="analytics-bar-label">${dp}%</span>
                                 </td>
+                                <td class="analytics-num">${r.house}</td>
+                                <td class="analytics-num">${r.shelter}</td>
                             </tr>`;
                         }).join("")}
                     </tbody>
@@ -175,6 +196,8 @@ function renderAnalytics() {
                                 ${analyticsProgressBar(distPct, "#16a34a")}
                                 <span class="analytics-bar-label">${distPct}%</span>
                             </td>
+                            <td class="analytics-num">${totalHouse}</td>
+                            <td class="analytics-num">${totalShelter}</td>
                         </tr>
                     </tfoot>
                 </table>

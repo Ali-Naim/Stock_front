@@ -1764,6 +1764,14 @@ button {
     background: #fef3c7;
 }
 
+.family-row-blocked td {
+    background: #fff1f2;
+}
+
+.family-row-blocked:hover td {
+    background: #ffe4e6;
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;

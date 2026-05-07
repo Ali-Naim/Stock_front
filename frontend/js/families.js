@@ -272,6 +272,8 @@ function openFamilyEditModal(familyId) {
     const fileNumber = family.file_number ?? family.fileNumber ?? "";
     const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
     const municipalityRegistered = family.municipality_registered ?? family.municipalityRegistered ?? false;
+    const housingType = family.housing_type ?? family.housingType ?? "";
+    const isBlocked = family.is_blocked ?? family.isBlocked ?? false;
 
     const title = document.getElementById("familyEditModalTitle");
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
@@ -287,6 +289,10 @@ function openFamilyEditModal(familyId) {
     if (formFilledEl) formFilledEl.checked = Boolean(isFormFilled);
     const muniEl = document.getElementById("editFamilyMunicipalityRegistered");
     if (muniEl) muniEl.checked = Boolean(municipalityRegistered);
+    const housingTypeEl = document.getElementById("editFamilyHousingType");
+    if (housingTypeEl) housingTypeEl.value = housingType || "";
+    const isBlockedEl = document.getElementById("editFamilyIsBlocked");
+    if (isBlockedEl) isBlockedEl.checked = Boolean(isBlocked);
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -311,6 +317,8 @@ async function submitFamilyEdit() {
     const fileNumber = document.getElementById("editFamilyFileNumber")?.value?.trim() || null;
     const isFormFilled = document.getElementById("editFamilyFormFilled")?.checked ?? false;
     const municipalityRegistered = document.getElementById("editFamilyMunicipalityRegistered")?.checked ?? false;
+    const housingType = document.getElementById("editFamilyHousingType")?.value || null;
+    const isBlocked = document.getElementById("editFamilyIsBlocked")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -327,6 +335,8 @@ async function submitFamilyEdit() {
             file_number: fileNumber,
             is_form_filled: isFormFilled,
             municipality_registered: municipalityRegistered,
+            housing_type: housingType,
+            is_blocked: isBlocked,
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
@@ -850,6 +860,7 @@ function renderFamilies() {
                             const fileNumber = family.file_number ?? family.fileNumber ?? "";
                             const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
                             const isMuniReg = family.municipality_registered ?? family.municipalityRegistered ?? false;
+                            const isBlocked = family.is_blocked ?? family.isBlocked ?? false;
 
                             const dupReasons = duplicateMap.get(String(id));
                             const isDuplicate = Boolean(dupReasons?.size);
@@ -858,12 +869,14 @@ function renderFamilies() {
                                     ? '<span class="badge badge-warning">مكرر: رقم الملف</span>'
                                     : '<span class="badge badge-warning">مكرر: اسم + قرية</span>'
                             ).join(" ") : "";
+                            const blockedBadge = isBlocked ? '<span class="badge" style="background:#fee2e2;color:#991b1b;">محظور</span>' : "";
 
                             return `
-                                <tr class="family-row${isDuplicate ? " family-row-duplicate" : ""}">
+                                <tr class="family-row${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
                                         ${dupBadges}
+                                        ${blockedBadge}
                                     </td>
                                     <td class="families-phone-cell">${escapeHtml(phone || "-")}</td>
                                     <td class="families-people-cell">${escapeHtml(people)}</td>
@@ -930,6 +943,8 @@ async function createFamily() {
     const fileNumber = document.getElementById("familyFileNumber")?.value?.trim() || null;
     const isFormFilled = document.getElementById("familyFormFilled")?.checked ?? false;
     const municipalityRegistered = document.getElementById("familyMunicipalityRegistered")?.checked ?? false;
+    const housingType = document.getElementById("familyHousingType")?.value || null;
+    const isBlocked = document.getElementById("familyIsBlocked")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -946,6 +961,8 @@ async function createFamily() {
             file_number: fileNumber,
             is_form_filled: isFormFilled,
             municipality_registered: municipalityRegistered,
+            housing_type: housingType,
+            is_blocked: isBlocked,
         });
 
         document.getElementById("fatherFirstName").value = "";
@@ -959,6 +976,10 @@ async function createFamily() {
         if (formFilledEl) formFilledEl.checked = false;
         const muniEl = document.getElementById("familyMunicipalityRegistered");
         if (muniEl) muniEl.checked = false;
+        const housingTypeEl = document.getElementById("familyHousingType");
+        if (housingTypeEl) housingTypeEl.value = "";
+        const isBlockedEl = document.getElementById("familyIsBlocked");
+        if (isBlockedEl) isBlockedEl.checked = false;
 
         await refreshFamilies({ silent: true });
     } catch (error) {

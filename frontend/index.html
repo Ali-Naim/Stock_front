@@ -251,6 +251,17 @@
                 <input id="editFamilyMunicipalityRegistered" type="checkbox">
                 مسجل بالبلدية
             </label>
+            <label class="checkbox-label" style="color:#dc2626;">
+                <input id="editFamilyIsBlocked" type="checkbox">
+                محظور
+            </label>
+        </div>
+        <div style="margin-top:0.75rem;">
+            <select id="editFamilyHousingType" style="width:100%;max-width:280px;">
+                <option value="">نوع السكن (غير محدد)</option>
+                <option value="house">منزل</option>
+                <option value="shelter_center">مركز إيواء</option>
+            </select>
         </div>
 
         <div class="modal-actions">
@@ -652,6 +663,17 @@
                     <input id="familyMunicipalityRegistered" type="checkbox">
                     مسجل بالبلدية
                 </label>
+                <label class="checkbox-label" style="color:#dc2626;">
+                    <input id="familyIsBlocked" type="checkbox">
+                    محظور
+                </label>
+            </div>
+            <div style="margin-top:0.75rem;">
+                <select id="familyHousingType" style="width:100%;max-width:280px;">
+                    <option value="">نوع السكن (غير محدد)</option>
+                    <option value="house">منزل</option>
+                    <option value="shelter_center">مركز إيواء</option>
+                </select>
             </div>
             <button class="add" type="button" onclick="createFamily()">حفظ العائلة</button>
         </div>
