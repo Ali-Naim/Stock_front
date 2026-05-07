@@ -679,7 +679,7 @@ function renderFamilyDistributions(distributions = [], familyId = null) {
 }
 
 async function deleteDistribution(familyId, distId, btn) {
-    if (!confirm("هل تريد حذف هذا التوزيع وإعادة الكميات إلى المخزون؟")) return;
+    if (!confirm("هل تريد حذف هذا التوزيع؟")) return;
     if (btn) { btn.disabled = true; btn.textContent = "..."; }
     try {
         await api.deleteFamilyDistribution(familyId, distId);
