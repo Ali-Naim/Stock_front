@@ -485,6 +485,8 @@ function readFamilyFiltersFromUi() {
         formFilled: document.getElementById("familyFormFilledFilter")?.value || "",
         fileNumber: document.getElementById("familyFileNumberFilter")?.value || "",
         municipality: document.getElementById("familyMunicipalityFilter")?.value || "",
+        housingType: document.getElementById("familyHousingTypeFilter")?.value || "",
+        blocked: document.getElementById("familyBlockedFilter")?.value || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
     };
 }
@@ -497,9 +499,10 @@ function applyFamilyFilters() {
 
 function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
-     "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter"]
+     "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
+     "familyHousingTypeFilter", "familyBlockedFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     renderFamilies();
@@ -567,6 +570,8 @@ function getFilteredFamilies() {
     const fileNumberFilter = String(currentFamilyFilters?.fileNumber || "");
     const municipalityFilter = String(currentFamilyFilters?.municipality || "");
     const duplicateFilter = String(currentFamilyFilters?.duplicate || "");
+    const housingTypeFilter = String(currentFamilyFilters?.housingType || "");
+    const blockedFilter = String(currentFamilyFilters?.blocked || "");
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
 
     const filtered = (families || []).filter((family) => {
@@ -581,6 +586,13 @@ function getFilteredFamilies() {
         if (fileNumberFilter === "no" && fileNum) return false;
         if (fileNumberSearch && !fileNum.toLowerCase().includes(fileNumberSearch)) return false;
         if (duplicateIds && !duplicateIds.has(String(family.id))) return false;
+        const ht = family.housing_type ?? family.housingType ?? null;
+        if (housingTypeFilter === "house" && ht !== "house") return false;
+        if (housingTypeFilter === "shelter_center" && ht !== "shelter_center") return false;
+        if (housingTypeFilter === "none" && ht) return false;
+        const blocked = Boolean(family.is_blocked ?? family.isBlocked ?? false);
+        if (blockedFilter === "yes" && !blocked) return false;
+        if (blockedFilter === "no" && blocked) return false;
         if (!nameQuery) return true;
         const text = `${getFamilyDisplayName(family)} ${family?.phone_number ?? ""}`.toLowerCase();
         return text.includes(nameQuery);
@@ -830,6 +842,7 @@ function renderFamilies() {
                         <th>رقم الملف</th>
                         <th>استمارة</th>
                         <th>البلدية</th>
+                        <th>السكن</th>
                         <th>آخر توزيع</th>
                         <th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>
                         <th>إجراءات</th>
@@ -884,6 +897,13 @@ function renderFamilies() {
                                     <td class="families-file-cell">${escapeHtml(fileNumber || "-")}</td>
                                     <td class="families-form-cell">${isFormFilled ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
                                     <td class="families-muni-cell">${isMuniReg ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
+                                    <td>${
+                                        (family.housing_type ?? family.housingType) === "house"
+                                            ? '<span class="badge badge-neutral">منزل</span>'
+                                            : (family.housing_type ?? family.housingType) === "shelter_center"
+                                                ? '<span class="badge" style="background:#ede9fe;color:#5b21b6;">مركز إيواء</span>'
+                                                : '<span style="color:var(--muted);font-size:0.8rem;">—</span>'
+                                    }</td>
                                     <td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>
                                     <td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>
                                     <td class="families-actions-cell">

@@ -725,6 +725,23 @@
                     </select>
                     <small>التكرار</small>
                 </div>
+                <div class="filter-group">
+                    <select id="familyHousingTypeFilter" onchange="applyFamilyFilters()">
+                        <option value="">كل أنواع السكن</option>
+                        <option value="house">منزل</option>
+                        <option value="shelter_center">مركز إيواء</option>
+                        <option value="none">غير محدد</option>
+                    </select>
+                    <small>نوع السكن</small>
+                </div>
+                <div class="filter-group">
+                    <select id="familyBlockedFilter" onchange="applyFamilyFilters()">
+                        <option value="">الكل</option>
+                        <option value="yes">المحظورون فقط</option>
+                        <option value="no">غير المحظورين</option>
+                    </select>
+                    <small>الحظر</small>
+                </div>
                 <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
                 <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
                 <button id="exportFamiliesBtn" onclick="exportFamiliesExcel()" class="filter-clear" type="button">تصدير Excel</button>
