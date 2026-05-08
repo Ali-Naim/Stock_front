@@ -59,12 +59,12 @@ async function generateRangeReport() {
         document.getElementById("reportContainer").innerHTML = `
             <div class="card">
                 <h4>${rangeLabel}</h4>
-                <div class="report-table-wrap">
-                    <table>
+                <div class="dt-wrap">
+                    <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr>
-                                <th style="text-align:right;">القرية</th>
-                                ${sortedItems.map((itemName) => `<th style="text-align:center;">${escapeHtml(itemName)}</th>`).join("")}
+                                <th>القرية</th>
+                                ${sortedItems.map((itemName) => `<th class="text-center">${escapeHtml(itemName)}</th>`).join("")}
                             </tr>
                         </thead>
                         <tbody>${rowsHtml}</tbody>
@@ -143,18 +143,18 @@ async function openVillageDistDetailDialog(villageName) {
 
         content.innerHTML = `
             <div class="card">
-                <div class="report-table-wrap">
-                    <table>
+                <div class="dt-wrap">
+                    <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr>
                                 <th>التاريخ</th>
                                 <th>العائلة</th>
-                                ${itemNames.map((n) => `<th style="text-align:center;">${escapeHtml(n)}</th>`).join("")}
+                                ${itemNames.map((n) => `<th class="text-center">${escapeHtml(n)}</th>`).join("")}
                             </tr>
                         </thead>
                         <tbody>${linesHtml}</tbody>
                         <tfoot>
-                            <tr style="background:#f4f8fe;font-weight:800;">
+                            <tr class="dt-tfoot-total">
                                 <td>المجموع</td>
                                 <td></td>
                                 ${totalsCells}
@@ -236,26 +236,26 @@ async function openDistributionDetailDialog() {
 
         content.innerHTML = `
             <div class="card">
-                <div class="report-table-wrap">
-                    <table>
+                <div class="dt-wrap">
+                    <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr>
                                 <th>الوقت</th>
                                 <th>العائلة</th>
                                 <th>القرية</th>
-                                ${itemNames.map((name) => `<th style="text-align:center;">${escapeHtml(name)}</th>`).join("")}
+                                ${itemNames.map((name) => `<th class="text-center">${escapeHtml(name)}</th>`).join("")}
                             </tr>
                         </thead>
                         <tbody>${linesHtml}</tbody>
                         <tfoot>
-                            <tr style="background:#f4f8fe;font-weight:800;">
+                            <tr class="dt-tfoot-total">
                                 <td>المجموع</td>
                                 <td></td>
                                 <td></td>
                                 ${totalsCells}
                             </tr>
                             <tr style="background:#f8fbff;font-weight:800;">
-                                <td colspan="${3 + itemNames.length}" style="text-align:center;">المجموع الكلي لكل الكميات: ${grandTotal}</td>
+                                <td colspan="${3 + itemNames.length}" class="text-center">المجموع الكلي لكل الكميات: ${grandTotal}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -317,24 +317,24 @@ async function openInvLogsModal(itemId = "", itemName = "") {
 
         content.innerHTML = `
             <div class="card">
-                <div class="report-table-wrap">
-                    <table>
+                <div class="dt-wrap">
+                    <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr>
                                 <th>الوقت</th>
                                 <th>المادة</th>
-                                <th style="text-align:center;">التغير</th>
-                                <th style="text-align:center;">قبل</th>
-                                <th style="text-align:center;">بعد</th>
+                                <th class="text-center">التغير</th>
+                                <th class="text-center">قبل</th>
+                                <th class="text-center">بعد</th>
                                 <th>السبب</th>
                                 <th>مرجع</th>
                             </tr>
                         </thead>
                         <tbody>${linesHtml}</tbody>
                         <tfoot>
-                            <tr style="background:#f4f8fe;font-weight:800;">
+                            <tr class="dt-tfoot-total">
                                 <td colspan="2">الإجماليات</td>
-                                <td style="text-align:center;">+${totalIn} / -${totalOut}</td>
+                                <td class="text-center">+${totalIn} / -${totalOut}</td>
                                 <td colspan="4"></td>
                             </tr>
                         </tfoot>
@@ -509,23 +509,23 @@ async function renderFamilyDistributionGapReport() {
             <div style="margin-bottom:0.6rem;color:var(--muted);font-weight:700;">
                 العائلات المطابقة: ${familiesTotal} • مجموع الأفراد: ${peopleTotal}
             </div>
-            <div class="report-table-wrap">
-                <table>
+            <div class="dt-wrap">
+                <table class="table table-hover table-sm align-middle">
                     <thead>
                         <tr>
                             <th>اسم العائلة</th>
                             <th>رقم الهاتف</th>
                             <th>القرية</th>
-                            <th style="text-align:center;">عدد الأفراد</th>
-                            <th style="text-align:center;">المستلم من ${escapeHtml(itemLabel)}</th>
+                            <th class="text-center">عدد الأفراد</th>
+                            <th class="text-center">المستلم من ${escapeHtml(itemLabel)}</th>
                         </tr>
                     </thead>
                     <tbody>${bodyHtml}</tbody>
                     <tfoot>
-                        <tr style="background:#f4f8fe;font-weight:800;">
+                        <tr class="dt-tfoot-total">
                             <td>المجموع</td>
                             <td></td>
-                            <td style="text-align:center;">${peopleTotal}</td>
+                            <td class="text-center">${peopleTotal}</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -642,18 +642,18 @@ async function generateFamilyReport() {
     if (container) {
         container.innerHTML = `
             <div class="card" style="margin-top:1rem;">
-                <div class="report-table-wrap">
-                    <table>
+                <div class="dt-wrap">
+                    <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr>
                                 <th>القرية</th>
-                                <th style="text-align:center;">عائلات</th>
-                                <th style="text-align:center;">أفراد</th>
-                                <th style="text-align:center;">متوسط</th>
-                                <th style="text-align:center;">استمارة</th>
-                                <th style="text-align:center;">بلدية</th>
-                                <th style="text-align:center;">رقم ملف</th>
-                                <th style="text-align:center;">تلقوا توزيع</th>
+                                <th class="text-center">عائلات</th>
+                                <th class="text-center">أفراد</th>
+                                <th class="text-center">متوسط</th>
+                                <th class="text-center">استمارة</th>
+                                <th class="text-center">بلدية</th>
+                                <th class="text-center">رقم ملف</th>
+                                <th class="text-center">تلقوا توزيع</th>
                             </tr>
                         </thead>
                         <tbody>${rowsHtml}${totRow}</tbody>

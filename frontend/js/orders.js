@@ -107,19 +107,21 @@ function renderOrder() {
         return;
     }
 
-    list.innerHTML = currentOrder.map((item, index) => `
-            <div class="card item">
-                <div class="item-meta">
+    list.innerHTML = `<div class="order-item-stack">${currentOrder.map((item, index) => `
+            <div class="order-item-row">
+                <div class="order-item-name">
                     <span>${escapeHtml(item.name)}</span>
                     <small>الكمية الحالية في الطلب</small>
                 </div>
-                <div class="qty-stepper">
-                    <button class="delete" onclick="adjustQty(${index}, -1)">-</button>
-                    <span class="qty-value">${item.qty}</span>
-                    <button class="add" onclick="adjustQty(${index}, 1)">+</button>
+                <div class="order-item-controls">
+                    <div class="qty-stepper">
+                        <button class="delete" onclick="adjustQty(${index}, -1)">-</button>
+                        <span class="qty-value">${item.qty}</span>
+                        <button class="add" onclick="adjustQty(${index}, 1)">+</button>
+                    </div>
+                    <button class="delete" onclick="removeItem(${index})">حذف</button>
                 </div>
-                <button class="delete" onclick="removeItem(${index})">حذف</button>
-            </div>`).join("");
+            </div>`).join("")}</div>`;
 }
 
 function removeItem(index) {
@@ -692,12 +694,25 @@ function renderOrderPagination() {
         container.innerHTML = "";
         return;
     }
+    const from = (ordersPage - 1) * ORDER_PAGE_SIZE + 1;
+    const to = Math.min(ordersPage * ORDER_PAGE_SIZE, ordersTotalCount);
+    const prevDis = ordersPage <= 1 ? "disabled" : "";
+    const nextDis = ordersPage >= totalPages ? "disabled" : "";
     container.innerHTML = `
-        <div class="pagination">
-            <button class="pagination-btn" onclick="goToOrdersPage(${ordersPage - 1})" ${ordersPage <= 1 ? "disabled" : ""}>→</button>
-            <span class="pagination-info">صفحة ${ordersPage} من ${totalPages}</span>
-            <button class="pagination-btn" onclick="goToOrdersPage(${ordersPage + 1})" ${ordersPage >= totalPages ? "disabled" : ""}>←</button>
-        </div>
+        <nav class="dt-pagination" aria-label="تنقل الطلبات">
+            <span class="dt-pagination-info">عرض ${from}–${to} من أصل ${ordersTotalCount}</span>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item ${prevDis}">
+                    <button class="page-link" onclick="goToOrdersPage(${ordersPage - 1})" ${prevDis}>السابق</button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link fw-bold">${ordersPage} / ${totalPages}</span>
+                </li>
+                <li class="page-item ${nextDis}">
+                    <button class="page-link" onclick="goToOrdersPage(${ordersPage + 1})" ${nextDis}>التالي</button>
+                </li>
+            </ul>
+        </nav>
     `;
 }
 

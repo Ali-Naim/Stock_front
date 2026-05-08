@@ -531,16 +531,24 @@ function renderNeedsPagination(totalCount, currentPage, pageSize, onClickFnName 
 
     const pageStart = (currentPage - 1) * pageSize + 1;
     const pageEnd = Math.min(totalCount, currentPage * pageSize);
+    const prevDis = currentPage <= 1 ? "disabled" : "";
+    const nextDis = currentPage >= totalPages ? "disabled" : "";
 
     return `
-        <div class="needs-pagination">
-            <small class="needs-pagination-info">عرض ${pageStart}-${pageEnd} من أصل ${totalCount}</small>
-            <div class="needs-pagination-actions">
-                <button type="button" class="done" onclick="${onClickFnName}(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""}>السابق</button>
-                <span class="needs-pagination-page">صفحة ${currentPage} من ${totalPages}</span>
-                <button type="button" class="done" onclick="${onClickFnName}(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""}>التالي</button>
-            </div>
-        </div>`;
+        <nav class="dt-pagination" aria-label="تنقل الاحتياجات">
+            <span class="dt-pagination-info">عرض ${pageStart}–${pageEnd} من أصل ${totalCount}</span>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item ${prevDis}">
+                    <button class="page-link" onclick="${onClickFnName}(${currentPage - 1})" ${prevDis}>السابق</button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link fw-bold">${currentPage} / ${totalPages}</span>
+                </li>
+                <li class="page-item ${nextDis}">
+                    <button class="page-link" onclick="${onClickFnName}(${currentPage + 1})" ${nextDis}>التالي</button>
+                </li>
+            </ul>
+        </nav>`;
 }
 
 function compareNeedsByCreatedAtDesc(a, b) {
@@ -585,23 +593,25 @@ function renderNeedsHistoryTable(containerId, needs, totalCount, currentPage, pa
                 <td class="need-items-cell" title="${itemsText}">${itemsText}</td>
                 <td class="need-notes-cell" title="${escapeHtml(notesText || "-")}">${escapeHtml(notesText || "-")}</td>
                 <td class="needs-status-cell">
-                    <select onchange="setNeedStatus(${need.id}, this.value)">
+                    <select class="dt-status-select" onchange="setNeedStatus(${need.id}, this.value)">
                         <option value="pending" ${need.status === "pending" ? "selected" : ""}>قيد الانتظار</option>
                         <option value="in_progress" ${need.status === "in_progress" ? "selected" : ""}>قيد المتابعة</option>
                         <option value="done" ${need.status === "done" ? "selected" : ""}>مكتمل</option>
                     </select>
                 </td>
                 <td class="needs-actions-cell">
-                    <button class="icon-action add" onclick="openNeedToOrderModal(${need.id})" title="إضافة كطلب" aria-label="إضافة كطلب">🛒</button>
-                    <button class="icon-action done" onclick="editNeed(${need.id})" title="تعديل" aria-label="تعديل">✎</button>
-                    <button class="icon-action delete" onclick="deleteNeed(${need.id})" title="حذف" aria-label="حذف">🗑</button>
+                    <div class="dt-actions-group">
+                        <button class="btn btn-sm btn-outline-success dt-action-btn" onclick="openNeedToOrderModal(${need.id})" title="إضافة كطلب"><i class="bi bi-cart-plus"></i></button>
+                        <button class="btn btn-sm btn-outline-primary dt-action-btn" onclick="editNeed(${need.id})" title="تعديل"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger dt-action-btn" onclick="deleteNeed(${need.id})" title="حذف"><i class="bi bi-trash3"></i></button>
+                    </div>
                 </td>
             </tr>`;
     }).join("");
 
     container.innerHTML = `
-        <div class="needs-table-wrap">
-            <table class="needs-table">
+        <div class="dt-wrap">
+            <table class="table table-hover table-sm align-middle needs-table">
                 <thead>
                     <tr>
                         <th class="needs-priority-cell">الأولوية</th>

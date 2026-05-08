@@ -5,6 +5,22 @@ let relationFamilyId = null;
 let familyRelationsCache = {};
 let familiesPage = 1;
 const FAMILIES_PAGE_SIZE = 100;
+let familyDetailId = null;
+let _familyDetailReopenAfterClose = false;
+
+function restoreBodyOverflow() {
+    if (!document.querySelector(".modal-overlay.active")) {
+        document.body.style.overflow = "";
+    }
+}
+
+function _reopenDetailModalIfNeeded() {
+    if (_familyDetailReopenAfterClose && familyDetailId) {
+        _familyDetailReopenAfterClose = false;
+        document.getElementById("familyDetailModal")?.classList.add("active");
+        document.body.style.overflow = "hidden";
+    }
+}
 
 function getFamilyDisplayName(family) {
     const first = family?.father_first_name ?? family?.fatherFirstName ?? family?.first_name ?? "";
@@ -302,8 +318,9 @@ function openFamilyEditModal(familyId) {
 function closeFamilyEditModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById("familyEditModal")?.classList.remove("active");
-    document.body.style.overflow = "";
     editingFamilyId = null;
+    _reopenDetailModalIfNeeded();
+    restoreBodyOverflow();
 }
 
 async function submitFamilyEdit() {
@@ -326,7 +343,8 @@ async function submitFamilyEdit() {
     if (!peopleCount || peopleCount <= 0) return alert("أدخل عدد أفراد صحيح");
 
     try {
-        await api.updateFamily(editingFamilyId, {
+        const savedEditId = editingFamilyId;
+        await api.updateFamily(savedEditId, {
             father_first_name: first,
             father_last_name: last,
             phone_number: phone || null,
@@ -340,6 +358,11 @@ async function submitFamilyEdit() {
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
+        if (familyDetailId === savedEditId) {
+            const updatedFamily = (families || []).find((r) => Number(r.id) === savedEditId);
+            const titleEl = document.getElementById("familyDetailModalTitle");
+            if (titleEl && updatedFamily) titleEl.textContent = getFamilyDisplayName(updatedFamily);
+        }
     } catch (error) {
         console.error(error);
         alert("فشل حفظ التعديل");
@@ -454,11 +477,12 @@ function openDistributionModal(familyId) {
 function closeDistributionModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById("distributionModal")?.classList.remove("active");
-    document.body.style.overflow = "";
     distributionFamilyId = null;
     currentDistributionItems = [];
     const list = document.getElementById("distributionItemsList");
     if (list) list.innerHTML = "";
+    _reopenDetailModalIfNeeded();
+    restoreBodyOverflow();
 }
 
 async function submitDistribution() {
@@ -467,10 +491,14 @@ async function submitDistribution() {
 
     try {
         await api.createFamilyDistribution(distributionFamilyId, getDistributionPayload());
-        familyDistributionsCache[String(distributionFamilyId)] = null;
-        await loadFamilyDistributions(distributionFamilyId, { force: true });
+        const savedFamilyId = distributionFamilyId;
+        familyDistributionsCache[String(savedFamilyId)] = null;
+        await loadFamilyDistributions(savedFamilyId, { force: true });
         closeDistributionModal();
         await refreshFamilies({ silent: true });
+        if (familyDetailId === savedFamilyId) {
+            loadAndRenderDetailDist(savedFamilyId);
+        }
     } catch (error) {
         console.error(error);
         alert("فشل حفظ التوزيع");
@@ -493,9 +521,28 @@ function readFamilyFiltersFromUi() {
     };
 }
 
+function toggleFamilyAdvancedFilters() {
+    const panel = document.getElementById("familyAdvancedFilters");
+    const btn = document.getElementById("familyAdvancedToggleBtn");
+    if (!panel) return;
+    const isNowHidden = panel.classList.toggle("hidden");
+    btn?.classList.toggle("active", !isNowHidden);
+}
+
+function updateAdvancedFilterBadge() {
+    const f = currentFamilyFilters || {};
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.distMin, f.distMax]
+        .filter(Boolean).length;
+    const badge = document.getElementById("familyAdvancedBadge");
+    if (!badge) return;
+    badge.textContent = count > 0 ? String(count) : "";
+    badge.classList.toggle("hidden", count === 0);
+}
+
 function applyFamilyFilters() {
     currentFamilyFilters = readFamilyFiltersFromUi();
     familiesPage = 1;
+    updateAdvancedFilterBadge();
     renderFamilies();
 }
 
@@ -507,6 +554,7 @@ function clearFamilyFilters() {
     currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", distMin: "", distMax: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
+    updateAdvancedFilterBadge();
     renderFamilies();
 }
 
@@ -522,8 +570,10 @@ function sortFamiliesBy(col) {
 }
 
 function _sortIcon(col) {
-    if (familiesSortCol !== col) return `<span class="sort-icon">↕</span>`;
-    return familiesSortDir === "asc" ? `<span class="sort-icon active">↑</span>` : `<span class="sort-icon active">↓</span>`;
+    if (familiesSortCol !== col) return `<i class="bi bi-arrow-up-down sort-icon"></i>`;
+    return familiesSortDir === "asc"
+        ? `<i class="bi bi-arrow-up sort-icon active"></i>`
+        : `<i class="bi bi-arrow-down sort-icon active"></i>`;
 }
 
 function getDuplicateMap() {
@@ -641,8 +691,8 @@ function renderFamilyDistributions(distributions = [], familyId = null) {
     }
 
     return `
-        <div class="report-table-wrap distribution-table-wrap">
-            <table class="needs-table distribution-table">
+        <div class="dt-wrap">
+            <table class="table table-hover table-sm align-middle distribution-table">
                 <thead>
                     <tr>
                         <th>الوقت</th>
@@ -668,7 +718,7 @@ function renderFamilyDistributions(distributions = [], familyId = null) {
                                 : "-";
                             const notes = dist.notes || dist.note || "";
                             const deleteBtn = familyId && dist.id
-                                ? `<button class="delete dist-delete-btn" title="حذف التوزيع" onclick="deleteDistribution(${familyId}, ${dist.id}, this)">×</button>`
+                                ? `<button class="btn btn-sm btn-outline-danger dt-action-btn dist-delete-btn" title="حذف التوزيع" onclick="deleteDistribution(${familyId}, ${dist.id}, this)"><i class="bi bi-trash3"></i></button>`
                                 : "";
                             return `
                                 <tr>
@@ -695,8 +745,11 @@ async function deleteDistribution(familyId, distId, btn) {
         const key = String(familyId);
         familyDistributionsCache[key] = null;
         const distributions = await loadFamilyDistributions(familyId, { force: true });
-        const container = document.getElementById("distributionsHistoryContent");
-        if (container) container.innerHTML = renderFamilyDistributions(distributions, familyId);
+        const rendered = renderFamilyDistributions(distributions, familyId);
+        const histContainer = document.getElementById("distributionsHistoryContent");
+        if (histContainer) histContainer.innerHTML = rendered;
+        const detailContainer = document.getElementById("familyDetailDistContent");
+        if (detailContainer && familyDetailId === Number(familyId)) detailContainer.innerHTML = rendered;
         await refreshFamilies({ silent: true });
     } catch (err) {
         console.error("Failed to delete distribution:", err);
@@ -803,15 +856,23 @@ function renderFamiliesPagination(totalCount) {
     if (totalPages <= 1) return "";
     const pageStart = (familiesPage - 1) * FAMILIES_PAGE_SIZE + 1;
     const pageEnd = Math.min(totalCount, familiesPage * FAMILIES_PAGE_SIZE);
+    const prevDis = familiesPage <= 1 ? "disabled" : "";
+    const nextDis = familiesPage >= totalPages ? "disabled" : "";
     return `
-        <div class="needs-pagination">
-            <small class="needs-pagination-info">عرض ${pageStart}–${pageEnd} من أصل ${totalCount}</small>
-            <div class="needs-pagination-actions">
-                <button type="button" class="done" onclick="goToFamiliesPage(${familiesPage - 1})" ${familiesPage <= 1 ? "disabled" : ""}>السابق</button>
-                <span class="needs-pagination-page">صفحة ${familiesPage} من ${totalPages}</span>
-                <button type="button" class="done" onclick="goToFamiliesPage(${familiesPage + 1})" ${familiesPage >= totalPages ? "disabled" : ""}>التالي</button>
-            </div>
-        </div>`;
+        <nav class="dt-pagination" aria-label="تنقل العائلات">
+            <span class="dt-pagination-info">عرض ${pageStart}–${pageEnd} من أصل ${totalCount}</span>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item ${prevDis}">
+                    <button class="page-link" onclick="goToFamiliesPage(${familiesPage - 1})" ${prevDis}>السابق</button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link fw-bold">${familiesPage} / ${totalPages}</span>
+                </li>
+                <li class="page-item ${nextDis}">
+                    <button class="page-link" onclick="goToFamiliesPage(${familiesPage + 1})" ${nextDis}>التالي</button>
+                </li>
+            </ul>
+        </nav>`;
 }
 
 function goToFamiliesPage(page) {
@@ -840,8 +901,8 @@ function renderFamilies() {
     const duplicateMap = getDuplicateMap();
 
     container.innerHTML = `
-        <div class="needs-table-wrap families-table-wrap">
-            <table class="needs-table families-table">
+        <div class="dt-wrap">
+            <table class="table table-hover table-sm align-middle families-table">
                 <thead>
                     <tr>
                         <th class="sortable-th" onclick="sortFamiliesBy('name')">الأب ${_sortIcon('name')}</th>
@@ -854,7 +915,6 @@ function renderFamilies() {
                         <th>السكن</th>
                         <th>آخر توزيع</th>
                         <th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>
-                        <th>إجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -894,7 +954,7 @@ function renderFamilies() {
                             const blockedBadge = isBlocked ? '<span class="badge" style="background:#fee2e2;color:#991b1b;">محظور</span>' : "";
 
                             return `
-                                <tr class="family-row${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}">
+                                <tr class="family-row family-row-clickable${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}" onclick="openFamilyDetailModal(${id})">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
                                         ${dupBadges}
@@ -915,25 +975,6 @@ function renderFamilies() {
                                     }</td>
                                     <td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>
                                     <td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>
-                                    <td class="families-actions-cell">
-                                        <div class="families-actions">
-                                            <button class="icon-btn icon-btn-primary" type="button" onclick="openDistributionModal(${id})" aria-label="إضافة توزيع">
-                                                ${iconSvg("plus")}
-                                            </button>
-                                            <button class="icon-btn" type="button" onclick="openFamilyRelationsModal(${id})" aria-label="إدارة العلاقات">
-                                                ${iconSvg("link")}
-                                            </button>
-                                            <button class="icon-btn" type="button" onclick="openFamilyEditModal(${id})" aria-label="تعديل بيانات العائلة">
-                                                ${iconSvg("edit")}
-                                            </button>
-                                            <button class="icon-btn" type="button" onclick="openDistributionsHistoryModal(${id})" aria-label="عرض السجل">
-                                                ${iconSvg("list")}
-                                            </button>
-                                            <button class="icon-btn icon-btn-danger" type="button" onclick="deleteFamily(${id})" aria-label="حذف العائلة">
-                                                ${iconSvg("trash")}
-                                            </button>
-                                        </div>
-                                    </td>
                                 </tr>
                             `;
                         })
@@ -1189,6 +1230,11 @@ async function exportFamiliesExcel() {
     const filtered = getFilteredFamilies();
     if (!filtered.length) return alert("لا توجد عائلات للتصدير");
 
+    const fromVal = document.getElementById("exportDistFrom")?.value || "";
+    const toVal = document.getElementById("exportDistTo")?.value || "";
+    const fromMs = fromVal ? new Date(fromVal).getTime() : null;
+    const toMs = toVal ? new Date(toVal + "T23:59:59.999").getTime() : null;
+
     if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
 
     try {
@@ -1205,10 +1251,22 @@ async function exportFamiliesExcel() {
             }
         }));
 
-        // Collect all unique item names across all distributions
+        const filterByDate = (dists) => {
+            if (fromMs === null && toMs === null) return dists;
+            return dists.filter((dist) => {
+                const dateStr = dist.distributed_at || dist.created_at || "";
+                if (!dateStr) return false;
+                const ms = new Date(dateStr).getTime();
+                if (fromMs !== null && ms < fromMs) return false;
+                if (toMs !== null && ms > toMs) return false;
+                return true;
+            });
+        };
+
+        // Collect all unique item names across filtered distributions
         const allItemNames = new Set();
         filtered.forEach((f) => {
-            (familyDistributionsCache[String(f.id)] || []).forEach((dist) => {
+            filterByDate(familyDistributionsCache[String(f.id)] || []).forEach((dist) => {
                 (dist.items || []).forEach((item) => {
                     if (item.item_name) allItemNames.add(item.item_name);
                 });
@@ -1222,8 +1280,9 @@ async function exportFamiliesExcel() {
             ...itemNames,
         ];
 
-        const dataRows = filtered.map((f) => {
-            const dists = familyDistributionsCache[String(f.id)] || [];
+        const dataRows = filtered.flatMap((f) => {
+            const dists = filterByDate(familyDistributionsCache[String(f.id)] || []);
+            if (!dists.length) return [];
 
             // Aggregate item totals
             const itemTotals = {};
@@ -1236,9 +1295,9 @@ async function exportFamiliesExcel() {
             });
 
             // Most recent distribution type
-            const lastType = dists.length ? getDistributionTypeLabel(dists[0].type) : "";
+            const lastType = getDistributionTypeLabel(dists[0].type);
 
-            return [
+            return [[
                 f.file_number ?? f.fileNumber ?? "",
                 f.father_first_name ?? f.fatherFirstName ?? "",
                 f.father_last_name ?? f.fatherLastName ?? "",
@@ -1247,7 +1306,7 @@ async function exportFamiliesExcel() {
                 f.people_count ?? f.peopleCount ?? "",
                 lastType,
                 ...itemNames.map((name) => itemTotals[name] || 0),
-            ];
+            ]];
         });
 
         const wb = XLSX.utils.book_new();
@@ -1269,7 +1328,10 @@ async function exportFamiliesExcel() {
         }
 
         XLSX.utils.book_append_sheet(wb, ws, "العائلات");
-        XLSX.writeFile(wb, `عائلات_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        const dateSuffix = fromVal || toVal
+            ? `_${fromVal || ""}` + (toVal ? `_${toVal}` : "")
+            : `_${new Date().toISOString().slice(0, 10)}`;
+        XLSX.writeFile(wb, `عائلات${dateSuffix}.xlsx`);
     } catch (err) {
         console.error("Export failed:", err);
         alert("فشل التصدير");
@@ -1278,6 +1340,198 @@ async function exportFamiliesExcel() {
     }
 }
 
+/* ── Family Detail Modal ── */
+
+async function openFamilyDetailModal(familyId) {
+    const id = Number(familyId);
+    if (!id) return;
+    familyDetailId = id;
+
+    const family = (families || []).find((r) => Number(r.id) === id);
+    const titleEl = document.getElementById("familyDetailModalTitle");
+    if (titleEl) titleEl.textContent = getFamilyDisplayName(family);
+
+    switchFamilyDetailTab("distributions");
+    document.getElementById("familyDetailModal")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+
+    loadAndRenderDetailDist(id);
+    detailFillRelationFamilySelect(id);
+}
+
+function closeFamilyDetailModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("familyDetailModal")?.classList.remove("active");
+    restoreBodyOverflow();
+    familyDetailId = null;
+}
+
+function switchFamilyDetailTab(tab) {
+    const distPanel = document.getElementById("familyDetailDistPanel");
+    const relPanel = document.getElementById("familyDetailRelPanel");
+    const distBtn = document.getElementById("familyDetailTabDist");
+    const relBtn = document.getElementById("familyDetailTabRel");
+
+    const showDist = tab === "distributions";
+    distPanel?.classList.toggle("hidden", !showDist);
+    relPanel?.classList.toggle("hidden", showDist);
+    distBtn?.classList.toggle("active", showDist);
+    relBtn?.classList.toggle("active", !showDist);
+
+    if (!showDist && familyDetailId) loadAndRenderDetailRel(familyDetailId);
+}
+
+async function loadAndRenderDetailDist(id) {
+    const container = document.getElementById("familyDetailDistContent");
+    if (!container) return;
+    container.innerHTML = `<div class="card distribution-empty">جارٍ التحميل...</div>`;
+    const dists = await loadFamilyDistributions(id);
+    container.innerHTML = renderFamilyDistributions(dists, id);
+}
+
+async function loadAndRenderDetailRel(id) {
+    const container = document.getElementById("familyDetailRelContent");
+    if (!container) return;
+    container.innerHTML = `<div class="card distribution-empty">جارٍ التحميل...</div>`;
+    const list = await loadFamilyRelations(id);
+    renderDetailRelations(list, id);
+}
+
+function renderDetailRelations(relations, familyId) {
+    const container = document.getElementById("familyDetailRelContent");
+    if (!container) return;
+    if (!Array.isArray(relations) || !relations.length) {
+        container.innerHTML = renderEmptyState("لا توجد علاقات بعد.");
+        return;
+    }
+    container.innerHTML = relations.map((row) => {
+        const related = row.related_family || null;
+        const name = related ? getFamilyDisplayName(related) : `#${row.related_family_id}`;
+        const villageName = related ? getVillageNameById(related.village_id ?? related.villageId ?? "") : "-";
+        const phone = related?.phone_number || "-";
+        const type = row.relation_type || "-";
+        return `
+            <div class="card relation-row">
+                <div class="relation-meta">
+                    <strong>${escapeHtml(name)}</strong>
+                    <small>${escapeHtml(type)} · ${escapeHtml(villageName)} · ${escapeHtml(phone)}</small>
+                    ${row.notes ? `<div class="relation-notes">${escapeHtml(row.notes)}</div>` : ""}
+                </div>
+                <button class="icon-btn" type="button" onclick="deleteDetailRelation(${row.id})" aria-label="حذف">
+                    ${iconSvg("trash")}
+                </button>
+            </div>`;
+    }).join("");
+}
+
+async function deleteDetailRelation(relationId) {
+    if (!familyDetailId) return;
+    if (!confirm("حذف العلاقة؟")) return;
+    try {
+        await api.deleteFamilyRelation(familyDetailId, relationId);
+        familyRelationsCache[String(familyDetailId)] = null;
+        const list = await loadFamilyRelations(familyDetailId, { force: true });
+        renderDetailRelations(list, familyDetailId);
+    } catch (err) {
+        console.error(err);
+        alert("فشل حذف العلاقة");
+    }
+}
+
+function detailFillRelationFamilySelect(currentFamilyId) {
+    const select = document.getElementById("detailRelFamilySelect");
+    if (!select) return;
+    const list = (families || [])
+        .filter((r) => Number(r.id) && Number(r.id) !== Number(currentFamilyId))
+        .slice()
+        .sort((a, b) => getFamilyDisplayName(a).localeCompare(getFamilyDisplayName(b), "ar"));
+    select.innerHTML = `<option value="">اختر عائلة</option>${list.map((r) => {
+        const name = getFamilyDisplayName(r);
+        const village = r.village_name ?? r.villageName ?? getVillageNameById(r.village_id ?? r.villageId ?? "");
+        const phone = r.phone_number ?? r.phoneNumber ?? "";
+        const extra = [village, phone].filter(Boolean).join(" · ");
+        return `<option value="${r.id}">${escapeHtml(name)}${extra ? ` (${escapeHtml(extra)})` : ""}</option>`;
+    }).join("")}`;
+}
+
+function detailFilterRelationFamilies() {
+    const query = String(document.getElementById("detailRelFamilySearch")?.value || "").trim().toLowerCase();
+    const select = document.getElementById("detailRelFamilySelect");
+    if (!select) return;
+    Array.from(select.options).forEach((opt) => {
+        if (!opt.value) return;
+        opt.hidden = query ? !String(opt.textContent).toLowerCase().includes(query) : false;
+    });
+    if (select.selectedOptions?.[0]?.hidden) {
+        const first = Array.from(select.options).find((o) => o.value && !o.hidden);
+        if (first) select.value = first.value;
+    }
+}
+
+function detailToggleCustomRelationType() {
+    const select = document.getElementById("detailRelTypeSelect");
+    const custom = document.getElementById("detailRelTypeCustom");
+    if (!select || !custom) return;
+    custom.classList.toggle("hidden", select.value !== "other");
+    if (select.value === "other") setTimeout(() => custom.focus(), 0);
+}
+
+async function submitDetailRelation() {
+    if (!familyDetailId) return;
+    const relatedId = Number(document.getElementById("detailRelFamilySelect")?.value);
+    const typeSelect = document.getElementById("detailRelTypeSelect");
+    const typeCustom = document.getElementById("detailRelTypeCustom");
+    const relationType = typeSelect?.value === "other"
+        ? String(typeCustom?.value || "").trim()
+        : String(typeSelect?.value || "").trim();
+    const notes = String(document.getElementById("detailRelNotes")?.value || "").trim();
+
+    if (!relatedId) return alert("اختر العائلة المرتبطة");
+    if (!relationType) return alert("أدخل نوع العلاقة");
+
+    try {
+        await api.createFamilyRelation(familyDetailId, {
+            related_family_id: relatedId,
+            relation_type: relationType,
+            notes: notes || null,
+        });
+        familyRelationsCache[String(familyDetailId)] = null;
+        const list = await loadFamilyRelations(familyDetailId, { force: true });
+        renderDetailRelations(list, familyDetailId);
+        const searchEl = document.getElementById("detailRelFamilySearch");
+        if (searchEl) searchEl.value = "";
+        const selectEl = document.getElementById("detailRelFamilySelect");
+        if (selectEl) selectEl.value = "";
+        const notesEl = document.getElementById("detailRelNotes");
+        if (notesEl) notesEl.value = "";
+    } catch (err) {
+        console.error(err);
+        alert("فشل إضافة العلاقة (قد تكون موجودة مسبقًا)");
+    }
+}
+
+function familyDetailAddDist() {
+    if (!familyDetailId) return;
+    _familyDetailReopenAfterClose = true;
+    document.getElementById("familyDetailModal")?.classList.remove("active");
+    openDistributionModal(familyDetailId);
+}
+
+function familyDetailEdit() {
+    if (!familyDetailId) return;
+    _familyDetailReopenAfterClose = true;
+    document.getElementById("familyDetailModal")?.classList.remove("active");
+    openFamilyEditModal(familyDetailId);
+}
+
+function familyDetailDelete() {
+    if (!familyDetailId) return;
+    const id = familyDetailId;
+    closeFamilyDetailModal();
+    deleteFamily(id);
+}
+
+window.toggleFamilyAdvancedFilters = toggleFamilyAdvancedFilters;
 window.sortFamiliesBy = sortFamiliesBy;
 window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
@@ -1307,3 +1561,13 @@ window.deleteFamilyRelation = deleteFamilyRelation;
 window.filterRelationFamilies = filterRelationFamilies;
 window.toggleCustomRelationType = toggleCustomRelationType;
 window.deleteFamily = deleteFamily;
+window.openFamilyDetailModal = openFamilyDetailModal;
+window.closeFamilyDetailModal = closeFamilyDetailModal;
+window.switchFamilyDetailTab = switchFamilyDetailTab;
+window.familyDetailAddDist = familyDetailAddDist;
+window.familyDetailEdit = familyDetailEdit;
+window.familyDetailDelete = familyDetailDelete;
+window.detailFilterRelationFamilies = detailFilterRelationFamilies;
+window.detailToggleCustomRelationType = detailToggleCustomRelationType;
+window.submitDetailRelation = submitDetailRelation;
+window.deleteDetailRelation = deleteDetailRelation;

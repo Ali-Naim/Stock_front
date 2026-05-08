@@ -882,6 +882,53 @@ button {
     color: var(--muted);
 }
 
+.order-item-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.order-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-strong);
+    box-shadow: 0 2px 8px rgba(17, 42, 86, 0.04);
+}
+
+.order-item-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.order-item-name span {
+    display: block;
+    font-weight: 600;
+}
+
+.order-item-name small {
+    color: var(--muted);
+}
+
+.order-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.order-item-controls > button {
+    width: auto;
+    min-width: 60px;
+    min-height: 40px;
+    padding: 6px 14px;
+}
+
 #orderList .item {
     align-items: stretch;
 }
@@ -1116,6 +1163,88 @@ button {
     white-space: nowrap;
     background: #6c7f98;
     color: #fff;
+}
+
+/* Families filter layout */
+.family-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.family-filter-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.family-filter-export {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-inline-start: auto;
+    padding-inline-start: 8px;
+    border-inline-start: 2px solid var(--border, #e5e7eb);
+}
+
+.filter-advanced-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    background: var(--surface, #f8fafc);
+    color: var(--text, #1e293b);
+    border: 1px solid var(--border-strong, #cbd5e1);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    width: auto;
+}
+
+.filter-advanced-toggle:hover {
+    background: var(--border, #e5e7eb);
+}
+
+.filter-advanced-toggle.active {
+    background: var(--primary-light, #eff6ff);
+    border-color: var(--primary, #3b82f6);
+    color: var(--primary, #3b82f6);
+}
+
+.filter-toggle-arrow {
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+    display: inline-block;
+}
+
+.filter-advanced-toggle.active .filter-toggle-arrow {
+    transform: rotate(180deg);
+}
+
+.filter-active-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--primary, #3b82f6);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.family-advanced-filters {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border, #e5e7eb);
 }
 
 .history-heading {
@@ -1504,17 +1633,13 @@ button {
     min-width: 180px;
 }
 
-.needs-row.needs-row-normal {
-    background: rgba(127, 142, 163, 0.08);
-}
-
-.needs-row.needs-row-medium {
-    background: rgba(212, 138, 31, 0.1);
-}
-
-.needs-row.needs-row-urgent {
-    background: rgba(214, 69, 69, 0.11);
-}
+/* Priority row colors: target td so Bootstrap table-hover works correctly */
+.needs-row.needs-row-normal > td { background: rgba(127, 142, 163, 0.07); }
+.needs-row.needs-row-medium > td { background: rgba(212, 138, 31, 0.10); }
+.needs-row.needs-row-urgent > td { background: rgba(214, 69, 69, 0.11); }
+.needs-row.needs-row-normal:hover > td { background: rgba(127, 142, 163, 0.14) !important; }
+.needs-row.needs-row-medium:hover > td { background: rgba(212, 138, 31, 0.17) !important; }
+.needs-row.needs-row-urgent:hover > td { background: rgba(214, 69, 69, 0.18) !important; }
 
 .priority-badge {
     display: inline-flex;
@@ -1613,6 +1738,68 @@ button {
 
 .families-import-modal-card {
     width: min(100%, 680px);
+}
+
+/* ── Family Detail Modal ── */
+.family-detail-modal-card {
+    width: min(96vw, 1140px);
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.family-detail-header-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.family-detail-tabs-nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+    margin: 14px 0 0;
+    flex-shrink: 0;
+}
+
+.family-detail-tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 8px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.family-detail-tab-btn:hover {
+    color: var(--text);
+    background: rgba(18, 58, 122, 0.05);
+}
+
+.family-detail-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(18, 58, 122, 0.06);
+}
+
+.family-detail-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 12px;
+    min-height: 0;
+}
+
+.family-row-clickable {
+    cursor: pointer;
+    transition: background 0.1s;
 }
 
 .relations-add-card {
@@ -2408,6 +2595,218 @@ td {
 
 th {
     background: #f4f8fe;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DATA TABLE SYSTEM  (Bootstrap 5 RTL + custom theme)
+   ═══════════════════════════════════════════════════════ */
+
+/* Scroll wrapper with rounded border */
+.dt-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #fff;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 4px;
+}
+
+/* Base table resets inside dt-wrap */
+.dt-wrap .table {
+    margin-bottom: 0;
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+/* Dark sticky header */
+.dt-wrap .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--primary, #123a7a);
+    color: #fff;
+    border-bottom: 2px solid var(--primary-strong, #0f2d5f);
+    border-top: none;
+    border-inline-end: 1px solid rgba(255, 255, 255, 0.10);
+    font-weight: 700;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    padding: 10px 13px;
+    letter-spacing: 0.01em;
+    vertical-align: middle;
+}
+
+.dt-wrap .table thead th.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.dt-wrap .table thead th.sortable-th:hover {
+    background: var(--primary-strong, #0f2d5f);
+}
+
+/* Body cells */
+.dt-wrap .table td {
+    padding: 9px 13px;
+    vertical-align: middle;
+    border-color: var(--border, #d8e3f4);
+    font-size: 0.875rem;
+}
+
+/* Row hover (works on top of priority colors) */
+.dt-wrap .table tbody tr:hover:not(.needs-row) > td {
+    background: var(--surface-soft, #f8fbff) !important;
+}
+
+/* Sort icons inside dark header */
+.dt-wrap .sort-icon {
+    opacity: 0.45;
+    font-size: 0.72rem;
+    margin-inline-start: 5px;
+    vertical-align: middle;
+    color: #fff;
+}
+
+.dt-wrap .sort-icon.active {
+    opacity: 1;
+    color: #bfdbfe;
+}
+
+/* Action buttons */
+.dt-actions-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: nowrap;
+}
+
+.dt-action-btn {
+    padding: 3px 7px !important;
+    line-height: 1.2 !important;
+    border-radius: 7px !important;
+    font-size: 0.8rem !important;
+    min-height: unset !important;
+    width: auto !important;
+    min-width: unset !important;
+}
+
+/* Status select inside table */
+.dt-status-select {
+    min-width: 145px;
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border-color: var(--border-strong);
+    font-family: 'Cairo', sans-serif;
+}
+
+/* Bootstrap pagination override */
+.dt-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 2px 0;
+}
+
+.dt-pagination-info {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.dt-pagination .pagination {
+    margin: 0;
+    gap: 2px;
+}
+
+.dt-pagination .page-link {
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.84rem;
+    color: var(--primary);
+    border-color: var(--border-strong);
+    border-radius: 8px !important;
+    padding: 5px 14px;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.5;
+}
+
+.dt-pagination .page-link:hover:not([disabled]) {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.dt-pagination .page-item.disabled .page-link {
+    color: var(--muted);
+    background: transparent;
+    border-color: var(--border);
+}
+
+.dt-pagination .page-item.active .page-link {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Filter bar */
+.dt-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.dt-filter-bar input,
+.dt-filter-bar select {
+    border-color: var(--border-strong);
+    border-radius: 8px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.875rem;
+    min-height: 38px;
+    padding: 6px 11px;
+}
+
+.dt-filter-bar input:focus,
+.dt-filter-bar select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(18, 58, 122, 0.10);
+    outline: none;
+}
+
+.dt-filter-bar button {
+    min-height: 38px;
+}
+
+.dt-count-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    align-self: center;
+}
+
+.dt-filter-date-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dt-filter-sep {
+    color: var(--muted);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* tfoot totals row */
+.dt-tfoot-total td {
+    background: #f1f5f9 !important;
+    font-weight: 800;
+    border-top: 2px solid var(--border-strong);
 }
 
 @media (max-width: 900px) {

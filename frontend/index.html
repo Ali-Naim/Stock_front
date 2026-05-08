@@ -332,6 +332,70 @@
     </div>
 </div>  
 
+<!-- Family Detail Modal (click-row) -->
+<div id="familyDetailModal" class="modal-overlay" onclick="closeFamilyDetailModal(event)">
+    <div class="modal-card family-detail-modal-card" role="dialog" aria-modal="true" aria-labelledby="familyDetailModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header" style="flex-shrink:0;">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="familyDetailModalTitle">—</h3>
+            </div>
+            <div class="family-detail-header-btns">
+                <button class="btn btn-primary btn-sm" type="button" onclick="familyDetailAddDist()">
+                    <i class="bi bi-plus-lg"></i> إضافة توزيع
+                </button>
+                <button class="btn btn-warning btn-sm" type="button" onclick="familyDetailEdit()">
+                    <i class="bi bi-pencil"></i> تعديل المعلومات
+                </button>
+                <button class="btn btn-outline-danger btn-sm" type="button" onclick="familyDetailDelete()" title="حذف العائلة">
+                    <i class="bi bi-trash3"></i>
+                </button>
+                <button class="close-btn" type="button" onclick="closeFamilyDetailModal()" aria-label="إغلاق">×</button>
+            </div>
+        </div>
+
+        <!-- Tab navigation -->
+        <div class="family-detail-tabs-nav">
+            <button class="family-detail-tab-btn active" id="familyDetailTabDist" onclick="switchFamilyDetailTab('distributions')">
+                <i class="bi bi-clock-history"></i> التوزيعات
+            </button>
+            <button class="family-detail-tab-btn" id="familyDetailTabRel" onclick="switchFamilyDetailTab('relations')">
+                <i class="bi bi-link-45deg"></i> العلاقات
+            </button>
+        </div>
+
+        <!-- Distributions panel -->
+        <div id="familyDetailDistPanel" class="family-detail-panel">
+            <div id="familyDetailDistContent"><div class="card distribution-empty">جارٍ التحميل...</div></div>
+        </div>
+
+        <!-- Relations panel -->
+        <div id="familyDetailRelPanel" class="family-detail-panel hidden">
+            <div class="card relations-add-card">
+                <p class="modal-copy" style="margin-bottom:10px;">أضف علاقة بين عائلتين.</p>
+                <div class="form-grid relations-form-grid">
+                    <input id="detailRelFamilySearch" placeholder="بحث عن عائلة" oninput="detailFilterRelationFamilies()">
+                    <select id="detailRelFamilySelect"></select>
+                    <select id="detailRelTypeSelect" onchange="detailToggleCustomRelationType()">
+                        <option value="brothers">أخوة</option>
+                        <option value="cousins">أقارب</option>
+                        <option value="in_law">مصاهرة</option>
+                        <option value="same_household">نفس المنزل</option>
+                        <option value="other">أخرى</option>
+                    </select>
+                    <input id="detailRelTypeCustom" class="hidden" placeholder="اكتب نوع العلاقة">
+                </div>
+                <textarea id="detailRelNotes" rows="2" placeholder="ملاحظات (اختياري)"></textarea>
+                <div class="modal-actions">
+                    <button class="done" type="button" onclick="submitDetailRelation()">إضافة العلاقة</button>
+                </div>
+            </div>
+            <h3 class="history-heading" style="margin-top:14px;">العلاقات الحالية</h3>
+            <div id="familyDetailRelContent"></div>
+        </div>
+    </div>
+</div>
+
 <div id="distributionsHistoryModal" class="modal-overlay" onclick="closeDistributionsHistoryModal(event)">
     <div class="modal-card distributions-history-modal-card" role="dialog" aria-modal="true" aria-labelledby="distributionsHistoryModalTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -471,50 +535,33 @@
         <h3 class="history-heading">سجل الطلبات</h3>
 
         <div class="card">
-            <div class="filter-container">
-                <div class="filter-group">
-                    <input id="nameFilter" placeholder="الاسم" oninput="applyFilters()">
+            <div class="dt-filter-bar">
+                <input id="nameFilter" placeholder="الاسم" oninput="applyFilters()" style="flex:1;min-width:140px;">
+                <select id="villageFilter" onchange="applyFilters()" style="min-width:130px;">
+                    <option value="">كل القرى</option>
+                </select>
+                <select id="statusFilter" onchange="applyFilters()" style="min-width:130px;">
+                    <option value="">كل الحالات</option>
+                    <option value="pending">قيد التنفيذ</option>
+                    <option value="done">مكتمل</option>
+                </select>
+                <select id="savedFilter" onchange="applyFilters()" style="min-width:140px;">
+                    <option value="">كل حالات الحفظ</option>
+                    <option value="saved">محفوظ</option>
+                    <option value="unsaved">غير محفوظ</option>
+                </select>
+                <select id="registeredFilter" onchange="applyFilters()" style="min-width:140px;">
+                    <option value="">كل العملاء</option>
+                    <option value="registered">مسجل سابقًا</option>
+                    <option value="not_registered">غير مسجل سابقًا</option>
+                </select>
+                <div class="dt-filter-date-group">
+                    <input id="dateFrom" type="date" onchange="applyFilters()" style="width:150px;">
+                    <span class="dt-filter-sep">—</span>
+                    <input id="dateTo" type="date" onchange="applyFilters()" style="width:150px;">
                 </div>
-                <div class="filter-group">
-                    <select id="villageFilter" onchange="applyFilters()">
-                        <option value="">كل القرى</option>
-                    </select>
-                    <small>القرية</small>
-                </div>
-                <div class="filter-group">
-                    <select id="statusFilter" onchange="applyFilters()">
-                        <option value="">كل الحالات</option>
-                        <option value="pending">قيد التنفيذ</option>
-                        <option value="done">مكتمل</option>
-                    </select>
-                    <small>الحالة</small>
-                </div>
-                <div class="filter-group">
-                    <select id="savedFilter" onchange="applyFilters()">
-                        <option value="">كل حالات الحفظ</option>
-                        <option value="saved">محفوظ</option>
-                        <option value="unsaved">غير محفوظ</option>
-                    </select>
-                    <small>الحفظ</small>
-                </div>
-                <div class="filter-group">
-                    <select id="registeredFilter" onchange="applyFilters()">
-                        <option value="">كل العملاء</option>
-                        <option value="registered">مسجل سابقًا</option>
-                        <option value="not_registered">غير مسجل سابقًا</option>
-                    </select>
-                    <small>التسجيل</small>
-                </div>
-                <div class="filter-group">
-                    <input id="dateFrom" type="date" onchange="applyFilters()">
-                    <small>من</small>
-                </div>
-                <div class="filter-group">
-                    <input id="dateTo" type="date" onchange="applyFilters()">
-                    <small>إلى</small>
-                </div>
-                <button onclick="clearFilters()" class="filter-clear">مسح</button>
-                <span id="orderCountLabel" class="orders-count-label"></span>
+                <button onclick="clearFilters()" class="filter-clear"><i class="bi bi-x-circle me-1"></i>مسح</button>
+                <span id="orderCountLabel" class="dt-count-label"></span>
             </div>
         </div>
 
@@ -590,43 +637,26 @@
         </div>
 
         <div class="card needs-filter-card">
-            <div class="filter-container needs-filter-container">
-                <div class="filter-group">
-                    <input id="needNameFilter" placeholder="اسم العائلة" oninput="applyNeedFilters()">
-                </div>
-                <div class="filter-group">
-                    <input id="needPhoneFilter" placeholder="رقم الهاتف" oninput="applyNeedFilters()">
-                </div>
-                <div class="filter-group">
-                    <input id="needItemFilter" placeholder="المادة" oninput="applyNeedFilters()">
-                </div>
-                <div class="filter-group">
-                    <input id="needNotesFilter" placeholder="الملاحظات" oninput="applyNeedFilters()">
-                </div>
-                <div class="filter-group">
-                    <select id="needVillageFilter" onchange="applyNeedFilters()">
-                        <option value="">كل القرى</option>
-                    </select>
-                    <small>القرية</small>
-                </div>
-                <div class="filter-group">
-                    <select id="needStatusFilter" onchange="applyNeedFilters()">
-                        <option value="">غير مكتمل</option>
-                        <option value="pending">قيد الانتظار</option>
-                        <option value="in_progress">قيد المتابعة</option>
-                    </select>
-                    <small>الحالة</small>
-                </div>
-                <div class="filter-group">
-                    <select id="needPriorityFilter" onchange="applyNeedFilters()">
-                        <option value="">كل الأولويات</option>
-                        <option value="normal">عادي</option>
-                        <option value="medium">متوسط</option>
-                        <option value="urgent">عاجل</option>
-                    </select>
-                    <small>الأولوية</small>
-                </div>
-                <button onclick="clearNeedFilters()" class="filter-clear">مسح</button>
+            <div class="dt-filter-bar">
+                <input id="needNameFilter" placeholder="اسم العائلة" oninput="applyNeedFilters()" style="flex:1;min-width:130px;">
+                <input id="needPhoneFilter" placeholder="رقم الهاتف" oninput="applyNeedFilters()" style="min-width:130px;">
+                <input id="needItemFilter" placeholder="المادة" oninput="applyNeedFilters()" style="min-width:110px;">
+                <input id="needNotesFilter" placeholder="الملاحظات" oninput="applyNeedFilters()" style="min-width:130px;">
+                <select id="needVillageFilter" onchange="applyNeedFilters()" style="min-width:120px;">
+                    <option value="">كل القرى</option>
+                </select>
+                <select id="needStatusFilter" onchange="applyNeedFilters()" style="min-width:140px;">
+                    <option value="">غير مكتمل</option>
+                    <option value="pending">قيد الانتظار</option>
+                    <option value="in_progress">قيد المتابعة</option>
+                </select>
+                <select id="needPriorityFilter" onchange="applyNeedFilters()" style="min-width:130px;">
+                    <option value="">كل الأولويات</option>
+                    <option value="normal">عادي</option>
+                    <option value="medium">متوسط</option>
+                    <option value="urgent">عاجل</option>
+                </select>
+                <button onclick="clearNeedFilters()" class="filter-clear"><i class="bi bi-x-circle me-1"></i>مسح</button>
             </div>
         </div>
 
@@ -680,80 +710,73 @@
 
         <h3 class="history-heading">سجل العائلات</h3>
 
-        <div class="card">
-            <div class="filter-container">
-                <div class="filter-group">
-                    <input id="familyNameFilter" placeholder="اسم الأب" oninput="applyFamilyFilters()">
+        <div class="card family-filter-card">
+            <!-- Primary bar: always visible -->
+            <div class="family-filter-bar dt-filter-bar">
+                <input id="familyNameFilter" placeholder="اسم الأب" oninput="applyFamilyFilters()" style="flex:1;min-width:140px;">
+                <input id="familyFileNumberSearch" placeholder="رقم الملف" oninput="applyFamilyFilters()" style="min-width:130px;">
+                <button type="button" class="filter-advanced-toggle" id="familyAdvancedToggleBtn" onclick="toggleFamilyAdvancedFilters()">
+                    <i class="bi bi-sliders2 me-1"></i>فلاتر
+                    <span id="familyAdvancedBadge" class="filter-active-badge hidden"></span>
+                    <span id="familyAdvancedArrow" class="filter-toggle-arrow">▾</span>
+                </button>
+                <div class="family-filter-actions">
+                    <button onclick="clearFamilyFilters()" class="filter-clear" type="button"><i class="bi bi-x-circle me-1"></i>مسح الكل</button>
+                    <button onclick="refreshFamilies()" class="done" type="button"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
                 </div>
-                <div class="filter-group">
-                    <input id="familyFileNumberSearch" placeholder="رقم الملف" oninput="applyFamilyFilters()">
+                <div class="family-filter-export">
+                    <div class="dt-filter-date-group">
+                        <input id="exportDistFrom" type="date" style="width:145px;">
+                        <span class="dt-filter-sep">—</span>
+                        <input id="exportDistTo" type="date" style="width:145px;">
+                    </div>
+                    <button id="exportFamiliesBtn" onclick="exportFamiliesExcel()" class="filter-clear" type="button"><i class="bi bi-file-earmark-excel me-1"></i>تصدير</button>
+                    <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button"><i class="bi bi-upload me-1"></i>استيراد</button>
                 </div>
-                <div class="filter-group">
-                    <select id="familyVillageFilter" onchange="applyFamilyFilters()">
+            </div>
+
+            <!-- Advanced filters: collapsible -->
+            <div id="familyAdvancedFilters" class="family-advanced-filters hidden">
+                <div class="dt-filter-bar" style="padding-top:4px;">
+                    <select id="familyVillageFilter" onchange="applyFamilyFilters()" style="min-width:130px;">
                         <option value="">كل القرى</option>
                     </select>
-                    <small>القرية</small>
-                </div>
-                <div class="filter-group">
-                    <select id="familyFormFilledFilter" onchange="applyFamilyFilters()">
-                        <option value="">الكل</option>
+                    <select id="familyFormFilledFilter" onchange="applyFamilyFilters()" style="min-width:145px;">
+                        <option value="">الاستمارة: الكل</option>
                         <option value="yes">ملأوا الاستمارة</option>
                         <option value="no">لم يملأوا</option>
                     </select>
-                    <small>الاستمارة</small>
-                </div>
-                <div class="filter-group">
-                    <select id="familyFileNumberFilter" onchange="applyFamilyFilters()">
-                        <option value="">الكل</option>
+                    <select id="familyFileNumberFilter" onchange="applyFamilyFilters()" style="min-width:145px;">
+                        <option value="">رقم الملف: الكل</option>
                         <option value="yes">لديهم رقم ملف</option>
                         <option value="no">بدون رقم ملف</option>
                     </select>
-                    <small>رقم الملف</small>
-                </div>
-                <div class="filter-group">
-                    <select id="familyMunicipalityFilter" onchange="applyFamilyFilters()">
-                        <option value="">الكل</option>
+                    <select id="familyMunicipalityFilter" onchange="applyFamilyFilters()" style="min-width:145px;">
+                        <option value="">البلدية: الكل</option>
                         <option value="yes">مسجلون بالبلدية</option>
                         <option value="no">غير مسجلين</option>
                     </select>
-                    <small>البلدية</small>
-                </div>
-                <div class="filter-group">
-                    <select id="familyDuplicateFilter" onchange="applyFamilyFilters()">
-                        <option value="">الكل</option>
+                    <select id="familyDuplicateFilter" onchange="applyFamilyFilters()" style="min-width:130px;">
+                        <option value="">التكرار: الكل</option>
                         <option value="yes">المكررة فقط</option>
                     </select>
-                    <small>التكرار</small>
-                </div>
-                <div class="filter-group">
-                    <select id="familyHousingTypeFilter" onchange="applyFamilyFilters()">
+                    <select id="familyHousingTypeFilter" onchange="applyFamilyFilters()" style="min-width:145px;">
                         <option value="">كل أنواع السكن</option>
                         <option value="house">منزل</option>
                         <option value="shelter_center">مركز إيواء</option>
                         <option value="none">غير محدد</option>
                     </select>
-                    <small>نوع السكن</small>
-                </div>
-                <div class="filter-group">
-                    <select id="familyBlockedFilter" onchange="applyFamilyFilters()">
-                        <option value="">الكل</option>
+                    <select id="familyBlockedFilter" onchange="applyFamilyFilters()" style="min-width:140px;">
+                        <option value="">الحظر: الكل</option>
                         <option value="yes">المحظورون فقط</option>
                         <option value="no">غير المحظورين</option>
                     </select>
-                    <small>الحظر</small>
+                    <div class="dt-filter-date-group">
+                        <input id="familyDistMinFilter" type="number" min="0" placeholder="توزيعات ≥" oninput="applyFamilyFilters()" style="width:105px;">
+                        <span class="dt-filter-sep">—</span>
+                        <input id="familyDistMaxFilter" type="number" min="0" placeholder="توزيعات ≤" oninput="applyFamilyFilters()" style="width:105px;">
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <input id="familyDistMinFilter" type="number" min="0" placeholder="من" oninput="applyFamilyFilters()" style="width:60px;">
-                    <small>توزيعات (من)</small>
-                </div>
-                <div class="filter-group">
-                    <input id="familyDistMaxFilter" type="number" min="0" placeholder="إلى" oninput="applyFamilyFilters()" style="width:60px;">
-                    <small>توزيعات (إلى)</small>
-                </div>
-                <button onclick="clearFamilyFilters()" class="filter-clear" type="button">مسح</button>
-                <button onclick="refreshFamilies()" class="done" type="button">تحديث</button>
-                <button id="exportFamiliesBtn" onclick="exportFamiliesExcel()" class="filter-clear" type="button">تصدير Excel</button>
-                <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button">استيراد Excel</button>
             </div>
         </div>
 

@@ -125,8 +125,8 @@ function renderAnalytics() {
         <!-- Detailed village table -->
         <div class="card" style="margin-top:1.25rem;">
             <h3 style="margin-bottom:1rem;">تفاصيل حسب القرية</h3>
-            <div class="report-table-wrap">
-                <table class="needs-table analytics-village-table">
+            <div class="dt-wrap">
+                <table class="table table-hover table-sm align-middle analytics-village-table">
                     <thead>
                         <tr>
                             <th>القرية</th>
@@ -175,7 +175,7 @@ function renderAnalytics() {
                         }).join("")}
                     </tbody>
                     <tfoot>
-                        <tr class="analytics-total-row">
+                        <tr class="analytics-total-row dt-tfoot-total">
                             <td><strong>الإجمالي</strong></td>
                             <td class="analytics-num">${total}</td>
                             <td class="analytics-num">${totalPeople}</td>

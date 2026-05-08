@@ -1,4 +1,4 @@
-const API_BASE = window.STOCK_API_BASE || "http://localhost:4001/api";
+const API_BASE = window.STOCK_API_BASE || "https://stockback-production-dfa8.up.railway.app/api";
 
 async function apiRequest(path, options = {}) {
     const token = typeof getAuthToken === "function" ? getAuthToken() : "";
