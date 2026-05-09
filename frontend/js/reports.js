@@ -8,6 +8,7 @@ async function generateRangeReport() {
     if (reportFrom > reportTo) return alert("يجب أن يكون تاريخ البداية قبل أو يساوي تاريخ النهاية");
 
     document.getElementById("downloadExcelBtn")?.classList.add("hidden");
+    document.getElementById("includeAllFamiliesLabel")?.classList.add("hidden");
     _lastReportData = null;
 
     try {
@@ -74,6 +75,7 @@ async function generateRangeReport() {
 
         _lastReportData = { reportData, sortedItems, itemTotals, rangeLabel, reportFrom, reportTo, distributions };
         document.getElementById("downloadExcelBtn")?.classList.remove("hidden");
+        document.getElementById("includeAllFamiliesLabel")?.classList.remove("hidden");
     } catch (err) {
         console.error("Error generating report:", err);
         document.getElementById("reportContainer").innerHTML = `<div class="card" style="background:#fff1f1">فشل إنشاء التقرير</div>`;
@@ -350,41 +352,59 @@ async function openInvLogsModal(itemId = "", itemName = "") {
 
 function downloadReportAsExcel() {
     if (!_lastReportData) return;
-    const { reportData, sortedItems, itemTotals, rangeLabel, reportFrom, reportTo } = _lastReportData;
+    const { sortedItems, reportFrom, reportTo, distributions } = _lastReportData;
 
-    const wb = XLSX.utils.book_new();
+    const includeAll = document.getElementById("includeAllFamiliesChk")?.checked ?? false;
 
-    // Build rows array: header + villages + totals
-    const headerRow = ["القرية", ...sortedItems];
-    const dataRows = Object.keys(reportData)
-        .sort((a, b) => a.localeCompare(b, "ar"))
-        .map((village) => [village, ...sortedItems.map((item) => reportData[village][item] || 0)]);
-    const totalsRow = ["المجموع", ...sortedItems.map((item) => itemTotals[item] || 0)];
-
-    const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows, totalsRow]);
-
-    // RTL worksheet view
-    ws["!views"] = [{ rightToLeft: true }];
-
-    // Auto column widths
-    const colWidths = headerRow.map((_, ci) => {
-        const allVals = [headerRow[ci], ...dataRows.map((r) => r[ci]), totalsRow[ci]];
-        const max = Math.max(...allVals.map((v) => String(v ?? "").length));
-        return { wch: Math.max(max + 2, 8) };
+    // Aggregate distributions per family
+    const familyDataById = {};
+    distributions.forEach((dist) => {
+        const key = String(dist.family_id ?? dist.family_name);
+        if (!familyDataById[key]) {
+            familyDataById[key] = { id: dist.family_id, name: dist.family_name, village: dist.village, items: {} };
+        }
+        (dist.items || []).forEach((line) => {
+            const name = String(line.item_name || "").trim();
+            if (!name) return;
+            familyDataById[key].items[name] = (familyDataById[key].items[name] || 0) + Number(line.quantity || 0);
+        });
     });
-    ws["!cols"] = colWidths;
 
-    // Style header row and totals row bold (requires sheet data cell references)
-    const range = XLSX.utils.decode_range(ws["!ref"]);
-    for (let C = range.s.c; C <= range.e.c; C++) {
-        const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
-        const totalsCell = XLSX.utils.encode_cell({ r: range.e.r, c: C });
-        if (!ws[headerCell]) ws[headerCell] = { v: headerRow[C], t: "s" };
-        if (!ws[totalsCell]) ws[totalsCell] = { v: totalsRow[C], t: typeof totalsRow[C] === "number" ? "n" : "s" };
-        ws[headerCell].s = { font: { bold: true }, alignment: { horizontal: "center", readingOrder: 2 } };
-        ws[totalsCell].s = { font: { bold: true }, alignment: { horizontal: "center", readingOrder: 2 } };
+    let rows;
+    if (includeAll && typeof families !== "undefined" && Array.isArray(families) && families.length) {
+        rows = families.map((family) => {
+            const id = String(family.id);
+            const name = getFamilyDisplayName(family);
+            const village = getVillageNameById(String(family.village_id ?? ""));
+            const famData = familyDataById[id] || { items: {} };
+            return { name, village, items: famData.items };
+        });
+    } else {
+        rows = Object.values(familyDataById).map((d) => ({ name: d.name, village: d.village, items: d.items }));
     }
 
+    rows.sort((a, b) => a.name.localeCompare(b.name, "ar"));
+
+    const headerRow = ["العائلة", "القرية", ...sortedItems];
+    const dataRows = rows.map((row) => [row.name, row.village, ...sortedItems.map((item) => row.items[item] || 0)]);
+    const totalsRow = ["المجموع", "", ...sortedItems.map((item) => rows.reduce((sum, row) => sum + (row.items[item] || 0), 0))];
+
+    const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows, totalsRow]);
+    ws["!views"] = [{ rightToLeft: true }];
+    ws["!cols"] = headerRow.map((_, ci) => {
+        const vals = [headerRow[ci], ...dataRows.map((r) => r[ci]), totalsRow[ci]];
+        return { wch: Math.max(...vals.map((v) => String(v ?? "").length)) + 2 };
+    });
+
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    for (let C = range.s.c; C <= range.e.c; C++) {
+        const hCell = XLSX.utils.encode_cell({ r: 0, c: C });
+        const tCell = XLSX.utils.encode_cell({ r: range.e.r, c: C });
+        if (ws[hCell]) ws[hCell].s = { font: { bold: true }, alignment: { horizontal: "center", readingOrder: 2 } };
+        if (ws[tCell]) ws[tCell].s = { font: { bold: true }, alignment: { horizontal: "center", readingOrder: 2 } };
+    }
+
+    const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "التقرير");
 
     const fileName = reportFrom === reportTo
