@@ -1235,6 +1235,8 @@ async function exportFamiliesExcel() {
     const fromMs = fromVal ? new Date(fromVal).getTime() : null;
     const toMs = toVal ? new Date(toVal + "T23:59:59.999").getTime() : null;
 
+    const includeAll = document.getElementById("exportAllFamiliesChk")?.checked ?? false;
+
     if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
 
     try {
@@ -1282,7 +1284,19 @@ async function exportFamiliesExcel() {
 
         const dataRows = filtered.flatMap((f) => {
             const dists = filterByDate(familyDistributionsCache[String(f.id)] || []);
-            if (!dists.length) return [];
+            if (!dists.length) {
+                if (!includeAll) return [];
+                return [[
+                    f.file_number ?? f.fileNumber ?? "",
+                    f.father_first_name ?? f.fatherFirstName ?? "",
+                    f.father_last_name ?? f.fatherLastName ?? "",
+                    f.phone_number ?? f.phoneNumber ?? "",
+                    getVillageNameById(f.village_id ?? f.villageId ?? ""),
+                    f.people_count ?? f.peopleCount ?? "",
+                    "",
+                    ...itemNames.map(() => 0),
+                ]];
+            }
 
             // Aggregate item totals
             const itemTotals = {};
