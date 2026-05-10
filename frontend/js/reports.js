@@ -464,7 +464,9 @@ async function renderFamilyDistributionGapReport() {
 
     const itemValue = String(document.getElementById("familyGapItem")?.value || "");
     const minQtyRaw = Number(document.getElementById("familyGapMinQty")?.value);
-    const minQty = Number.isFinite(minQtyRaw) && minQtyRaw >= 0 ? minQtyRaw : 2;
+    const minQty = Number.isFinite(minQtyRaw) && minQtyRaw >= 0 ? minQtyRaw : 0;
+    const maxQtyRaw = document.getElementById("familyGapMaxQty")?.value;
+    const maxQty = maxQtyRaw !== "" && Number.isFinite(Number(maxQtyRaw)) ? Number(maxQtyRaw) : null;
     const downloadBtn = document.getElementById("downloadFamilyGapBtn");
     if (downloadBtn) downloadBtn.classList.add("hidden");
 
@@ -487,12 +489,8 @@ async function renderFamilyDistributionGapReport() {
         const allQty = Object.values(map).reduce((sum, val) => sum + Number(val || 0), 0);
         const peopleCount = Number(family.people_count ?? 1) || 1;
 
-        let include = false;
-        if (itemValue === "__any__") {
-            include = allQty <= 0;
-        } else {
-            include = itemQty < minQty;
-        }
+        const qty = itemValue === "__any__" ? allQty : itemQty;
+        const include = qty >= minQty && (maxQty === null || qty <= maxQty);
         if (!include) return;
 
         familiesTotal += 1;
@@ -502,7 +500,7 @@ async function renderFamilyDistributionGapReport() {
             phone: String(family.phone_number ?? family.phoneNumber ?? "-"),
             village: getVillageNameById(String(family.village_id ?? "")),
             people: peopleCount,
-            qty: itemValue === "__any__" ? allQty : itemQty,
+            qty,
         });
     });
 
@@ -554,13 +552,13 @@ async function renderFamilyDistributionGapReport() {
         </div>
     `;
 
-    _lastFamilyGapReportData = { rows, itemLabel, minQty, familiesTotal, peopleTotal };
+    _lastFamilyGapReportData = { rows, itemLabel, minQty, maxQty, familiesTotal, peopleTotal };
     if (downloadBtn) downloadBtn.classList.remove("hidden");
 }
 
 function downloadFamilyGapExcel() {
     if (!_lastFamilyGapReportData || !window.XLSX) return;
-    const { rows, itemLabel, minQty } = _lastFamilyGapReportData;
+    const { rows, itemLabel, minQty, maxQty } = _lastFamilyGapReportData;
 
     const header = ["اسم العائلة", "رقم الهاتف", "القرية", "عدد الأفراد", `المستلم من ${itemLabel}`];
     const dataRows = rows.map((r) => [r.name, r.phone || "-", r.village, r.people, r.qty]);
@@ -569,8 +567,9 @@ function downloadFamilyGapExcel() {
     ws["!cols"] = [{ wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 18 }];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "فجوة التوزيعات");
-    XLSX.writeFile(wb, `فجوة_التوزيع_${itemLabel}_${minQty}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "توزيعات حسب النطاق");
+    const rangeSuffix = maxQty !== null ? `${minQty}-${maxQty}` : `${minQty}+`;
+    XLSX.writeFile(wb, `توزيعات_${itemLabel}_${rangeSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 async function generateFamilyReport() {
@@ -681,10 +680,11 @@ async function generateFamilyReport() {
                 </div>
             </div>
             <div class="card" style="margin-top:1rem;">
-                <h4 style="margin-bottom:0.8rem;">العائلات التي لم تستلم أو استلمت أقل من حد معين</h4>
-                <div class="form-grid" style="grid-template-columns: 1fr 160px auto;">
+                <h4 style="margin-bottom:0.8rem;">العائلات حسب كمية التوزيع</h4>
+                <div class="form-grid" style="grid-template-columns: 1fr 130px 130px auto;">
                     <select id="familyGapItem"></select>
-                    <input id="familyGapMinQty" type="number" min="0" step="1" value="2" placeholder="الحد الأدنى">
+                    <input id="familyGapMinQty" type="number" min="0" step="1" value="0" placeholder="من (الحد الأدنى)">
+                    <input id="familyGapMaxQty" type="number" min="0" step="1" placeholder="إلى (الحد الأعلى)">
                     <button class="done" type="button" onclick="renderFamilyDistributionGapReport()" style="min-height:50px;">عرض</button>
                 </div>
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
@@ -693,10 +693,10 @@ async function generateFamilyReport() {
                     </button>
                 </div>
                 <small style="color:var(--muted);display:block;margin-top:0.4rem;">
-                    مثال: لاختيار "planket" وحد أدنى 2 سيظهر من استلم أقل من 2 (بما فيهم 0).
+                    مثال: من 0 إلى 2 يظهر العائلات التي استلمت بين 0 و 2 من المادة المختارة. اتركِ "إلى" فارغاً لعرض كل من يساوي أو يزيد عن الحد الأدنى.
                 </small>
                 <div id="familyGapResults" style="margin-top:0.6rem;">
-                    <div class="card">اختر المادة والحد الأدنى ثم اضغط عرض.</div>
+                    <div class="card">اختر المادة والنطاق ثم اضغط عرض.</div>
                 </div>
             </div>`;
     }

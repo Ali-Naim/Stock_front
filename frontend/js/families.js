@@ -3,6 +3,7 @@ let familyStatsCache = {};
 let editingFamilyId = null;
 let relationFamilyId = null;
 let familyRelationsCache = {};
+let familyRelationsSummary = {};
 let familiesPage = 1;
 const FAMILIES_PAGE_SIZE = 100;
 let familyDetailId = null;
@@ -915,6 +916,7 @@ function renderFamilies() {
                         <th>السكن</th>
                         <th>آخر توزيع</th>
                         <th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>
+                        <th>تاريخ الإضافة</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -953,10 +955,20 @@ function renderFamilies() {
                             ).join(" ") : "";
                             const blockedBadge = isBlocked ? '<span class="badge" style="background:#fee2e2;color:#991b1b;">محظور</span>' : "";
 
+                            const relations = familyRelationsSummary[String(id)] || [];
+                            const relIcon = relations.length
+                                ? `<span onclick="event.stopPropagation()" title="${relations.map((r) => `${r.name} (${r.relation_type})`).join("\n")}" style="cursor:default;margin-right:4px;">
+                                        <i class="bi bi-diagram-3-fill" style="color:#6366f1;font-size:0.8rem;vertical-align:middle;"></i>
+                                   </span>`
+                                : "";
+
+                            const createdAt = family.created_at ? formatDate(family.created_at) : "-";
+
                             return `
                                 <tr class="family-row family-row-clickable${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}" onclick="openFamilyDetailModal(${id})">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
+                                        ${relIcon}
                                         ${dupBadges}
                                         ${blockedBadge}
                                     </td>
@@ -975,6 +987,7 @@ function renderFamilies() {
                                     }</td>
                                     <td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>
                                     <td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>
+                                    <td class="needs-date-cell">${escapeHtml(createdAt)}</td>
                                 </tr>
                             `;
                         })
@@ -991,8 +1004,13 @@ async function refreshFamilies({ silent = false } = {}) {
     if (container && !silent) container.innerHTML = `<div class="card distribution-empty">جارٍ تحميل العائلات...</div>`;
 
     try {
-        const data = await api.getFamilies();
-        families = Array.isArray(data) ? data : data?.data || data?.rows || [];
+        const [familiesData] = await Promise.all([
+            api.getFamilies(),
+            api.getAllFamilyRelations()
+                .then((d) => { familyRelationsSummary = d && typeof d === "object" && !Array.isArray(d) ? d : {}; })
+                .catch(() => {}),
+        ]);
+        families = Array.isArray(familiesData) ? familiesData : familiesData?.data || familiesData?.rows || [];
     } catch (error) {
         console.error("Error loading families:", error);
         families = [];
