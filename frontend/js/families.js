@@ -521,6 +521,7 @@ function readFamilyFiltersFromUi() {
         municipality: document.getElementById("familyMunicipalityFilter")?.value || "",
         housingType: document.getElementById("familyHousingTypeFilter")?.value || "",
         blocked: document.getElementById("familyBlockedFilter")?.value || "",
+        stopped: document.getElementById("familyStoppedFilter")?.value || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
         distMin: document.getElementById("familyDistMinFilter")?.value?.trim() || "",
         distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
@@ -537,7 +538,7 @@ function toggleFamilyAdvancedFilters() {
 
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
-    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.distMin, f.distMax]
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.distMin, f.distMax]
         .filter(Boolean).length;
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
@@ -555,9 +556,9 @@ function applyFamilyFilters() {
 function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
-     "familyHousingTypeFilter", "familyBlockedFilter", "familyDistMinFilter", "familyDistMaxFilter"]
+     "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyDistMinFilter", "familyDistMaxFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", distMin: "", distMax: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", distMin: "", distMax: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
