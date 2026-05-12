@@ -291,6 +291,7 @@ function openFamilyEditModal(familyId) {
     const municipalityRegistered = family.municipality_registered ?? family.municipalityRegistered ?? false;
     const housingType = family.housing_type ?? family.housingType ?? "";
     const isBlocked = family.is_blocked ?? family.isBlocked ?? false;
+    const isStopped = family.is_stopped ?? family.isStopped ?? false;
 
     const title = document.getElementById("familyEditModalTitle");
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
@@ -310,6 +311,8 @@ function openFamilyEditModal(familyId) {
     if (housingTypeEl) housingTypeEl.value = housingType || "";
     const isBlockedEl = document.getElementById("editFamilyIsBlocked");
     if (isBlockedEl) isBlockedEl.checked = Boolean(isBlocked);
+    const isStoppedEl = document.getElementById("editFamilyIsStopped");
+    if (isStoppedEl) isStoppedEl.checked = Boolean(isStopped);
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -337,6 +340,7 @@ async function submitFamilyEdit() {
     const municipalityRegistered = document.getElementById("editFamilyMunicipalityRegistered")?.checked ?? false;
     const housingType = document.getElementById("editFamilyHousingType")?.value || null;
     const isBlocked = document.getElementById("editFamilyIsBlocked")?.checked ?? false;
+    const isStopped = document.getElementById("editFamilyIsStopped")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -356,6 +360,7 @@ async function submitFamilyEdit() {
             municipality_registered: municipalityRegistered,
             housing_type: housingType,
             is_blocked: isBlocked,
+            is_stopped: isStopped,
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
@@ -945,6 +950,7 @@ function renderFamilies() {
                             const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
                             const isMuniReg = family.municipality_registered ?? family.municipalityRegistered ?? false;
                             const isBlocked = family.is_blocked ?? family.isBlocked ?? false;
+                            const isStopped = family.is_stopped ?? family.isStopped ?? false;
 
                             const dupReasons = duplicateMap.get(String(id));
                             const isDuplicate = Boolean(dupReasons?.size);
@@ -954,6 +960,7 @@ function renderFamilies() {
                                     : '<span class="badge badge-warning">مكرر: اسم + قرية</span>'
                             ).join(" ") : "";
                             const blockedBadge = isBlocked ? '<span class="badge" style="background:#fee2e2;color:#991b1b;">محظور</span>' : "";
+                            const stoppedBadge = isStopped ? '<span class="badge" style="background:#fef3c7;color:#92400e;">موقوف</span>' : "";
 
                             const relations = familyRelationsSummary[String(id)] || [];
                             const relIcon = relations.length
@@ -965,12 +972,13 @@ function renderFamilies() {
                             const createdAt = family.created_at ? formatDate(family.created_at) : "-";
 
                             return `
-                                <tr class="family-row family-row-clickable${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}" onclick="openFamilyDetailModal(${id})">
+                                <tr class="family-row family-row-clickable${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}${isStopped ? " family-row-stopped" : ""}" onclick="openFamilyDetailModal(${id})">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
                                         ${relIcon}
                                         ${dupBadges}
                                         ${blockedBadge}
+                                        ${stoppedBadge}
                                     </td>
                                     <td class="families-phone-cell">${escapeHtml(phone || "-")}</td>
                                     <td class="families-people-cell">${escapeHtml(people)}</td>
@@ -1033,6 +1041,7 @@ async function createFamily() {
     const municipalityRegistered = document.getElementById("familyMunicipalityRegistered")?.checked ?? false;
     const housingType = document.getElementById("familyHousingType")?.value || null;
     const isBlocked = document.getElementById("familyIsBlocked")?.checked ?? false;
+    const isStopped = document.getElementById("familyIsStopped")?.checked ?? false;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -1051,6 +1060,7 @@ async function createFamily() {
             municipality_registered: municipalityRegistered,
             housing_type: housingType,
             is_blocked: isBlocked,
+            is_stopped: isStopped,
         });
 
         document.getElementById("fatherFirstName").value = "";
@@ -1068,6 +1078,8 @@ async function createFamily() {
         if (housingTypeEl) housingTypeEl.value = "";
         const isBlockedEl = document.getElementById("familyIsBlocked");
         if (isBlockedEl) isBlockedEl.checked = false;
+        const isStoppedEl = document.getElementById("familyIsStopped");
+        if (isStoppedEl) isStoppedEl.checked = false;
 
         await refreshFamilies({ silent: true });
     } catch (error) {

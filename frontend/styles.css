@@ -1959,6 +1959,14 @@ button {
     background: #ffe4e6;
 }
 
+.family-row-stopped td {
+    background: #fffbeb;
+}
+
+.family-row-stopped:hover td {
+    background: #fef3c7;
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;
