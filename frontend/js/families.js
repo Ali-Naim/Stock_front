@@ -1245,114 +1245,53 @@ async function importFamiliesExcel() {
 
 async function exportFamiliesExcel() {
     const btn = document.getElementById("exportFamiliesBtn");
-    const filtered = getFilteredFamilies();
-    if (!filtered.length) return alert("لا توجد عائلات للتصدير");
-
     const fromVal = document.getElementById("exportDistFrom")?.value || "";
     const toVal = document.getElementById("exportDistTo")?.value || "";
-    const fromMs = fromVal ? new Date(fromVal).getTime() : null;
-    const toMs = toVal ? new Date(toVal + "T23:59:59.999").getTime() : null;
-
     const includeAll = document.getElementById("exportAllFamiliesChk")?.checked ?? false;
 
     if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
 
     try {
-        // Fetch distributions for families not yet cached
-        await Promise.all(filtered.map(async (f) => {
-            const key = String(f.id);
-            if (!familyDistributionsCache[key]) {
-                try {
-                    const data = await api.getFamilyDistributions(f.id);
-                    familyDistributionsCache[key] = Array.isArray(data) ? data : data?.data || [];
-                } catch (_) {
-                    familyDistributionsCache[key] = [];
-                }
-            }
-        }));
+        const params = {};
+        if (fromVal) params.from = fromVal;
+        if (toVal) params.to = toVal;
+        if (includeAll) params.include_all = "true";
 
-        const filterByDate = (dists) => {
-            if (fromMs === null && toMs === null) return dists;
-            return dists.filter((dist) => {
-                const dateStr = dist.distributed_at || dist.created_at || "";
-                if (!dateStr) return false;
-                const ms = new Date(dateStr).getTime();
-                if (fromMs !== null && ms < fromMs) return false;
-                if (toMs !== null && ms > toMs) return false;
-                return true;
-            });
-        };
+        const result = await api.getFamilyDistributionsExport(params);
+        const rows = result?.rows || [];
+        const itemNames = result?.item_names || [];
 
-        // Collect all unique item names across filtered distributions
-        const allItemNames = new Set();
-        filtered.forEach((f) => {
-            filterByDate(familyDistributionsCache[String(f.id)] || []).forEach((dist) => {
-                (dist.items || []).forEach((item) => {
-                    if (item.item_name) allItemNames.add(item.item_name);
-                });
-            });
-        });
-        const itemNames = Array.from(allItemNames).sort((a, b) => a.localeCompare(b, "ar"));
+        if (!rows.length) {
+            alert("لا توجد بيانات للتصدير");
+            return;
+        }
 
         const header = [
             "رقم الملف", "الاسم", "الكنية", "رقم الهاتف",
-            "القرية", "عدد الأفراد", "نوع التوزيع",
+            "القرية", "عدد الأفراد", "عدد التوزيعات",
             ...itemNames,
         ];
 
-        const dataRows = filtered.flatMap((f) => {
-            const dists = filterByDate(familyDistributionsCache[String(f.id)] || []);
-            if (!dists.length) {
-                if (!includeAll) return [];
-                return [[
-                    f.file_number ?? f.fileNumber ?? "",
-                    f.father_first_name ?? f.fatherFirstName ?? "",
-                    f.father_last_name ?? f.fatherLastName ?? "",
-                    f.phone_number ?? f.phoneNumber ?? "",
-                    getVillageNameById(f.village_id ?? f.villageId ?? ""),
-                    f.people_count ?? f.peopleCount ?? "",
-                    "",
-                    ...itemNames.map(() => 0),
-                ]];
-            }
-
-            // Aggregate item totals
-            const itemTotals = {};
-            dists.forEach((dist) => {
-                (dist.items || []).forEach((item) => {
-                    if (item.item_name) {
-                        itemTotals[item.item_name] = (itemTotals[item.item_name] || 0) + (item.quantity || 0);
-                    }
-                });
-            });
-
-            // Most recent distribution type
-            const lastType = getDistributionTypeLabel(dists[0].type);
-
-            return [[
-                f.file_number ?? f.fileNumber ?? "",
-                f.father_first_name ?? f.fatherFirstName ?? "",
-                f.father_last_name ?? f.fatherLastName ?? "",
-                f.phone_number ?? f.phoneNumber ?? "",
-                getVillageNameById(f.village_id ?? f.villageId ?? ""),
-                f.people_count ?? f.peopleCount ?? "",
-                lastType,
-                ...itemNames.map((name) => itemTotals[name] || 0),
-            ]];
-        });
+        const dataRows = rows.map((r) => [
+            r.file_number,
+            r.father_first_name,
+            r.father_last_name,
+            r.phone_number,
+            r.village,
+            r.people_count,
+            r.total_distributions,
+            ...itemNames.map((name) => r.items[name] || 0),
+        ]);
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
         ws["!views"] = [{ rightToLeft: true }];
 
-        const colWidths = header.map((_, ci) => {
+        ws["!cols"] = header.map((_, ci) => {
             const vals = [header[ci], ...dataRows.map((r) => r[ci])];
-            const max = Math.max(...vals.map((v) => String(v ?? "").length));
-            return { wch: Math.max(max + 2, 10) };
+            return { wch: Math.max(...vals.map((v) => String(v ?? "").length)) + 2 };
         });
-        ws["!cols"] = colWidths;
 
-        // Bold header row
         const range = XLSX.utils.decode_range(ws["!ref"]);
         for (let C = range.s.c; C <= range.e.c; C++) {
             const cell = XLSX.utils.encode_cell({ r: 0, c: C });

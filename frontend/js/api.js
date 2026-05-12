@@ -69,6 +69,7 @@ const api = {
         apiRequest(`/families/${familyId}/distributions/${distId}`, { method: "DELETE" }),
 
     getAllFamilyRelations: () => apiRequest("/families/all-relations"),
+    getFamilyDistributionsExport: (params = {}) => apiRequest(`/families/distributions-export${toQueryString(params)}`),
     getFamilyRelations: (familyId) => apiRequest(`/families/${familyId}/relations`),
     createFamilyRelation: (familyId, payload) => apiRequest(`/families/${familyId}/relations`, { method: "POST", body: JSON.stringify(payload) }),
     deleteFamilyRelation: (familyId, relationId) => apiRequest(`/families/${familyId}/relations/${relationId}`, { method: "DELETE" }),
