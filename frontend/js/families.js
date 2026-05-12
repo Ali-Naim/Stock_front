@@ -631,6 +631,7 @@ function getFilteredFamilies() {
     const duplicateFilter = String(currentFamilyFilters?.duplicate || "");
     const housingTypeFilter = String(currentFamilyFilters?.housingType || "");
     const blockedFilter = String(currentFamilyFilters?.blocked || "");
+    const stoppedFilter = String(currentFamilyFilters?.stopped || "");
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
@@ -654,6 +655,9 @@ function getFilteredFamilies() {
         const blocked = Boolean(family.is_blocked ?? family.isBlocked ?? false);
         if (blockedFilter === "yes" && !blocked) return false;
         if (blockedFilter === "no" && blocked) return false;
+        const stopped = Boolean(family.is_stopped ?? family.isStopped ?? false);
+        if (stoppedFilter === "yes" && !stopped) return false;
+        if (stoppedFilter === "no" && stopped) return false;
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
             if (distMin !== null && cnt < distMin) return false;
