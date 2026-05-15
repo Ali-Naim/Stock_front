@@ -259,6 +259,13 @@
                 <input id="editFamilyIsStopped" type="checkbox">
                 موقوف
             </label>
+            <label class="checkbox-label" style="color:#1d4ed8;">
+                <input id="editFamilyIsMoved" type="checkbox" onchange="toggleMovedToVillage('editFamilyMovedToVillage', this.checked)">
+                انتقل خارج النطاق
+            </label>
+        </div>
+        <div id="editFamilyMovedToVillageRow" style="margin-top:0.5rem;display:none;">
+            <input id="editFamilyMovedToVillage" type="text" placeholder="القرية المنتقل إليها" style="width:100%;max-width:280px;">
         </div>
         <div style="margin-top:0.75rem;">
             <select id="editFamilyHousingType" style="width:100%;max-width:280px;">
@@ -705,6 +712,13 @@
                     <input id="familyIsStopped" type="checkbox">
                     موقوف
                 </label>
+                <label class="checkbox-label" style="color:#1d4ed8;">
+                    <input id="familyIsMoved" type="checkbox" onchange="toggleMovedToVillage('familyMovedToVillage', this.checked)">
+                    انتقل خارج النطاق
+                </label>
+            </div>
+            <div id="familyMovedToVillageRow" style="margin-top:0.5rem;display:none;">
+                <input id="familyMovedToVillage" type="text" placeholder="القرية المنتقل إليها" style="width:100%;max-width:280px;">
             </div>
             <div style="margin-top:0.75rem;">
                 <select id="familyHousingType" style="width:100%;max-width:280px;">
@@ -728,6 +742,12 @@
                     <span id="familyAdvancedBadge" class="filter-active-badge hidden"></span>
                     <span id="familyAdvancedArrow" class="filter-toggle-arrow">▾</span>
                 </button>
+                <div style="position:relative;">
+                    <button type="button" class="filter-advanced-toggle" id="familyColumnsToggleBtn" onclick="toggleFamilyColumnsPanel()">
+                        <i class="bi bi-layout-three-columns me-1"></i>الأعمدة
+                    </button>
+                    <div id="familyColumnsPanel" class="family-columns-panel hidden"></div>
+                </div>
                 <div class="family-filter-actions">
                     <button onclick="clearFamilyFilters()" class="filter-clear" type="button"><i class="bi bi-x-circle me-1"></i>مسح الكل</button>
                     <button onclick="refreshFamilies()" class="done" type="button"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
@@ -787,6 +807,11 @@
                         <option value="">الإيقاف: الكل</option>
                         <option value="yes">الموقوفون فقط</option>
                         <option value="no">غير الموقوفين</option>
+                    </select>
+                    <select id="familyMovedFilter" onchange="applyFamilyFilters()" style="min-width:150px;">
+                        <option value="">الانتقال: الكل</option>
+                        <option value="yes">المنتقلون فقط</option>
+                        <option value="no">غير المنتقلين</option>
                     </select>
                     <div class="dt-filter-date-group">
                         <input id="familyDistMinFilter" type="number" min="0" placeholder="توزيعات ≥" oninput="applyFamilyFilters()" style="width:105px;">

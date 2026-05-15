@@ -1843,6 +1843,11 @@ button {
     margin-bottom: 12px;
 }
 
+#distributionItemsList {
+    max-height: 220px;
+    overflow-y: auto;
+}
+
 .distribution-item-row {
     display: flex;
     align-items: center;
@@ -1965,6 +1970,43 @@ button {
 
 .family-row-stopped:hover td {
     background: #fef3c7;
+}
+
+.family-row-moved td {
+    background: #eff6ff;
+}
+
+.family-row-moved:hover td {
+    background: #dbeafe;
+}
+
+.family-columns-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 200;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    padding: 12px 16px;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.family-columns-panel.hidden {
+    display: none;
+}
+
+.family-columns-panel label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
 .checkbox-label {

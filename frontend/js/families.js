@@ -292,6 +292,8 @@ function openFamilyEditModal(familyId) {
     const housingType = family.housing_type ?? family.housingType ?? "";
     const isBlocked = family.is_blocked ?? family.isBlocked ?? false;
     const isStopped = family.is_stopped ?? family.isStopped ?? false;
+    const isMoved = family.is_moved ?? family.isMoved ?? false;
+    const movedToVillage = family.moved_to_village ?? family.movedToVillage ?? "";
 
     const title = document.getElementById("familyEditModalTitle");
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
@@ -313,6 +315,11 @@ function openFamilyEditModal(familyId) {
     if (isBlockedEl) isBlockedEl.checked = Boolean(isBlocked);
     const isStoppedEl = document.getElementById("editFamilyIsStopped");
     if (isStoppedEl) isStoppedEl.checked = Boolean(isStopped);
+    const isMovedEl = document.getElementById("editFamilyIsMoved");
+    if (isMovedEl) isMovedEl.checked = Boolean(isMoved);
+    toggleMovedToVillage("editFamilyMovedToVillage", Boolean(isMoved));
+    const movedToVillageEl = document.getElementById("editFamilyMovedToVillage");
+    if (movedToVillageEl) movedToVillageEl.value = movedToVillage || "";
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -341,6 +348,8 @@ async function submitFamilyEdit() {
     const housingType = document.getElementById("editFamilyHousingType")?.value || null;
     const isBlocked = document.getElementById("editFamilyIsBlocked")?.checked ?? false;
     const isStopped = document.getElementById("editFamilyIsStopped")?.checked ?? false;
+    const isMoved = document.getElementById("editFamilyIsMoved")?.checked ?? false;
+    const movedToVillage = document.getElementById("editFamilyMovedToVillage")?.value?.trim() || null;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -361,6 +370,8 @@ async function submitFamilyEdit() {
             housing_type: housingType,
             is_blocked: isBlocked,
             is_stopped: isStopped,
+            is_moved: isMoved,
+            moved_to_village: isMoved ? movedToVillage : null,
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
@@ -454,6 +465,7 @@ function removeDistributionItem(index) {
 
 function openDistributionModal(familyId) {
     distributionFamilyId = familyId;
+    editingDistributionId = null;
     currentDistributionItems = [];
 
     fillDistributionItemSelect();
@@ -484,6 +496,7 @@ function closeDistributionModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById("distributionModal")?.classList.remove("active");
     distributionFamilyId = null;
+    editingDistributionId = null;
     currentDistributionItems = [];
     const list = document.getElementById("distributionItemsList");
     if (list) list.innerHTML = "";
@@ -496,12 +509,22 @@ async function submitDistribution() {
     if (!currentDistributionItems.length) return alert("أضف مادة واحدة على الأقل");
 
     try {
-        await api.createFamilyDistribution(distributionFamilyId, getDistributionPayload());
+        const payload = getDistributionPayload();
+        if (editingDistributionId) {
+            await api.updateFamilyDistribution(distributionFamilyId, editingDistributionId, payload);
+        } else {
+            await api.createFamilyDistribution(distributionFamilyId, payload);
+        }
         const savedFamilyId = distributionFamilyId;
         familyDistributionsCache[String(savedFamilyId)] = null;
-        await loadFamilyDistributions(savedFamilyId, { force: true });
+        const distributions = await loadFamilyDistributions(savedFamilyId, { force: true });
         closeDistributionModal();
         await refreshFamilies({ silent: true });
+        const rendered = renderFamilyDistributions(distributions, savedFamilyId);
+        const histContainer = document.getElementById("distributionsHistoryContent");
+        if (histContainer && document.getElementById("distributionsHistoryModal")?.classList.contains("active")) {
+            histContainer.innerHTML = rendered;
+        }
         if (familyDetailId === savedFamilyId) {
             loadAndRenderDetailDist(savedFamilyId);
         }
@@ -522,6 +545,7 @@ function readFamilyFiltersFromUi() {
         housingType: document.getElementById("familyHousingTypeFilter")?.value || "",
         blocked: document.getElementById("familyBlockedFilter")?.value || "",
         stopped: document.getElementById("familyStoppedFilter")?.value || "",
+        moved: document.getElementById("familyMovedFilter")?.value || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
         distMin: document.getElementById("familyDistMinFilter")?.value?.trim() || "",
         distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
@@ -534,11 +558,45 @@ function toggleFamilyAdvancedFilters() {
     if (!panel) return;
     const isNowHidden = panel.classList.toggle("hidden");
     btn?.classList.toggle("active", !isNowHidden);
+    if (!isNowHidden) document.getElementById("familyColumnsPanel")?.classList.add("hidden");
+}
+
+function renderFamilyColumnsPanel() {
+    const panel = document.getElementById("familyColumnsPanel");
+    if (!panel) return;
+    panel.innerHTML = FAMILY_COLUMNS.map(({ key, label }) => {
+        const checked = familyColumnVisibility[key] !== false ? "checked" : "";
+        return `<label><input type="checkbox" ${checked} onchange="setFamilyColumnVisible('${key}', this.checked)"> ${label}</label>`;
+    }).join("");
+}
+
+function toggleMovedToVillage(inputId, show) {
+    const row = document.getElementById(inputId + "Row");
+    if (row) row.style.display = show ? "" : "none";
+    if (!show) { const el = document.getElementById(inputId); if (el) el.value = ""; }
+}
+
+function toggleFamilyColumnsPanel() {
+    const panel = document.getElementById("familyColumnsPanel");
+    if (!panel) return;
+    const willShow = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden");
+    if (willShow) {
+        renderFamilyColumnsPanel();
+        document.getElementById("familyAdvancedFilters")?.classList.add("hidden");
+        document.getElementById("familyAdvancedToggleBtn")?.classList.remove("active");
+    }
+}
+
+function setFamilyColumnVisible(key, visible) {
+    familyColumnVisibility[key] = visible;
+    saveFamilyColumnVisibility();
+    renderFamilies();
 }
 
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
-    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.distMin, f.distMax]
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.distMin, f.distMax]
         .filter(Boolean).length;
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
@@ -556,9 +614,9 @@ function applyFamilyFilters() {
 function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
-     "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyDistMinFilter", "familyDistMaxFilter"]
+     "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyMovedFilter", "familyDistMinFilter", "familyDistMaxFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", distMin: "", distMax: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", distMin: "", distMax: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
@@ -588,7 +646,7 @@ function getDuplicateMap() {
     const fileNumberMap = {};
 
     (families || []).forEach((f) => {
-        const nameKey = `${getFamilyDisplayName(f).trim().toLowerCase()}__${String(f.village_id ?? f.villageId ?? "")}`;
+        const nameKey = getFamilyDisplayName(f).trim().toLowerCase();
         if (!nameVillageMap[nameKey]) nameVillageMap[nameKey] = [];
         nameVillageMap[nameKey].push(f.id);
 
@@ -632,6 +690,7 @@ function getFilteredFamilies() {
     const housingTypeFilter = String(currentFamilyFilters?.housingType || "");
     const blockedFilter = String(currentFamilyFilters?.blocked || "");
     const stoppedFilter = String(currentFamilyFilters?.stopped || "");
+    const movedFilter = String(currentFamilyFilters?.moved || "");
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
@@ -658,6 +717,9 @@ function getFilteredFamilies() {
         const stopped = Boolean(family.is_stopped ?? family.isStopped ?? false);
         if (stoppedFilter === "yes" && !stopped) return false;
         if (stoppedFilter === "no" && stopped) return false;
+        const moved = Boolean(family.is_moved ?? family.isMoved ?? false);
+        if (movedFilter === "yes" && !moved) return false;
+        if (movedFilter === "no" && moved) return false;
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
             if (distMin !== null && cnt < distMin) return false;
@@ -728,8 +790,9 @@ function renderFamilyDistributions(distributions = [], familyId = null) {
                                       .join("<br>")
                                 : "-";
                             const notes = dist.notes || dist.note || "";
-                            const deleteBtn = familyId && dist.id
-                                ? `<button class="btn btn-sm btn-outline-danger dt-action-btn dist-delete-btn" title="حذف التوزيع" onclick="deleteDistribution(${familyId}, ${dist.id}, this)"><i class="bi bi-trash3"></i></button>`
+                            const actionBtns = familyId && dist.id
+                                ? `<button class="btn btn-sm btn-outline-secondary dt-action-btn" title="تعديل التوزيع" onclick="openEditDistributionModal(${familyId}, ${dist.id})"><i class="bi bi-pencil"></i></button>
+                                   <button class="btn btn-sm btn-outline-danger dt-action-btn dist-delete-btn" title="حذف التوزيع" onclick="deleteDistribution(${familyId}, ${dist.id}, this)"><i class="bi bi-trash3"></i></button>`
                                 : "";
                             return `
                                 <tr>
@@ -737,7 +800,7 @@ function renderFamilyDistributions(distributions = [], familyId = null) {
                                     <td>${escapeHtml(getDistributionTypeLabel(dist.type))}</td>
                                     <td class="need-items-cell">${itemsText || "-"}</td>
                                     <td class="need-notes-cell">${escapeHtml(notes || "-")}</td>
-                                    <td style="text-align:center;">${deleteBtn}</td>
+                                    <td style="text-align:center;white-space:nowrap;">${actionBtns}</td>
                                 </tr>
                             `;
                         })
@@ -746,6 +809,50 @@ function renderFamilyDistributions(distributions = [], familyId = null) {
             </table>
         </div>
     `;
+}
+
+async function openEditDistributionModal(familyId, distId) {
+    const id = Number(familyId);
+    const distributions = familyDistributionsCache[String(id)] || await loadFamilyDistributions(id);
+    const dist = (distributions || []).find((d) => Number(d.id) === Number(distId));
+    if (!dist) return alert("تعذّر تحميل بيانات التوزيع");
+
+    distributionFamilyId = id;
+    editingDistributionId = Number(distId);
+
+    fillDistributionItemSelect();
+
+    const items = dist.items || dist.lines || dist.distribution_items || [];
+    currentDistributionItems = items.map((row) => ({
+        item_id: Number(row.item_id ?? row.id),
+        item_name: row.item_name || row.name || "",
+        quantity: Number(row.quantity ?? row.qty ?? row.amount ?? 1),
+    }));
+    renderDistributionItemsList();
+
+    const typeEl = document.getElementById("distributionType");
+    if (typeEl) typeEl.value = normalizeDistributionType(dist.type);
+
+    const atEl = document.getElementById("distributionAt");
+    if (atEl && (dist.distributed_at || dist.created_at)) {
+        const d = new Date(dist.distributed_at || dist.created_at);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        atEl.value = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+    }
+
+    const notesEl = document.getElementById("distributionNotes");
+    if (notesEl) notesEl.value = dist.notes || "";
+
+    const family = (families || []).find((row) => String(row.id) === String(id));
+    const title = document.getElementById("distributionModalTitle");
+    if (title) title.textContent = `تعديل توزيع: ${getFamilyDisplayName(family)}`;
+
+    document.getElementById("distributionModal")?.classList.add("active");
+    document.body.style.overflow = "hidden";
 }
 
 async function deleteDistribution(familyId, distId, btn) {
@@ -864,7 +971,11 @@ async function hydrateFamilyStatsIfMissing() {
 
 function renderFamiliesPagination(totalCount) {
     const totalPages = Math.ceil(totalCount / FAMILIES_PAGE_SIZE);
-    if (totalPages <= 1) return "";
+    if (totalPages <= 1) {
+        return `<nav class="dt-pagination" aria-label="تنقل العائلات">
+            <span class="dt-pagination-info">عرض ${totalCount} من أصل ${totalCount}</span>
+        </nav>`;
+    }
     const pageStart = (familiesPage - 1) * FAMILIES_PAGE_SIZE + 1;
     const pageEnd = Math.min(totalCount, familiesPage * FAMILIES_PAGE_SIZE);
     const prevDis = familiesPage <= 1 ? "disabled" : "";
@@ -911,22 +1022,23 @@ function renderFamilies() {
     const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
     const duplicateMap = getDuplicateMap();
 
+    const cv = (key) => familyColumnVisibility[key] !== false;
     container.innerHTML = `
         <div class="dt-wrap">
             <table class="table table-hover table-sm align-middle families-table">
                 <thead>
                     <tr>
                         <th class="sortable-th" onclick="sortFamiliesBy('name')">الأب ${_sortIcon('name')}</th>
-                        <th>رقم الهاتف</th>
-                        <th class="sortable-th" onclick="sortFamiliesBy('people')">الأفراد ${_sortIcon('people')}</th>
-                        <th class="sortable-th" onclick="sortFamiliesBy('village')">القرية ${_sortIcon('village')}</th>
-                        <th>رقم الملف</th>
-                        <th>استمارة</th>
-                        <th>البلدية</th>
-                        <th>السكن</th>
-                        <th>آخر توزيع</th>
-                        <th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>
-                        <th>تاريخ الإضافة</th>
+                        ${cv('phone')        ? '<th>رقم الهاتف</th>' : ''}
+                        ${cv('people')       ? `<th class="sortable-th" onclick="sortFamiliesBy('people')">الأفراد ${_sortIcon('people')}</th>` : ''}
+                        ${cv('village')      ? `<th class="sortable-th" onclick="sortFamiliesBy('village')">القرية ${_sortIcon('village')}</th>` : ''}
+                        ${cv('file_number')  ? '<th>رقم الملف</th>' : ''}
+                        ${cv('form')         ? '<th>استمارة</th>' : ''}
+                        ${cv('municipality') ? '<th>البلدية</th>' : ''}
+                        ${cv('housing')      ? '<th>السكن</th>' : ''}
+                        ${cv('last_dist')    ? '<th>آخر توزيع</th>' : ''}
+                        ${cv('dist_count')   ? `<th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>` : ''}
+                        ${cv('created_at')   ? '<th>تاريخ الإضافة</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -956,16 +1068,20 @@ function renderFamilies() {
                             const isMuniReg = family.municipality_registered ?? family.municipalityRegistered ?? false;
                             const isBlocked = family.is_blocked ?? family.isBlocked ?? false;
                             const isStopped = family.is_stopped ?? family.isStopped ?? false;
+                            const isMoved = family.is_moved ?? family.isMoved ?? false;
+                            const movedToVillage = family.moved_to_village ?? family.movedToVillage ?? "";
 
                             const dupReasons = duplicateMap.get(String(id));
                             const isDuplicate = Boolean(dupReasons?.size);
                             const dupBadges = isDuplicate ? [...dupReasons].map((r) =>
                                 r === "file_number"
                                     ? '<span class="badge badge-warning">مكرر: رقم الملف</span>'
-                                    : '<span class="badge badge-warning">مكرر: اسم + قرية</span>'
+                                    : '<span class="badge badge-warning">مكرر: الاسم</span>'
                             ).join(" ") : "";
                             const blockedBadge = isBlocked ? '<span class="badge" style="background:#fee2e2;color:#991b1b;">محظور</span>' : "";
                             const stoppedBadge = isStopped ? '<span class="badge" style="background:#fef3c7;color:#92400e;">موقوف</span>' : "";
+                            const movedLabel = movedToVillage ? `انتقل إلى: ${movedToVillage}` : "انتقل خارج النطاق";
+                            const movedBadge = isMoved ? `<span class="badge" style="background:#dbeafe;color:#1e40af;"><i class="bi bi-geo-alt-fill" style="font-size:0.7rem;"></i> ${escapeHtml(movedLabel)}</span>` : "";
 
                             const relations = familyRelationsSummary[String(id)] || [];
                             const relIcon = relations.length
@@ -977,30 +1093,31 @@ function renderFamilies() {
                             const createdAt = family.created_at ? formatDate(family.created_at) : "-";
 
                             return `
-                                <tr class="family-row family-row-clickable${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}${isStopped ? " family-row-stopped" : ""}" onclick="openFamilyDetailModal(${id})">
+                                <tr class="family-row family-row-clickable${isDuplicate ? " family-row-duplicate" : ""}${isBlocked ? " family-row-blocked" : ""}${isStopped ? " family-row-stopped" : ""}${isMoved ? " family-row-moved" : ""}" onclick="openFamilyDetailModal(${id})">
                                     <td>
                                         <strong>${escapeHtml(getFamilyDisplayName(family))}</strong>
                                         ${relIcon}
                                         ${dupBadges}
                                         ${blockedBadge}
                                         ${stoppedBadge}
+                                        ${movedBadge}
                                     </td>
-                                    <td class="families-phone-cell">${escapeHtml(phone || "-")}</td>
-                                    <td class="families-people-cell">${escapeHtml(people)}</td>
-                                    <td>${escapeHtml(villageName)}</td>
-                                    <td class="families-file-cell">${escapeHtml(fileNumber || "-")}</td>
-                                    <td class="families-form-cell">${isFormFilled ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
-                                    <td class="families-muni-cell">${isMuniReg ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>
-                                    <td>${
+                                    ${cv('phone')        ? `<td class="families-phone-cell">${escapeHtml(phone || "-")}</td>` : ''}
+                                    ${cv('people')       ? `<td class="families-people-cell">${escapeHtml(people)}</td>` : ''}
+                                    ${cv('village')      ? `<td>${escapeHtml(villageName)}</td>` : ''}
+                                    ${cv('file_number')  ? `<td class="families-file-cell">${escapeHtml(fileNumber || "-")}</td>` : ''}
+                                    ${cv('form')         ? `<td class="families-form-cell">${isFormFilled ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>` : ''}
+                                    ${cv('municipality') ? `<td class="families-muni-cell">${isMuniReg ? '<span class="badge badge-success">نعم</span>' : '<span class="badge badge-neutral">لا</span>'}</td>` : ''}
+                                    ${cv('housing')      ? `<td>${
                                         (family.housing_type ?? family.housingType) === "house"
                                             ? '<span class="badge badge-neutral">منزل</span>'
                                             : (family.housing_type ?? family.housingType) === "shelter_center"
                                                 ? '<span class="badge" style="background:#ede9fe;color:#5b21b6;">مركز إيواء</span>'
                                                 : '<span style="color:var(--muted);font-size:0.8rem;">—</span>'
-                                    }</td>
-                                    <td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>
-                                    <td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>
-                                    <td class="needs-date-cell">${escapeHtml(createdAt)}</td>
+                                    }</td>` : ''}
+                                    ${cv('last_dist')    ? `<td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>` : ''}
+                                    ${cv('dist_count')   ? `<td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>` : ''}
+                                    ${cv('created_at')   ? `<td class="needs-date-cell">${escapeHtml(createdAt)}</td>` : ''}
                                 </tr>
                             `;
                         })
@@ -1047,6 +1164,8 @@ async function createFamily() {
     const housingType = document.getElementById("familyHousingType")?.value || null;
     const isBlocked = document.getElementById("familyIsBlocked")?.checked ?? false;
     const isStopped = document.getElementById("familyIsStopped")?.checked ?? false;
+    const isMoved = document.getElementById("familyIsMoved")?.checked ?? false;
+    const movedToVillage = document.getElementById("familyMovedToVillage")?.value?.trim() || null;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -1066,6 +1185,8 @@ async function createFamily() {
             housing_type: housingType,
             is_blocked: isBlocked,
             is_stopped: isStopped,
+            is_moved: isMoved,
+            moved_to_village: isMoved ? movedToVillage : null,
         });
 
         document.getElementById("fatherFirstName").value = "";
@@ -1085,6 +1206,9 @@ async function createFamily() {
         if (isBlockedEl) isBlockedEl.checked = false;
         const isStoppedEl = document.getElementById("familyIsStopped");
         if (isStoppedEl) isStoppedEl.checked = false;
+        const isMovedEl = document.getElementById("familyIsMoved");
+        if (isMovedEl) isMovedEl.checked = false;
+        toggleMovedToVillage("familyMovedToVillage", false);
 
         await refreshFamilies({ silent: true });
     } catch (error) {
@@ -1520,6 +1644,9 @@ function familyDetailDelete() {
 }
 
 window.toggleFamilyAdvancedFilters = toggleFamilyAdvancedFilters;
+window.toggleFamilyColumnsPanel = toggleFamilyColumnsPanel;
+window.toggleMovedToVillage = toggleMovedToVillage;
+window.setFamilyColumnVisible = setFamilyColumnVisible;
 window.sortFamiliesBy = sortFamiliesBy;
 window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
@@ -1532,6 +1659,7 @@ window.closeDistributionModal = closeDistributionModal;
 window.addDistributionItem = addDistributionItem;
 window.removeDistributionItem = removeDistributionItem;
 window.submitDistribution = submitDistribution;
+window.openEditDistributionModal = openEditDistributionModal;
 window.deleteDistribution = deleteDistribution;
 window.openDistributionsHistoryModal = openDistributionsHistoryModal;
 window.closeDistributionsHistoryModal = closeDistributionsHistoryModal;
@@ -1559,3 +1687,11 @@ window.detailFilterRelationFamilies = detailFilterRelationFamilies;
 window.detailToggleCustomRelationType = detailToggleCustomRelationType;
 window.submitDetailRelation = submitDetailRelation;
 window.deleteDetailRelation = deleteDetailRelation;
+
+document.addEventListener("click", (e) => {
+    const panel = document.getElementById("familyColumnsPanel");
+    const btn = document.getElementById("familyColumnsToggleBtn");
+    if (panel && !panel.classList.contains("hidden") && !panel.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+        panel.classList.add("hidden");
+    }
+});

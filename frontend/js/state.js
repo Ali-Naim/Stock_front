@@ -11,6 +11,31 @@ let familiesSortCol = "";
 let familiesSortDir = "asc";
 let currentDistributionItems = [];
 let distributionFamilyId = null;
+let editingDistributionId = null;
+
+const FAMILY_COLUMNS = [
+    { key: "phone",        label: "رقم الهاتف" },
+    { key: "people",       label: "الأفراد" },
+    { key: "village",      label: "القرية" },
+    { key: "file_number",  label: "رقم الملف" },
+    { key: "form",         label: "استمارة" },
+    { key: "municipality", label: "البلدية" },
+    { key: "housing",      label: "السكن" },
+    { key: "last_dist",    label: "آخر توزيع" },
+    { key: "dist_count",   label: "توزيعات" },
+    { key: "created_at",   label: "تاريخ الإضافة" },
+];
+
+function loadFamilyColumnVisibility() {
+    try {
+        const saved = localStorage.getItem("familyColumnVisibility");
+        return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+}
+function saveFamilyColumnVisibility() {
+    try { localStorage.setItem("familyColumnVisibility", JSON.stringify(familyColumnVisibility)); } catch {}
+}
+let familyColumnVisibility = loadFamilyColumnVisibility();
 let familyDistributionsCache = {};
 const NEEDS_PAGE_SIZE = 20;
 let currentNeedsPage = 1;

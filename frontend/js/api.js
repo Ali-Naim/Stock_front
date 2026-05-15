@@ -65,6 +65,8 @@ const api = {
     getFamilyDistributions: (familyId, params = {}) => apiRequest(`/families/${familyId}/distributions${toQueryString(params)}`),
     createFamilyDistribution: (familyId, payload) =>
         apiRequest(`/families/${familyId}/distributions`, { method: "POST", body: JSON.stringify(payload) }),
+    updateFamilyDistribution: (familyId, distId, payload) =>
+        apiRequest(`/families/${familyId}/distributions/${distId}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteFamilyDistribution: (familyId, distId) =>
         apiRequest(`/families/${familyId}/distributions/${distId}`, { method: "DELETE" }),
 
