@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#123a7a">
 <title>إدارة المخزون</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -436,6 +437,7 @@
         <button class="sidebar-nav-item" data-tab-target="tasks" onclick="switchTab('tasks')"><i class="bi bi-check2-all"></i><span>المهام</span></button>
         <button class="sidebar-nav-item" data-tab-target="reports" onclick="switchTab('reports')"><i class="bi bi-file-bar-graph-fill"></i><span>التقارير</span></button>
         <button class="sidebar-nav-item" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
+        <button class="sidebar-nav-item" data-tab-target="notes" onclick="switchTab('notes')"><i class="bi bi-sticky-fill"></i><span>الملاحظات</span></button>
     </nav>
     <div class="sidebar-footer">
         <div class="sidebar-user">
@@ -953,10 +955,6 @@
                 <button id="downloadExcelBtn" class="done hidden" style="background:#1d7044;" onclick="downloadReportAsExcel()">
                     <i class="bi bi-file-earmark-excel"></i> تحميل Excel
                 </button>
-                <label id="includeAllFamiliesLabel" class="hidden" style="display:flex;align-items:center;gap:0.4rem;font-size:0.9rem;cursor:pointer;margin-right:0.25rem;">
-                    <input type="checkbox" id="includeAllFamiliesChk">
-                    <span>تضمين جميع العائلات (حتى بدون توزيعات)</span>
-                </label>
             </div>
         </div>
 
@@ -988,6 +986,64 @@
         </div>
         <div id="analyticsContent"></div>
     </div>
+
+    <div id="notes" class="section">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">الملاحظات</p>
+                <h2>لوحة الملاحظات</h2>
+            </div>
+            <button class="done" type="button" onclick="openNoteModal()"><i class="bi bi-plus-lg me-1"></i>ملاحظة جديدة</button>
+        </div>
+        <div id="notesList" class="notes-grid"></div>
+    </div>
+        </div>
+    </div>
+</div>
+
+<!-- Note modal -->
+<div id="noteModal" class="modal-overlay" onclick="closeNoteModal(event)">
+    <div class="modal-card note-modal-card" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">ملاحظة</p>
+                <h3 id="noteModalHeading">ملاحظة جديدة</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeNoteModal()" aria-label="إغلاق">×</button>
+        </div>
+
+        <!-- Note background color -->
+        <div class="note-color-picker-row">
+            <span style="font-size:0.8rem;color:var(--muted);">لون الملاحظة:</span>
+            <button class="note-color-swatch active" data-color="yellow"  style="background:#fef9c3;border-color:#fde047;"  onmousedown="event.preventDefault()" onclick="selectNoteColor(this,'yellow')"  title="أصفر"></button>
+            <button class="note-color-swatch"        data-color="blue"    style="background:#dbeafe;border-color:#93c5fd;"  onmousedown="event.preventDefault()" onclick="selectNoteColor(this,'blue')"    title="أزرق"></button>
+            <button class="note-color-swatch"        data-color="green"   style="background:#dcfce7;border-color:#86efac;"  onmousedown="event.preventDefault()" onclick="selectNoteColor(this,'green')"   title="أخضر"></button>
+            <button class="note-color-swatch"        data-color="pink"    style="background:#fce7f3;border-color:#f9a8d4;"  onmousedown="event.preventDefault()" onclick="selectNoteColor(this,'pink')"    title="وردي"></button>
+            <button class="note-color-swatch"        data-color="orange"  style="background:#ffedd5;border-color:#fdba74;"  onmousedown="event.preventDefault()" onclick="selectNoteColor(this,'orange')"  title="برتقالي"></button>
+            <button class="note-color-swatch"        data-color="lavender" style="background:#ede9fe;border-color:#c4b5fd;" onmousedown="event.preventDefault()" onclick="selectNoteColor(this,'lavender')" title="بنفسجي فاتح"></button>
+        </div>
+
+        <!-- Title -->
+        <input id="noteTitleInput" type="text" placeholder="العنوان" style="width:100%;font-size:1.1rem;font-weight:600;margin-bottom:10px;">
+
+        <!-- Text toolbar -->
+        <div class="note-toolbar">
+            <button class="note-toolbar-btn" type="button" title="غامق" onmousedown="event.preventDefault()" onclick="noteExecBold()"><b>B</b></button>
+            <span class="note-toolbar-sep"></span>
+            <button class="note-color-dot" style="background:#111827;" onmousedown="event.preventDefault()" onclick="noteExecColor('#111827')" title="أسود"></button>
+            <button class="note-color-dot" style="background:#dc2626;" onmousedown="event.preventDefault()" onclick="noteExecColor('#dc2626')" title="أحمر"></button>
+            <button class="note-color-dot" style="background:#1d4ed8;" onmousedown="event.preventDefault()" onclick="noteExecColor('#1d4ed8')" title="أزرق"></button>
+            <button class="note-color-dot" style="background:#15803d;" onmousedown="event.preventDefault()" onclick="noteExecColor('#15803d')" title="أخضر"></button>
+            <button class="note-color-dot" style="background:#c2410c;" onmousedown="event.preventDefault()" onclick="noteExecColor('#c2410c')" title="برتقالي"></button>
+            <button class="note-color-dot" style="background:#7c3aed;" onmousedown="event.preventDefault()" onclick="noteExecColor('#7c3aed')" title="بنفسجي"></button>
+        </div>
+
+        <!-- Editable body -->
+        <div id="noteBodyEditor" class="note-editor" contenteditable="true" dir="rtl" placeholder="اكتب محتوى الملاحظة هنا..."></div>
+
+        <div class="modal-actions">
+            <button id="noteSaveBtn" class="done" type="button" onclick="saveNote()">حفظ</button>
+            <button class="filter-clear" type="button" onclick="closeNoteModal()">إلغاء</button>
         </div>
     </div>
 </div>
@@ -1000,6 +1056,7 @@
     <button class="mobile-tab-button" data-tab-target="tasks" onclick="switchTab('tasks')"><i class="bi bi-check2-all"></i><span>المهام</span></button>
     <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports')"><i class="bi bi-file-bar-graph-fill"></i><span>التقارير</span></button>
     <button class="mobile-tab-button" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
+    <button class="mobile-tab-button" data-tab-target="notes" onclick="switchTab('notes')"><i class="bi bi-sticky-fill"></i><span>الملاحظات</span></button>
 </nav>
 </div>
 
@@ -1019,6 +1076,7 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 <script src="js/reports.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/tasks.js"></script>
+<script src="js/notes.js"></script>
 <script src="js/ui-enhance.js"></script>
 <script src="js/init.js"></script>
 

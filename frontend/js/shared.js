@@ -6,6 +6,7 @@
     tasks: "المهام",
     reports: "التقارير",
     analytics: "الإحصاءات",
+    notes: "الملاحظات",
 };
 
 function toggleSidebar() {
@@ -69,6 +70,9 @@ function switchTab(tabName) {
     }
     if (tabName === "analytics" && typeof ensureAnalyticsLoaded === "function") {
         ensureAnalyticsLoaded();
+    }
+    if (tabName === "notes" && typeof loadNotes === "function") {
+        loadNotes();
     }
 }
 

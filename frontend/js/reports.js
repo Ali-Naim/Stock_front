@@ -8,7 +8,6 @@ async function generateRangeReport() {
     if (reportFrom > reportTo) return alert("يجب أن يكون تاريخ البداية قبل أو يساوي تاريخ النهاية");
 
     document.getElementById("downloadExcelBtn")?.classList.add("hidden");
-    document.getElementById("includeAllFamiliesLabel")?.classList.add("hidden");
     _lastReportData = null;
 
     try {
@@ -75,7 +74,6 @@ async function generateRangeReport() {
 
         _lastReportData = { reportData, sortedItems, itemTotals, rangeLabel, reportFrom, reportTo, distributions };
         document.getElementById("downloadExcelBtn")?.classList.remove("hidden");
-        document.getElementById("includeAllFamiliesLabel")?.classList.remove("hidden");
     } catch (err) {
         console.error("Error generating report:", err);
         document.getElementById("reportContainer").innerHTML = `<div class="card" style="background:#fff1f1">فشل إنشاء التقرير</div>`;
@@ -352,42 +350,16 @@ async function openInvLogsModal(itemId = "", itemName = "") {
 
 function downloadReportAsExcel() {
     if (!_lastReportData) return;
-    const { sortedItems, reportFrom, reportTo, distributions } = _lastReportData;
+    const { reportData, sortedItems, itemTotals, reportFrom, reportTo } = _lastReportData;
 
-    const includeAll = document.getElementById("includeAllFamiliesChk")?.checked ?? false;
+    const sortedVillages = Object.keys(reportData).sort((a, b) => a.localeCompare(b, "ar"));
 
-    // Aggregate distributions per family
-    const familyDataById = {};
-    distributions.forEach((dist) => {
-        const key = String(dist.family_id ?? dist.family_name);
-        if (!familyDataById[key]) {
-            familyDataById[key] = { id: dist.family_id, name: dist.family_name, village: dist.village, items: {} };
-        }
-        (dist.items || []).forEach((line) => {
-            const name = String(line.item_name || "").trim();
-            if (!name) return;
-            familyDataById[key].items[name] = (familyDataById[key].items[name] || 0) + Number(line.quantity || 0);
-        });
-    });
-
-    let rows;
-    if (includeAll && typeof families !== "undefined" && Array.isArray(families) && families.length) {
-        rows = families.map((family) => {
-            const id = String(family.id);
-            const name = getFamilyDisplayName(family);
-            const village = getVillageNameById(String(family.village_id ?? ""));
-            const famData = familyDataById[id] || { items: {} };
-            return { name, village, items: famData.items };
-        });
-    } else {
-        rows = Object.values(familyDataById).map((d) => ({ name: d.name, village: d.village, items: d.items }));
-    }
-
-    rows.sort((a, b) => a.name.localeCompare(b.name, "ar"));
-
-    const headerRow = ["العائلة", "القرية", ...sortedItems];
-    const dataRows = rows.map((row) => [row.name, row.village, ...sortedItems.map((item) => row.items[item] || 0)]);
-    const totalsRow = ["المجموع", "", ...sortedItems.map((item) => rows.reduce((sum, row) => sum + (row.items[item] || 0), 0))];
+    const headerRow = ["القرية", ...sortedItems];
+    const dataRows = sortedVillages.map((village) => [
+        village,
+        ...sortedItems.map((item) => reportData[village][item] || 0),
+    ]);
+    const totalsRow = ["المجموع", ...sortedItems.map((item) => itemTotals[item] || 0)];
 
     const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows, totalsRow]);
     ws["!views"] = [{ rightToLeft: true }];

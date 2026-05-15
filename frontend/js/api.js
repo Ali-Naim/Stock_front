@@ -84,6 +84,11 @@ const api = {
     updateTask: (id, payload) => apiRequest(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteTask: (id) => apiRequest(`/tasks/${id}`, { method: "DELETE" }),
 
+    getNotes: () => apiRequest("/notes"),
+    createNote: (payload) => apiRequest("/notes", { method: "POST", body: JSON.stringify(payload) }),
+    updateNote: (id, payload) => apiRequest(`/notes/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    deleteNote: (id) => apiRequest(`/notes/${id}`, { method: "DELETE" }),
+
     getRangeReport: (from, to) => apiRequest(`/reports/orders-by-range${toQueryString({ from, to })}`),
     getDistributionsDetail: (from, to) => apiRequest(`/reports/distributions-detail${toQueryString({ from, to })}`),
     getInventoryLogs: (itemId) => apiRequest(`/reports/inventory-logs${toQueryString({ item_id: itemId || "" })}`)
