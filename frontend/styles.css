@@ -3111,6 +3111,8 @@ th {
     border-radius: 6px;
     transition: color 0.15s, background 0.15s;
     flex-shrink: 0;
+    width: auto;
+    min-height: unset;
 }
 
 .note-card-delete:hover {

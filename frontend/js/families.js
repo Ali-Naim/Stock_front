@@ -557,6 +557,7 @@ function readFamilyFiltersFromUi() {
         blocked: document.getElementById("familyBlockedFilter")?.value || "",
         stopped: document.getElementById("familyStoppedFilter")?.value || "",
         moved: document.getElementById("familyMovedFilter")?.value || "",
+        relations: document.getElementById("familyRelationsFilter")?.value || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
         distMin: document.getElementById("familyDistMinFilter")?.value?.trim() || "",
         distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
@@ -607,7 +608,7 @@ function setFamilyColumnVisible(key, visible) {
 
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
-    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.distMin, f.distMax]
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.distMin, f.distMax]
         .filter(Boolean).length;
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
@@ -625,9 +626,10 @@ function applyFamilyFilters() {
 function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
-     "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyMovedFilter", "familyDistMinFilter", "familyDistMaxFilter"]
+     "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyMovedFilter",
+     "familyRelationsFilter", "familyDistMinFilter", "familyDistMaxFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", distMin: "", distMax: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", distMin: "", distMax: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
@@ -702,6 +704,7 @@ function getFilteredFamilies() {
     const blockedFilter = String(currentFamilyFilters?.blocked || "");
     const stoppedFilter = String(currentFamilyFilters?.stopped || "");
     const movedFilter = String(currentFamilyFilters?.moved || "");
+    const relationsFilter = String(currentFamilyFilters?.relations || "");
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
@@ -731,6 +734,11 @@ function getFilteredFamilies() {
         const moved = Boolean(family.is_moved ?? family.isMoved ?? false);
         if (movedFilter === "yes" && !moved) return false;
         if (movedFilter === "no" && moved) return false;
+        if (relationsFilter) {
+            const hasRel = (familyRelationsSummary[String(family.id)] || []).length > 0;
+            if (relationsFilter === "yes" && !hasRel) return false;
+            if (relationsFilter === "no" && hasRel) return false;
+        }
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
             if (distMin !== null && cnt < distMin) return false;

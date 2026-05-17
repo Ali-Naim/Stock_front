@@ -20,6 +20,9 @@ function _distCount(f) {
     if (Number.isFinite(fromApi)) return fromApi;
     return Number(familyStatsCache?.[String(f.id)]?.count ?? 0);
 }
+function _hasRelations(f) {
+    return (familyRelationsSummary?.[String(f.id)] || []).length > 0;
+}
 
 function renderAnalytics() {
     const container = document.getElementById("analyticsContent");
@@ -31,22 +34,24 @@ function renderAnalytics() {
         return;
     }
 
-    const total         = all.length;
-    const totalPeople   = all.reduce((s, f) => s + Number(f.people_count ?? 1), 0);
-    const avgPeople     = total ? (totalPeople / total).toFixed(1) : 0;
-    const totalFilled   = all.filter(_hasFilled).length;
-    const totalFile     = all.filter(_hasFile).length;
-    const totalMuni     = all.filter(_isMuni).length;
-    const totalWithDist = all.filter((f) => _distCount(f) > 0).length;
-    const totalHouse    = all.filter((f) => _housingType(f) === "house").length;
-    const totalShelter  = all.filter((f) => _housingType(f) === "shelter_center").length;
+    const total            = all.length;
+    const totalPeople      = all.reduce((s, f) => s + Number(f.people_count ?? 1), 0);
+    const avgPeople        = total ? (totalPeople / total).toFixed(1) : 0;
+    const totalFilled      = all.filter(_hasFilled).length;
+    const totalFile        = all.filter(_hasFile).length;
+    const totalMuni        = all.filter(_isMuni).length;
+    const totalWithDist    = all.filter((f) => _distCount(f) > 0).length;
+    const totalHouse       = all.filter((f) => _housingType(f) === "house").length;
+    const totalShelter     = all.filter((f) => _housingType(f) === "shelter_center").length;
+    const totalWithRelations = all.filter(_hasRelations).length;
 
-    const filledPct  = _pct(totalFilled, total);
-    const filePct    = _pct(totalFile, total);
-    const muniPct    = _pct(totalMuni, total);
-    const distPct    = _pct(totalWithDist, total);
-    const housePct   = _pct(totalHouse, total);
-    const shelterPct = _pct(totalShelter, total);
+    const filledPct    = _pct(totalFilled, total);
+    const filePct      = _pct(totalFile, total);
+    const muniPct      = _pct(totalMuni, total);
+    const distPct      = _pct(totalWithDist, total);
+    const housePct     = _pct(totalHouse, total);
+    const shelterPct   = _pct(totalShelter, total);
+    const relationsPct = _pct(totalWithRelations, total);
 
     // Group by village
     const byVillage = {};
@@ -65,12 +70,13 @@ function renderAnalytics() {
             const withDist   = fams.filter((f) => _distCount(f) > 0).length;
             const house      = fams.filter((f) => _housingType(f) === "house").length;
             const shelter    = fams.filter((f) => _housingType(f) === "shelter_center").length;
+            const withRel    = fams.filter(_hasRelations).length;
             return {
                 name: getVillageNameById(vid),
                 count: fams.length,
                 people,
                 avg: fams.length ? (people / fams.length).toFixed(1) : 0,
-                filled, fileNo, muni, withDist, house, shelter,
+                filled, fileNo, muni, withDist, house, shelter, withRel,
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, "ar"));
@@ -119,6 +125,11 @@ function renderAnalytics() {
                 <div class="analytics-summary-label">في مركز إيواء</div>
                 ${analyticsProgressBar(shelterPct, "#7c3aed")}
             </div>
+            <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalWithRelations} <span class="analytics-pct-badge analytics-pct-primary">${relationsPct}%</span></div>
+                <div class="analytics-summary-label">لديها علاقات</div>
+                ${analyticsProgressBar(relationsPct, "#0e7490")}
+            </div>
         </div>
 
 
@@ -139,6 +150,7 @@ function renderAnalytics() {
                             <th>توزيع %</th>
                             <th>منازل</th>
                             <th>مراكز إيواء</th>
+                            <th>علاقات %</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -147,6 +159,7 @@ function renderAnalytics() {
                             const mp  = _pct(r.muni,     r.count);
                             const np  = _pct(r.fileNo,   r.count);
                             const dp  = _pct(r.withDist, r.count);
+                            const rp  = _pct(r.withRel,  r.count);
                             return `
                             <tr>
                                 <td><strong>${escapeHtml(r.name)}</strong></td>
@@ -171,6 +184,10 @@ function renderAnalytics() {
                                 </td>
                                 <td class="analytics-num">${r.house}</td>
                                 <td class="analytics-num">${r.shelter}</td>
+                                <td class="analytics-bar-cell">
+                                    ${analyticsProgressBar(rp, "#0e7490")}
+                                    <span class="analytics-bar-label">${r.withRel}</span>
+                                </td>
                             </tr>`;
                         }).join("")}
                     </tbody>
@@ -198,6 +215,10 @@ function renderAnalytics() {
                             </td>
                             <td class="analytics-num">${totalHouse}</td>
                             <td class="analytics-num">${totalShelter}</td>
+                            <td class="analytics-bar-cell">
+                                ${analyticsProgressBar(relationsPct, "#0e7490")}
+                                <span class="analytics-bar-label">${totalWithRelations}</span>
+                            </td>
                         </tr>
                     </tfoot>
                 </table>
