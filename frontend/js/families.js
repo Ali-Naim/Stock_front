@@ -25,8 +25,9 @@ function _reopenDetailModalIfNeeded() {
 
 function getFamilyDisplayName(family) {
     const first = family?.father_first_name ?? family?.fatherFirstName ?? family?.first_name ?? "";
+    const middle = family?.father_middle_name ?? family?.fatherMiddleName ?? "";
     const last = family?.father_last_name ?? family?.fatherLastName ?? family?.last_name ?? "";
-    return `${String(first).trim()} ${String(last).trim()}`.trim() || "-";
+    return `${String(first).trim()} ${String(middle).trim()} ${String(last).trim()}`.replace(/\s+/g, " ").trim() || "-";
 }
 
 function normalizeDistributionType(value) {
@@ -282,8 +283,10 @@ function openFamilyEditModal(familyId) {
     editingFamilyId = id;
 
     const first = family.father_first_name ?? family.fatherFirstName ?? family.first_name ?? "";
+    const middle = family.father_middle_name ?? family.fatherMiddleName ?? "";
     const last = family.father_last_name ?? family.fatherLastName ?? family.last_name ?? "";
     const phone = family.phone_number ?? family.phoneNumber ?? family.father_phone ?? family.fatherPhone ?? "";
+    const phone2 = family.phone_number_2 ?? family.phoneNumber2 ?? "";
     const people = family.people_count ?? family.peopleCount ?? family.members_count ?? family.membersCount ?? 1;
     const villageId = family.village_id ?? family.villageId ?? "";
     const fileNumber = family.file_number ?? family.fileNumber ?? "";
@@ -299,8 +302,12 @@ function openFamilyEditModal(familyId) {
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
 
     document.getElementById("editFatherFirstName").value = String(first ?? "");
+    const editMiddleEl = document.getElementById("editFatherMiddleName");
+    if (editMiddleEl) editMiddleEl.value = String(middle ?? "");
     document.getElementById("editFatherLastName").value = String(last ?? "");
     document.getElementById("editFamilyPhone").value = String(phone ?? "");
+    const editPhone2El = document.getElementById("editFamilyPhone2");
+    if (editPhone2El) editPhone2El.value = String(phone2 ?? "");
     document.getElementById("editFamilyPeopleCount").value = String(people ?? "");
     fillFamilyEditVillageSelect(String(villageId ?? ""));
     const fileNumberEl = document.getElementById("editFamilyFileNumber");
@@ -338,8 +345,10 @@ async function submitFamilyEdit() {
     if (!editingFamilyId) return;
 
     const first = document.getElementById("editFatherFirstName")?.value?.trim() || "";
+    const middle = document.getElementById("editFatherMiddleName")?.value?.trim() || null;
     const last = document.getElementById("editFatherLastName")?.value?.trim() || "";
     const phone = document.getElementById("editFamilyPhone")?.value?.trim() || "";
+    const phone2 = document.getElementById("editFamilyPhone2")?.value?.trim() || null;
     const peopleCount = Number(document.getElementById("editFamilyPeopleCount")?.value);
     const villageId = document.getElementById("editFamilyVillage")?.value || "";
     const fileNumber = document.getElementById("editFamilyFileNumber")?.value?.trim() || null;
@@ -360,8 +369,10 @@ async function submitFamilyEdit() {
         const savedEditId = editingFamilyId;
         await api.updateFamily(savedEditId, {
             father_first_name: first,
+            father_middle_name: middle,
             father_last_name: last,
             phone_number: phone || null,
+            phone_number_2: phone2,
             people_count: peopleCount,
             village_id: Number(villageId),
             file_number: fileNumber,
@@ -726,7 +737,7 @@ function getFilteredFamilies() {
             if (distMax !== null && cnt > distMax) return false;
         }
         if (!nameQuery) return true;
-        const text = `${getFamilyDisplayName(family)} ${family?.phone_number ?? ""}`.toLowerCase();
+        const text = `${getFamilyDisplayName(family)} ${family?.phone_number ?? ""} ${family?.phone_number_2 ?? ""}`.toLowerCase();
         return text.includes(nameQuery);
     });
 
@@ -1049,6 +1060,7 @@ function renderFamilies() {
                                 family.village_name ?? family.villageName ?? getVillageNameById(family.village_id ?? family.villageId ?? "");
                             const id = Number(family.id);
                             const phone = family.phone_number ?? family.phoneNumber ?? family.father_phone ?? family.fatherPhone ?? "-";
+                            const phone2 = family.phone_number_2 ?? family.phoneNumber2 ?? "";
                             const apiCount = Number(family.distribution_count ?? family.distributions_count ?? family.distributionCount ?? NaN);
                             const apiLast = family.last_distribution_at ?? family.last_distributed_at ?? family.lastDistributionAt ?? "";
 
@@ -1102,7 +1114,7 @@ function renderFamilies() {
                                         ${stoppedBadge}
                                         ${movedBadge}
                                     </td>
-                                    ${cv('phone')        ? `<td class="families-phone-cell">${escapeHtml(phone || "-")}</td>` : ''}
+                                    ${cv('phone')        ? `<td class="families-phone-cell">${escapeHtml(phone || "-")}${phone2 ? `<br><span class="phone2-label">${escapeHtml(phone2)}</span>` : ""}</td>` : ''}
                                     ${cv('people')       ? `<td class="families-people-cell">${escapeHtml(people)}</td>` : ''}
                                     ${cv('village')      ? `<td>${escapeHtml(villageName)}</td>` : ''}
                                     ${cv('file_number')  ? `<td class="families-file-cell">${escapeHtml(fileNumber || "-")}</td>` : ''}
@@ -1154,8 +1166,10 @@ async function refreshFamilies({ silent = false } = {}) {
 
 async function createFamily() {
     const first = document.getElementById("fatherFirstName")?.value?.trim() || "";
+    const middle = document.getElementById("fatherMiddleName")?.value?.trim() || null;
     const last = document.getElementById("fatherLastName")?.value?.trim() || "";
     const phone = document.getElementById("familyPhone")?.value?.trim() || "";
+    const phone2 = document.getElementById("familyPhone2")?.value?.trim() || null;
     const peopleCount = Number(document.getElementById("familyPeopleCount")?.value);
     const villageId = document.getElementById("familyVillage")?.value || "";
     const fileNumber = document.getElementById("familyFileNumber")?.value?.trim() || null;
@@ -1175,8 +1189,10 @@ async function createFamily() {
     try {
         await api.createFamily({
             father_first_name: first,
+            father_middle_name: middle,
             father_last_name: last,
             phone_number: phone || null,
+            phone_number_2: phone2,
             people_count: peopleCount,
             village_id: Number(villageId),
             file_number: fileNumber,
@@ -1190,8 +1206,12 @@ async function createFamily() {
         });
 
         document.getElementById("fatherFirstName").value = "";
+        const middleNameEl = document.getElementById("fatherMiddleName");
+        if (middleNameEl) middleNameEl.value = "";
         document.getElementById("fatherLastName").value = "";
         document.getElementById("familyPhone").value = "";
+        const phone2El = document.getElementById("familyPhone2");
+        if (phone2El) phone2El.value = "";
         document.getElementById("familyPeopleCount").value = "";
         document.getElementById("familyVillage").value = "";
         const fileNumberEl = document.getElementById("familyFileNumber");

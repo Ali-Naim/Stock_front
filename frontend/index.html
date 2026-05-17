@@ -235,8 +235,10 @@
 
         <div class="form-grid family-edit-form-grid">
             <input id="editFatherFirstName" placeholder="اسم الأب">
+            <input id="editFatherMiddleName" placeholder="اسم الأب الأوسط (اختياري)">
             <input id="editFatherLastName" placeholder="كنية الأب">
             <input id="editFamilyPhone" placeholder="رقم الهاتف">
+            <input id="editFamilyPhone2" placeholder="رقم الهاتف 2 (اختياري)">
             <input id="editFamilyPeopleCount" type="number" min="1" placeholder="عدد الأفراد">
             <select id="editFamilyVillage">
                 <option value="">اختر القرية</option>
@@ -689,8 +691,10 @@
             <h3>إضافة عائلة</h3>
             <div class="form-grid">
                 <input id="fatherFirstName" placeholder="اسم الأب">
+                <input id="fatherMiddleName" placeholder="اسم الأب الأوسط (اختياري)">
                 <input id="fatherLastName" placeholder="كنية الأب">
                 <input id="familyPhone" placeholder="رقم الهاتف">
+                <input id="familyPhone2" placeholder="رقم الهاتف 2 (اختياري)">
                 <input id="familyPeopleCount" type="number" min="1" placeholder="عدد الأفراد">
                 <select id="familyVillage">
                     <option value="">اختر القرية</option>
@@ -1024,7 +1028,7 @@
         </div>
 
         <!-- Title -->
-        <input id="noteTitleInput" type="text" placeholder="العنوان" style="width:100%;font-size:1.1rem;font-weight:600;margin-bottom:10px;">
+        <input id="noteTitleInput" type="text" dir="rtl" placeholder="العنوان" style="width:100%;font-size:1.1rem;font-weight:600;margin-bottom:10px;writing-mode:horizontal-tb;direction:rtl;">
 
         <!-- Text toolbar -->
         <div class="note-toolbar">

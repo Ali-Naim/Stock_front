@@ -333,6 +333,7 @@ function cancelInlineEdit() {
 async function saveInlineEdit(orderId) {
     const newName = document.getElementById(`edit-order-name-${orderId}`).value.trim();
     const newVillage = document.getElementById(`edit-order-village-${orderId}`).value;
+    const newDateRaw = document.getElementById(`edit-order-date-${orderId}`)?.value || "";
 
     if (!newName) return alert("يجب إدخال اسم الطلب");
     if (!newVillage) return alert("اختر القرية");
@@ -364,7 +365,13 @@ async function saveInlineEdit(orderId) {
         await loadItems();
         await applyInventoryForItems(updatedItems);
 
-        await api.updateOrder(orderId, { order_name: newName, village: newVillage, items: updatedItems });
+        const newCreatedAt = newDateRaw ? new Date(newDateRaw).toISOString() : undefined;
+        await api.updateOrder(orderId, {
+            order_name: newName,
+            village: newVillage,
+            items: updatedItems,
+            ...(newCreatedAt ? { created_at: newCreatedAt } : {}),
+        });
 
         inlineEditingOrderId = null;
         await loadItems();
@@ -484,10 +491,15 @@ function buildOrderCardHtml(order) {
         ? `<button class="add" onclick="setOrderDateToToday(${order.id})">تاريخ اليوم</button>`
         : "";
 
+    const currentDateValue = order.created_at ? new Date(order.created_at).toISOString().split("T")[0] : "";
     const itemsHtml = isInlineEditing
         ? `
             <input type="text" id="edit-order-name-${order.id}" value="${escapeHtml(orderDisplayName)}" placeholder="اسم الطلب">
             <select id="edit-order-village-${order.id}" class="inline-village-select">${getOrderVillageOptions(order.village || "")}</select>
+            <div class="inline-date-row">
+                <label>تاريخ الطلب:</label>
+                <input type="date" id="edit-order-date-${order.id}" value="${currentDateValue}">
+            </div>
             <div id="inline-items-${order.id}" class="order-items">
                 ${(order.items || []).map((item, index) => buildInlineItemRow(order.id, index, item.id, item.qty)).join("")}
             </div>

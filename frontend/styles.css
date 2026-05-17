@@ -1412,6 +1412,24 @@ button {
     margin-top: 10px;
 }
 
+.inline-date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.inline-date-row label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.inline-date-row input[type="date"] {
+    width: auto;
+    min-width: 160px;
+}
+
 .inline-edit-row {
     display: flex;
     align-items: center;
@@ -1887,6 +1905,13 @@ button {
     white-space: nowrap;
     font-weight: 700;
     color: var(--muted);
+}
+
+.phone2-label {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--muted);
+    opacity: 0.75;
 }
 
 .families-actions-cell {
@@ -3133,6 +3158,13 @@ th {
     width: min(100%, 600px);
     border: 3px solid #fde047;
     transition: background 0.2s, border-color 0.2s;
+}
+
+#noteTitleInput {
+    writing-mode: horizontal-tb;
+    direction: rtl;
+    text-align: right;
+    unicode-bidi: plaintext;
 }
 
 .note-color-picker-row {
