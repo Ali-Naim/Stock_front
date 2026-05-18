@@ -1901,6 +1901,78 @@ button {
     color: var(--primary-strong);
 }
 
+.rel-icon-wrap {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    margin-inline-start: 4px;
+    cursor: default;
+}
+
+.rel-icon {
+    color: #6366f1;
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+.rel-popup {
+    display: none;
+    position: absolute;
+    z-index: 300;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 190px;
+    max-width: 280px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+    padding: 10px 12px;
+    text-align: right;
+    pointer-events: none;
+}
+
+.rel-icon-wrap:hover .rel-popup {
+    display: block;
+}
+
+.rel-popup-header {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #6366f1;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+}
+
+.rel-popup-group {
+    margin-bottom: 7px;
+}
+
+.rel-popup-group:last-child {
+    margin-bottom: 0;
+}
+
+.rel-popup-type {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--bg);
+    border-radius: 5px;
+    padding: 1px 6px;
+    display: inline-block;
+    margin-bottom: 3px;
+}
+
+.rel-popup-name {
+    font-size: 0.82rem;
+    color: var(--text);
+    padding: 2px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .families-phone-cell {
     white-space: nowrap;
     font-weight: 700;

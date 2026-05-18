@@ -745,7 +745,8 @@ function getFilteredFamilies() {
             if (distMax !== null && cnt > distMax) return false;
         }
         if (!nameQuery) return true;
-        const text = `${getFamilyDisplayName(family)} ${family?.phone_number ?? ""} ${family?.phone_number_2 ?? ""}`.toLowerCase();
+        const firstLast = `${family?.father_first_name ?? ""} ${family?.father_last_name ?? ""}`.trim();
+        const text = `${getFamilyDisplayName(family)} ${firstLast} ${family?.phone_number ?? ""} ${family?.phone_number_2 ?? ""}`.toLowerCase();
         return text.includes(nameQuery);
     });
 
@@ -1105,9 +1106,26 @@ function renderFamilies() {
 
                             const relations = familyRelationsSummary[String(id)] || [];
                             const relIcon = relations.length
-                                ? `<span onclick="event.stopPropagation()" title="${relations.map((r) => `${r.name} (${r.relation_type})`).join("\n")}" style="cursor:default;margin-right:4px;">
-                                        <i class="bi bi-diagram-3-fill" style="color:#6366f1;font-size:0.8rem;vertical-align:middle;"></i>
-                                   </span>`
+                                ? (() => {
+                                    const grouped = {};
+                                    relations.forEach((r) => {
+                                        if (!grouped[r.relation_type]) grouped[r.relation_type] = [];
+                                        if (!grouped[r.relation_type].includes(r.name)) grouped[r.relation_type].push(r.name);
+                                    });
+                                    const rows = Object.entries(grouped).map(([type, names]) =>
+                                        `<div class="rel-popup-group">
+                                            <span class="rel-popup-type">${escapeHtml(type)}</span>
+                                            ${names.map((n) => `<div class="rel-popup-name">${escapeHtml(n)}</div>`).join("")}
+                                        </div>`
+                                    ).join("");
+                                    return `<span class="rel-icon-wrap" onclick="event.stopPropagation()">
+                                        <i class="bi bi-diagram-3-fill rel-icon"></i>
+                                        <div class="rel-popup">
+                                            <div class="rel-popup-header">علاقات (${relations.length})</div>
+                                            ${rows}
+                                        </div>
+                                    </span>`;
+                                })()
                                 : "";
 
                             const createdAt = family.created_at ? formatDate(family.created_at) : "-";
