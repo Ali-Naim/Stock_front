@@ -558,6 +558,7 @@ function readFamilyFiltersFromUi() {
         stopped: document.getElementById("familyStoppedFilter")?.value || "",
         moved: document.getElementById("familyMovedFilter")?.value || "",
         relations: document.getElementById("familyRelationsFilter")?.value || "",
+        houseId: document.getElementById("familyHouseFilter")?.value?.trim() || "",
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
         distMin: document.getElementById("familyDistMinFilter")?.value?.trim() || "",
         distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
@@ -608,7 +609,7 @@ function setFamilyColumnVisible(key, visible) {
 
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
-    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.distMin, f.distMax]
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.houseId, f.distMin, f.distMax]
         .filter(Boolean).length;
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
@@ -627,9 +628,9 @@ function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
      "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyMovedFilter",
-     "familyRelationsFilter", "familyDistMinFilter", "familyDistMaxFilter"]
+     "familyRelationsFilter", "familyHouseFilter", "familyDistMinFilter", "familyDistMaxFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", distMin: "", distMax: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
@@ -652,6 +653,45 @@ function _sortIcon(col) {
     return familiesSortDir === "asc"
         ? `<i class="bi bi-arrow-up sort-icon active"></i>`
         : `<i class="bi bi-arrow-down sort-icon active"></i>`;
+}
+
+function computeHouseMap() {
+    const visited = new Set();
+    const components = [];
+
+    const relevantIds = new Set();
+    for (const [id, rels] of Object.entries(familyRelationsSummary || {})) {
+        if ((rels || []).some((r) => r.relation_type === "same_household"))
+            relevantIds.add(String(id));
+    }
+
+    for (const id of relevantIds) {
+        if (visited.has(id)) continue;
+        const component = new Set();
+        const queue = [id];
+        visited.add(id);
+        while (queue.length) {
+            const curr = queue.shift();
+            component.add(curr);
+            for (const r of (familyRelationsSummary[curr] || [])) {
+                if (r.relation_type !== "same_household") continue;
+                const n = String(r.related_family_id);
+                if (!visited.has(n)) { visited.add(n); queue.push(n); }
+            }
+        }
+        components.push(component);
+    }
+
+    // Sort by smallest numeric family ID for stable numbering across reloads
+    components.sort((a, b) =>
+        Math.min(...[...a].map(Number)) - Math.min(...[...b].map(Number))
+    );
+
+    const houseMap = {};
+    components.forEach((comp, i) => {
+        comp.forEach((id) => { houseMap[id] = i + 1; });
+    });
+    return houseMap;
 }
 
 function getDuplicateMap() {
@@ -705,6 +745,8 @@ function getFilteredFamilies() {
     const stoppedFilter = String(currentFamilyFilters?.stopped || "");
     const movedFilter = String(currentFamilyFilters?.moved || "");
     const relationsFilter = String(currentFamilyFilters?.relations || "");
+    const houseIdFilter = String(currentFamilyFilters?.houseId || "");
+    const houseMapForFilter = houseIdFilter ? computeHouseMap() : null;
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
@@ -738,6 +780,10 @@ function getFilteredFamilies() {
             const hasRel = (familyRelationsSummary[String(family.id)] || []).length > 0;
             if (relationsFilter === "yes" && !hasRel) return false;
             if (relationsFilter === "no" && hasRel) return false;
+        }
+        if (houseIdFilter && houseMapForFilter) {
+            const familyHouse = houseMapForFilter[String(family.id)];
+            if (!familyHouse || String(familyHouse) !== houseIdFilter) return false;
         }
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
@@ -1041,6 +1087,7 @@ function renderFamilies() {
     const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
     const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
     const duplicateMap = getDuplicateMap();
+    const houseMap = computeHouseMap();
 
     const cv = (key) => familyColumnVisibility[key] !== false;
     container.innerHTML = `
@@ -1103,6 +1150,8 @@ function renderFamilies() {
                             const stoppedBadge = isStopped ? '<span class="badge" style="background:#fef3c7;color:#92400e;">موقوف</span>' : "";
                             const movedLabel = movedToVillage ? `انتقل إلى: ${movedToVillage}` : "انتقل خارج النطاق";
                             const movedBadge = isMoved ? `<span class="badge" style="background:#dbeafe;color:#1e40af;"><i class="bi bi-geo-alt-fill" style="font-size:0.7rem;"></i> ${escapeHtml(movedLabel)}</span>` : "";
+                            const houseId = houseMap[String(id)];
+                            const houseBadge = houseId ? `<span class="badge house-badge" onclick="event.stopPropagation();filterByHouse(${houseId})" title="فلترة حسب البيت"><i class="bi bi-house-fill" style="font-size:0.7rem;"></i> بيت ${houseId}</span>` : "";
 
                             const relations = familyRelationsSummary[String(id)] || [];
                             const relIcon = relations.length
@@ -1139,6 +1188,7 @@ function renderFamilies() {
                                         ${blockedBadge}
                                         ${stoppedBadge}
                                         ${movedBadge}
+                                        ${houseBadge}
                                     </td>
                                     ${cv('phone')        ? `<td class="families-phone-cell">${escapeHtml(phone || "-")}${phone2 ? `<br><span class="phone2-label">${escapeHtml(phone2)}</span>` : ""}</td>` : ''}
                                     ${cv('people')       ? `<td class="families-people-cell">${escapeHtml(people)}</td>` : ''}
@@ -1696,8 +1746,20 @@ window.setFamilyColumnVisible = setFamilyColumnVisible;
 window.sortFamiliesBy = sortFamiliesBy;
 window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
+function filterByHouse(houseId) {
+    const el = document.getElementById("familyHouseFilter");
+    if (el) el.value = String(houseId);
+    const panel = document.getElementById("familyAdvancedFilters");
+    if (panel?.classList.contains("hidden")) {
+        panel.classList.remove("hidden");
+        document.getElementById("familyAdvancedToggleBtn")?.classList.add("active");
+    }
+    applyFamilyFilters();
+}
+
 window.applyFamilyFilters = applyFamilyFilters;
 window.clearFamilyFilters = clearFamilyFilters;
+window.filterByHouse = filterByHouse;
 window.refreshFamilies = refreshFamilies;
 window.ensureFamiliesLoaded = ensureFamiliesLoaded;
 window.openDistributionModal = openDistributionModal;
