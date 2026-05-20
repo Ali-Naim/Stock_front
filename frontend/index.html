@@ -743,6 +743,7 @@
             <div class="family-filter-bar dt-filter-bar">
                 <input id="familyNameFilter" placeholder="اسم الأب" oninput="applyFamilyFilters()" style="flex:1;min-width:140px;">
                 <input id="familyFileNumberSearch" placeholder="رقم الملف" oninput="applyFamilyFilters()" style="min-width:130px;">
+                <input id="familyHouseFilter" type="number" min="1" placeholder="رقم البيت" oninput="applyFamilyFilters()" style="min-width:120px;">
                 <button type="button" class="filter-advanced-toggle" id="familyAdvancedToggleBtn" onclick="toggleFamilyAdvancedFilters()">
                     <i class="bi bi-sliders2 me-1"></i>فلاتر
                     <span id="familyAdvancedBadge" class="filter-active-badge hidden"></span>
@@ -824,7 +825,6 @@
                         <option value="yes">لديها علاقات</option>
                         <option value="no">بدون علاقات</option>
                     </select>
-                    <input id="familyHouseFilter" type="number" min="1" placeholder="رقم البيت" oninput="applyFamilyFilters()" style="width:120px;">
                     <div class="dt-filter-date-group">
                         <input id="familyDistMinFilter" type="number" min="0" placeholder="توزيعات ≥" oninput="applyFamilyFilters()" style="width:105px;">
                         <span class="dt-filter-sep">—</span>
