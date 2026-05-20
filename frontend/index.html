@@ -244,6 +244,7 @@
                 <option value="">اختر القرية</option>
             </select>
             <input id="editFamilyFileNumber" placeholder="رقم الملف (اختياري)">
+            <input id="editFamilyHouseId" placeholder="رقم البيت (اختياري)">
         </div>
         <div class="family-checkboxes">
             <label class="checkbox-label">
@@ -700,6 +701,7 @@
                     <option value="">اختر القرية</option>
                 </select>
                 <input id="familyFileNumber" placeholder="رقم الملف (اختياري)">
+                <input id="familyHouseId" placeholder="رقم البيت (اختياري)">
             </div>
             <div class="family-checkboxes">
                 <label class="checkbox-label">
@@ -743,7 +745,7 @@
             <div class="family-filter-bar dt-filter-bar">
                 <input id="familyNameFilter" placeholder="اسم الأب" oninput="applyFamilyFilters()" style="flex:1;min-width:140px;">
                 <input id="familyFileNumberSearch" placeholder="رقم الملف" oninput="applyFamilyFilters()" style="min-width:130px;">
-                <input id="familyHouseFilter" type="number" min="1" placeholder="رقم البيت" oninput="applyFamilyFilters()" style="min-width:120px;">
+                <input id="familyHouseFilter" type="text" placeholder="رقم البيت" oninput="applyFamilyFilters()" style="min-width:120px;">
                 <button type="button" class="filter-advanced-toggle" id="familyAdvancedToggleBtn" onclick="toggleFamilyAdvancedFilters()">
                     <i class="bi bi-sliders2 me-1"></i>فلاتر
                     <span id="familyAdvancedBadge" class="filter-active-badge hidden"></span>

@@ -290,6 +290,7 @@ function openFamilyEditModal(familyId) {
     const people = family.people_count ?? family.peopleCount ?? family.members_count ?? family.membersCount ?? 1;
     const villageId = family.village_id ?? family.villageId ?? "";
     const fileNumber = family.file_number ?? family.fileNumber ?? "";
+    const houseId = family.house_id ?? family.houseId ?? "";
     const isFormFilled = family.is_form_filled ?? family.isFormFilled ?? false;
     const municipalityRegistered = family.municipality_registered ?? family.municipalityRegistered ?? false;
     const housingType = family.housing_type ?? family.housingType ?? "";
@@ -312,6 +313,8 @@ function openFamilyEditModal(familyId) {
     fillFamilyEditVillageSelect(String(villageId ?? ""));
     const fileNumberEl = document.getElementById("editFamilyFileNumber");
     if (fileNumberEl) fileNumberEl.value = String(fileNumber ?? "");
+    const houseIdEl = document.getElementById("editFamilyHouseId");
+    if (houseIdEl) houseIdEl.value = String(houseId ?? "");
     const formFilledEl = document.getElementById("editFamilyFormFilled");
     if (formFilledEl) formFilledEl.checked = Boolean(isFormFilled);
     const muniEl = document.getElementById("editFamilyMunicipalityRegistered");
@@ -352,6 +355,7 @@ async function submitFamilyEdit() {
     const peopleCount = Number(document.getElementById("editFamilyPeopleCount")?.value);
     const villageId = document.getElementById("editFamilyVillage")?.value || "";
     const fileNumber = document.getElementById("editFamilyFileNumber")?.value?.trim() || null;
+    const houseId = document.getElementById("editFamilyHouseId")?.value?.trim() || null;
     const isFormFilled = document.getElementById("editFamilyFormFilled")?.checked ?? false;
     const municipalityRegistered = document.getElementById("editFamilyMunicipalityRegistered")?.checked ?? false;
     const housingType = document.getElementById("editFamilyHousingType")?.value || null;
@@ -376,6 +380,7 @@ async function submitFamilyEdit() {
             people_count: peopleCount,
             village_id: Number(villageId),
             file_number: fileNumber,
+            house_id: houseId,
             is_form_filled: isFormFilled,
             municipality_registered: municipalityRegistered,
             housing_type: housingType,
@@ -745,8 +750,7 @@ function getFilteredFamilies() {
     const stoppedFilter = String(currentFamilyFilters?.stopped || "");
     const movedFilter = String(currentFamilyFilters?.moved || "");
     const relationsFilter = String(currentFamilyFilters?.relations || "");
-    const houseIdFilter = String(currentFamilyFilters?.houseId || "");
-    const houseMapForFilter = houseIdFilter ? computeHouseMap() : null;
+    const houseIdFilter = String(currentFamilyFilters?.houseId || "").toLowerCase();
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
@@ -781,9 +785,9 @@ function getFilteredFamilies() {
             if (relationsFilter === "yes" && !hasRel) return false;
             if (relationsFilter === "no" && hasRel) return false;
         }
-        if (houseIdFilter && houseMapForFilter) {
-            const familyHouse = houseMapForFilter[String(family.id)];
-            if (!familyHouse || String(familyHouse) !== houseIdFilter) return false;
+        if (houseIdFilter) {
+            const fHouseId = String(family.house_id ?? family.houseId ?? "").toLowerCase();
+            if (!fHouseId.includes(houseIdFilter)) return false;
         }
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
@@ -1087,7 +1091,6 @@ function renderFamilies() {
     const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
     const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
     const duplicateMap = getDuplicateMap();
-    const houseMap = computeHouseMap();
 
     const cv = (key) => familyColumnVisibility[key] !== false;
     container.innerHTML = `
@@ -1150,8 +1153,8 @@ function renderFamilies() {
                             const stoppedBadge = isStopped ? '<span class="badge" style="background:#fef3c7;color:#92400e;">موقوف</span>' : "";
                             const movedLabel = movedToVillage ? `انتقل إلى: ${movedToVillage}` : "انتقل خارج النطاق";
                             const movedBadge = isMoved ? `<span class="badge" style="background:#dbeafe;color:#1e40af;"><i class="bi bi-geo-alt-fill" style="font-size:0.7rem;"></i> ${escapeHtml(movedLabel)}</span>` : "";
-                            const houseId = houseMap[String(id)];
-                            const houseBadge = houseId ? `<span class="badge house-badge" onclick="event.stopPropagation();filterByHouse(${houseId})" title="فلترة حسب البيت"><i class="bi bi-house-fill" style="font-size:0.7rem;"></i> بيت ${houseId}</span>` : "";
+                            const storedHouseId = family.house_id ?? family.houseId ?? "";
+                            const houseBadge = storedHouseId ? `<span class="badge house-badge" onclick="event.stopPropagation();filterByHouse('${escapeHtml(storedHouseId)}')" title="فلترة حسب البيت"><i class="bi bi-house-fill" style="font-size:0.7rem;"></i> ${escapeHtml(storedHouseId)}</span>` : "";
 
                             const relations = familyRelationsSummary[String(id)] || [];
                             const relIcon = relations.length
@@ -1249,6 +1252,7 @@ async function createFamily() {
     const peopleCount = Number(document.getElementById("familyPeopleCount")?.value);
     const villageId = document.getElementById("familyVillage")?.value || "";
     const fileNumber = document.getElementById("familyFileNumber")?.value?.trim() || null;
+    const houseId = document.getElementById("familyHouseId")?.value?.trim() || null;
     const isFormFilled = document.getElementById("familyFormFilled")?.checked ?? false;
     const municipalityRegistered = document.getElementById("familyMunicipalityRegistered")?.checked ?? false;
     const housingType = document.getElementById("familyHousingType")?.value || null;
@@ -1272,6 +1276,7 @@ async function createFamily() {
             people_count: peopleCount,
             village_id: Number(villageId),
             file_number: fileNumber,
+            house_id: houseId,
             is_form_filled: isFormFilled,
             municipality_registered: municipalityRegistered,
             housing_type: housingType,
@@ -1292,6 +1297,8 @@ async function createFamily() {
         document.getElementById("familyVillage").value = "";
         const fileNumberEl = document.getElementById("familyFileNumber");
         if (fileNumberEl) fileNumberEl.value = "";
+        const houseIdEl = document.getElementById("familyHouseId");
+        if (houseIdEl) houseIdEl.value = "";
         const formFilledEl = document.getElementById("familyFormFilled");
         if (formFilledEl) formFilledEl.checked = false;
         const muniEl = document.getElementById("familyMunicipalityRegistered");
@@ -1748,7 +1755,7 @@ window.goToFamiliesPage = goToFamiliesPage;
 window.createFamily = createFamily;
 function filterByHouse(houseId) {
     const el = document.getElementById("familyHouseFilter");
-    if (el) el.value = String(houseId);
+    if (el) el.value = houseId;
     const panel = document.getElementById("familyAdvancedFilters");
     if (panel?.classList.contains("hidden")) {
         panel.classList.remove("hidden");
