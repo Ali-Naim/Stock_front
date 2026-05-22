@@ -147,31 +147,31 @@ function adjustQty(index, delta) {
     renderOrder();
 }
 
-async function restoreInventoryForItems(items = []) {
+async function restoreInventoryForItems(items = [], familyName = null, familyId = null) {
     for (const item of items) {
+        const updated = await api.adjustInventoryItem(item.id, item.qty, "restore", familyName, familyId);
         const stock = inventory.find((entry) => entry.id == item.id);
-        if (!stock) continue;
-
-        const restoredQty = stock.quantity + item.qty;
-        await api.updateInventoryItem(item.id, { quantity: restoredQty });
-
-        stock.quantity = restoredQty;
+        if (stock && updated?.quantity !== undefined) stock.quantity = updated.quantity;
     }
 }
 
-async function applyInventoryForItems(items = []) {
+async function applyInventoryForItems(items = [], familyName = null, familyId = null) {
     for (const item of items) {
         const stock = inventory.find((entry) => entry.id == item.id);
-        if (!stock) throw new Error(`العنصر ${item.name} غير متوفر`);
-
-        if (item.qty > stock.quantity) {
+        if (stock && item.qty > stock.quantity) {
             throw new Error(`الكمية المطلوبة من ${item.name} أكبر من المتاح (${stock.quantity})`);
         }
-
-        const newQty = stock.quantity - item.qty;
-        await api.updateInventoryItem(item.id, { quantity: newQty });
-
-        stock.quantity = newQty;
+        let updated;
+        try {
+            updated = await api.adjustInventoryItem(item.id, -item.qty, "order", familyName, familyId);
+        } catch (err) {
+            const msg = String(err?.message || "").toLowerCase();
+            if (msg.includes("insufficient") || msg.includes("stock")) {
+                throw new Error(`الكمية غير كافية للمنتج: ${item.name}`);
+            }
+            throw err;
+        }
+        if (stock && updated?.quantity !== undefined) stock.quantity = updated.quantity;
     }
 }
 
@@ -215,13 +215,13 @@ async function submitOrder() {
         if (editingOrderId) {
             const oldOrder = await api.getOrderById(editingOrderId);
 
-            await restoreInventoryForItems(oldOrder.items || []);
+            await restoreInventoryForItems(oldOrder.items || [], oldOrder.order_name || null, oldOrder.family_id || null);
             await loadItems();
-            await applyInventoryForItems(orderRecord.items);
+            await applyInventoryForItems(orderRecord.items, orderRecord.order_name || null, orderRecord.family_id || null);
 
             await api.updateOrder(editingOrderId, orderRecord);
         } else {
-            await applyInventoryForItems(orderRecord.items);
+            await applyInventoryForItems(orderRecord.items, orderRecord.order_name || null, orderRecord.family_id || null);
             await api.createOrder(orderRecord);
         }
 
@@ -361,9 +361,9 @@ async function saveInlineEdit(orderId) {
     try {
         const originalOrder = await api.getOrderById(orderId);
 
-        await restoreInventoryForItems(originalOrder.items || []);
+        await restoreInventoryForItems(originalOrder.items || [], originalOrder.order_name || null, originalOrder.family_id || null);
         await loadItems();
-        await applyInventoryForItems(updatedItems);
+        await applyInventoryForItems(updatedItems, newName || originalOrder.order_name || null, originalOrder.family_id || null);
 
         const newCreatedAt = newDateRaw ? new Date(newDateRaw).toISOString() : undefined;
         await api.updateOrder(orderId, {
@@ -398,7 +398,7 @@ async function deleteOrder(orderId) {
     if (inlineEditingOrderId === orderId) inlineEditingOrderId = null;
 
     try {
-        await restoreInventoryForItems(order?.items || []);
+        await restoreInventoryForItems(order?.items || [], order?.order_name || null, order?.family_id || null);
         await api.deleteOrder(orderId);
         await loadItems();
     } catch (err) {

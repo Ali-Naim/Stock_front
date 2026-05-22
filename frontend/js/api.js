@@ -37,6 +37,7 @@ const api = {
     getInventory: () => apiRequest("/inventory"),
     createInventoryItem: (payload) => apiRequest("/inventory", { method: "POST", body: JSON.stringify(payload) }),
     updateInventoryItem: (id, payload) => apiRequest(`/inventory/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    adjustInventoryItem: (id, delta, reason, familyName, familyId) => apiRequest(`/inventory/${id}/adjust`, { method: "POST", body: JSON.stringify({ delta, reason, reference_label: familyName || null, reference_id: familyId || null }) }),
     deleteInventoryItem: (id) => apiRequest(`/inventory/${id}`, { method: "DELETE" }),
 
     getItemTypes: () => apiRequest("/item-types"),
