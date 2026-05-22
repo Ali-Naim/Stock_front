@@ -751,6 +751,7 @@ function getFilteredFamilies() {
     const movedFilter = String(currentFamilyFilters?.moved || "");
     const relationsFilter = String(currentFamilyFilters?.relations || "");
     const houseIdFilter = String(currentFamilyFilters?.houseId || "").toLowerCase();
+    const houseMapForFilter = houseIdFilter ? computeHouseMap() : null;
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
@@ -786,8 +787,10 @@ function getFilteredFamilies() {
             if (relationsFilter === "no" && hasRel) return false;
         }
         if (houseIdFilter) {
-            const fHouseId = String(family.house_id ?? family.houseId ?? "").toLowerCase();
-            if (!fHouseId.includes(houseIdFilter)) return false;
+            const storedH = String(family.house_id ?? family.houseId ?? "").toLowerCase();
+            const computedH = houseMapForFilter ? String(houseMapForFilter[String(family.id)] ?? "") : "";
+            const effectiveH = storedH || computedH;
+            if (!effectiveH.includes(houseIdFilter)) return false;
         }
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
@@ -1091,6 +1094,7 @@ function renderFamilies() {
     const offset = (familiesPage - 1) * FAMILIES_PAGE_SIZE;
     const list = allFiltered.slice(offset, offset + FAMILIES_PAGE_SIZE);
     const duplicateMap = getDuplicateMap();
+    const houseMap = computeHouseMap();
 
     const cv = (key) => familyColumnVisibility[key] !== false;
     container.innerHTML = `
@@ -1153,8 +1157,11 @@ function renderFamilies() {
                             const stoppedBadge = isStopped ? '<span class="badge" style="background:#fef3c7;color:#92400e;">موقوف</span>' : "";
                             const movedLabel = movedToVillage ? `انتقل إلى: ${movedToVillage}` : "انتقل خارج النطاق";
                             const movedBadge = isMoved ? `<span class="badge" style="background:#dbeafe;color:#1e40af;"><i class="bi bi-geo-alt-fill" style="font-size:0.7rem;"></i> ${escapeHtml(movedLabel)}</span>` : "";
-                            const storedHouseId = family.house_id ?? family.houseId ?? "";
-                            const houseBadge = storedHouseId ? `<span class="badge house-badge" onclick="event.stopPropagation();filterByHouse('${escapeHtml(storedHouseId)}')" title="فلترة حسب البيت"><i class="bi bi-house-fill" style="font-size:0.7rem;"></i> ${escapeHtml(storedHouseId)}</span>` : "";
+                            const storedHouseId = String(family.house_id ?? family.houseId ?? "").trim();
+                            const computedHouseId = houseMap[String(id)];
+                            const houseLabel = storedHouseId || (computedHouseId ? `بيت ${computedHouseId}` : "");
+                            const houseFilterVal = storedHouseId || (computedHouseId ? String(computedHouseId) : "");
+                            const houseBadge = houseLabel ? `<span class="badge house-badge" onclick="event.stopPropagation();filterByHouse('${escapeHtml(houseFilterVal)}')" title="فلترة حسب البيت"><i class="bi bi-house-fill" style="font-size:0.7rem;"></i> ${escapeHtml(houseLabel)}</span>` : "";
 
                             const relations = familyRelationsSummary[String(id)] || [];
                             const relIcon = relations.length
