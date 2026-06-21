@@ -1508,14 +1508,48 @@ async function exportFamiliesExcel() {
         if (toVal) params.to = toVal;
         if (includeAll) params.include_all = "true";
 
+        // Build a set of IDs from the currently filtered families in the UI
+        const filteredFamilies = getFilteredFamilies();
+        const filteredIds = new Set(filteredFamilies.map((f) => String(f.id)));
+
         const result = await api.getFamilyDistributionsExport(params);
-        const rows = result?.rows || [];
+        const allRows = result?.rows || [];
         const itemNames = result?.item_names || [];
+
+        // Apply the same filters the table uses
+        const rows = allRows.filter((r) => filteredIds.has(String(r.id)));
 
         if (!rows.length) {
             alert("لا توجد بيانات للتصدير");
             return;
         }
+
+        // Build filter summary for the title
+        const f = currentFamilyFilters || {};
+        const filterParts = [];
+        if (f.village) {
+            const vname = getVillageNameById(f.village);
+            if (vname) filterParts.push(`القرية: ${vname}`);
+        }
+        if (f.name) filterParts.push(`الاسم: ${f.name}`);
+        if (f.fileNumberSearch) filterParts.push(`رقم الملف: ${f.fileNumberSearch}`);
+        if (f.formFilled === "true") filterParts.push("ملأوا الاستمارة");
+        else if (f.formFilled === "false") filterParts.push("لم يملأوا الاستمارة");
+        if (f.municipality === "true") filterParts.push("مسجلون بالبلدية");
+        else if (f.municipality === "false") filterParts.push("غير مسجلين بالبلدية");
+        if (f.housingType) filterParts.push(`السكن: ${f.housingType === "house" ? "منزل" : "مركز إيواء"}`);
+        if (f.blocked === "true") filterParts.push("محجوبون");
+        if (f.stopped === "true") filterParts.push("موقوفون");
+        if (f.houseId) filterParts.push(`رقم البيت: ${f.houseId}`);
+        if (f.distMin) filterParts.push(`توزيعات ≥ ${f.distMin}`);
+        if (f.distMax) filterParts.push(`توزيعات ≤ ${f.distMax}`);
+
+        const dateTitle = fromVal || toVal
+            ? `${fromVal ? `من: ${fromVal}` : ""}${fromVal && toVal ? "  —  " : ""}${toVal ? `إلى: ${toVal}` : ""}`
+            : "جميع الفترات";
+
+        const titleText = `تصدير العائلات  |  ${dateTitle}${filterParts.length ? `  |  ${filterParts.join(" ، ")}` : ""}`;
+        const countText = `عدد العائلات: ${rows.length}`;
 
         const header = [
             "رقم الملف", "الاسم", "الكنية", "رقم الهاتف",
@@ -1534,19 +1568,28 @@ async function exportFamiliesExcel() {
             ...itemNames.map((name) => r.items[name] || 0),
         ]);
 
+        // Sheet: title row, count row, blank, header, data
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+        const ws = XLSX.utils.aoa_to_sheet([[titleText], [countText], [], header, ...dataRows]);
         ws["!views"] = [{ rightToLeft: true }];
+
+        // Merge title and count across all columns
+        const colCount = header.length - 1;
+        ws["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: colCount } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: colCount } },
+        ];
 
         ws["!cols"] = header.map((_, ci) => {
             const vals = [header[ci], ...dataRows.map((r) => r[ci])];
             return { wch: Math.max(...vals.map((v) => String(v ?? "").length)) + 2 };
         });
 
+        // Bold the header row (now at row index 3)
         const range = XLSX.utils.decode_range(ws["!ref"]);
         for (let C = range.s.c; C <= range.e.c; C++) {
-            const cell = XLSX.utils.encode_cell({ r: 0, c: C });
-            if (ws[cell]) ws[cell].s = { font: { bold: true } };
+            const headerCell = XLSX.utils.encode_cell({ r: 3, c: C });
+            if (ws[headerCell]) ws[headerCell].s = { font: { bold: true } };
         }
 
         XLSX.utils.book_append_sheet(wb, ws, "العائلات");
