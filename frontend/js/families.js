@@ -790,7 +790,7 @@ function getFilteredFamilies() {
             const storedH = String(family.house_id ?? family.houseId ?? "").toLowerCase();
             const computedH = houseMapForFilter ? String(houseMapForFilter[String(family.id)] ?? "") : "";
             const effectiveH = storedH || computedH;
-            if (!effectiveH.includes(houseIdFilter)) return false;
+            if (effectiveH !== houseIdFilter) return false;
         }
         if (distMin !== null || distMax !== null) {
             const cnt = Number(family.distribution_count ?? familyStatsCache[String(family.id)]?.count ?? 0);
