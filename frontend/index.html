@@ -278,6 +278,20 @@
                 <option value="shelter_center">مركز إيواء</option>
             </select>
         </div>
+        <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
+            <select id="editFamilyGiftAmount" style="max-width:200px;">
+                <option value="">لا يوجد هدية</option>
+                <option value="100">هدية 100$</option>
+                <option value="200">هدية 200$</option>
+            </select>
+            <select id="editFamilyLivingCondition" style="max-width:220px;">
+                <option value="">الوضع المعيشي (غير محدد)</option>
+                <option value="very_bad">سيئ جداً</option>
+                <option value="bad">سيئ</option>
+                <option value="normal">عادي</option>
+                <option value="good">جيد</option>
+            </select>
+        </div>
 
         <div class="modal-actions">
             <button class="done" type="button" onclick="submitFamilyEdit()">حفظ التعديل</button>
@@ -735,6 +749,20 @@
                     <option value="shelter_center">مركز إيواء</option>
                 </select>
             </div>
+            <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
+                <select id="familyGiftAmount" style="max-width:200px;">
+                    <option value="">لا يوجد هدية</option>
+                    <option value="100">هدية 100$</option>
+                    <option value="200">هدية 200$</option>
+                </select>
+                <select id="familyLivingCondition" style="max-width:220px;">
+                    <option value="">الوضع المعيشي (غير محدد)</option>
+                    <option value="very_bad">سيئ جداً</option>
+                    <option value="bad">سيئ</option>
+                    <option value="normal">عادي</option>
+                    <option value="good">جيد</option>
+                </select>
+            </div>
             <button class="add" type="button" onclick="createFamily()">حفظ العائلة</button>
         </div>
 
@@ -826,6 +854,20 @@
                         <option value="">العلاقات: الكل</option>
                         <option value="yes">لديها علاقات</option>
                         <option value="no">بدون علاقات</option>
+                    </select>
+                    <select id="familyGiftFilter" onchange="applyFamilyFilters()" style="min-width:155px;">
+                        <option value="">الهدية: الكل</option>
+                        <option value="yes">استلموا هدية</option>
+                        <option value="no">لم يستلموا هدية</option>
+                        <option value="100">هدية 100$</option>
+                        <option value="200">هدية 200$</option>
+                    </select>
+                    <select id="familyLivingConditionFilter" onchange="applyFamilyFilters()" style="min-width:175px;">
+                        <option value="">الوضع المعيشي: الكل</option>
+                        <option value="very_bad">سيئ جداً</option>
+                        <option value="bad">سيئ</option>
+                        <option value="normal">عادي</option>
+                        <option value="good">جيد</option>
                     </select>
                     <div class="dt-filter-date-group">
                         <input id="familyDistMinFilter" type="number" min="0" placeholder="توزيعات ≥" oninput="applyFamilyFilters()" style="width:105px;">

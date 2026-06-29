@@ -30,6 +30,21 @@ function getFamilyDisplayName(family) {
     return `${String(first).trim()} ${String(middle).trim()} ${String(last).trim()}`.replace(/\s+/g, " ").trim() || "-";
 }
 
+function getLivingConditionLabel(val) {
+    const map = { very_bad: "سيئ جداً", bad: "سيئ", normal: "عادي", good: "جيد" };
+    return map[val] || null;
+}
+
+function getLivingConditionStyle(val) {
+    const styles = {
+        very_bad: "background:#fee2e2;color:#991b1b;",
+        bad:      "background:#fef3c7;color:#92400e;",
+        normal:   "background:#dbeafe;color:#1e40af;",
+        good:     "background:#dcfce7;color:#166534;",
+    };
+    return styles[val] || "";
+}
+
 function normalizeDistributionType(value) {
     const raw = String(value ?? "").trim().toLowerCase();
     if (raw === "municipality" || raw === "baladiyeh" || raw === "بلدية") return "municipality";
@@ -298,6 +313,8 @@ function openFamilyEditModal(familyId) {
     const isStopped = family.is_stopped ?? family.isStopped ?? false;
     const isMoved = family.is_moved ?? family.isMoved ?? false;
     const movedToVillage = family.moved_to_village ?? family.movedToVillage ?? "";
+    const giftAmount = family.gift_amount ?? family.giftAmount ?? null;
+    const livingCondition = family.living_condition ?? family.livingCondition ?? "";
 
     const title = document.getElementById("familyEditModalTitle");
     if (title) title.textContent = `تعديل: ${getFamilyDisplayName(family)}`;
@@ -330,6 +347,10 @@ function openFamilyEditModal(familyId) {
     toggleMovedToVillage("editFamilyMovedToVillage", Boolean(isMoved));
     const movedToVillageEl = document.getElementById("editFamilyMovedToVillage");
     if (movedToVillageEl) movedToVillageEl.value = movedToVillage || "";
+    const giftAmountEl = document.getElementById("editFamilyGiftAmount");
+    if (giftAmountEl) giftAmountEl.value = giftAmount ? String(giftAmount) : "";
+    const livingConditionEl = document.getElementById("editFamilyLivingCondition");
+    if (livingConditionEl) livingConditionEl.value = livingCondition || "";
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -363,6 +384,9 @@ async function submitFamilyEdit() {
     const isStopped = document.getElementById("editFamilyIsStopped")?.checked ?? false;
     const isMoved = document.getElementById("editFamilyIsMoved")?.checked ?? false;
     const movedToVillage = document.getElementById("editFamilyMovedToVillage")?.value?.trim() || null;
+    const giftAmountRaw = document.getElementById("editFamilyGiftAmount")?.value || "";
+    const giftAmount = giftAmountRaw ? Number(giftAmountRaw) : null;
+    const livingCondition = document.getElementById("editFamilyLivingCondition")?.value || null;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -388,6 +412,8 @@ async function submitFamilyEdit() {
             is_stopped: isStopped,
             is_moved: isMoved,
             moved_to_village: isMoved ? movedToVillage : null,
+            gift_amount: giftAmount,
+            living_condition: livingCondition,
         });
         closeFamilyEditModal();
         await refreshFamilies({ silent: true });
@@ -567,6 +593,8 @@ function readFamilyFiltersFromUi() {
         duplicate: document.getElementById("familyDuplicateFilter")?.value || "",
         distMin: document.getElementById("familyDistMinFilter")?.value?.trim() || "",
         distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
+        gift: document.getElementById("familyGiftFilter")?.value || "",
+        livingCondition: document.getElementById("familyLivingConditionFilter")?.value || "",
     };
 }
 
@@ -614,7 +642,7 @@ function setFamilyColumnVisible(key, visible) {
 
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
-    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.houseId, f.distMin, f.distMax]
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.houseId, f.distMin, f.distMax, f.gift, f.livingCondition]
         .filter(Boolean).length;
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
@@ -633,9 +661,10 @@ function clearFamilyFilters() {
     ["familyNameFilter", "familyFileNumberSearch", "familyVillageFilter", "familyFormFilledFilter",
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
      "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyMovedFilter",
-     "familyRelationsFilter", "familyHouseFilter", "familyDistMinFilter", "familyDistMaxFilter"]
+     "familyRelationsFilter", "familyHouseFilter", "familyDistMinFilter", "familyDistMaxFilter",
+     "familyGiftFilter", "familyLivingConditionFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "", gift: "", livingCondition: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
@@ -755,6 +784,8 @@ function getFilteredFamilies() {
     const duplicateIds = duplicateFilter === "yes" ? getDuplicateFamilyIds() : null;
     const distMin = currentFamilyFilters?.distMin !== "" ? Number(currentFamilyFilters.distMin) : null;
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
+    const giftFilter = String(currentFamilyFilters?.gift || "");
+    const livingConditionFilter = String(currentFamilyFilters?.livingCondition || "");
 
     const filtered = (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
@@ -797,6 +828,13 @@ function getFilteredFamilies() {
             if (distMin !== null && cnt < distMin) return false;
             if (distMax !== null && cnt > distMax) return false;
         }
+        const giftAmt = family.gift_amount ?? family.giftAmount ?? null;
+        if (giftFilter === "yes" && !giftAmt) return false;
+        if (giftFilter === "no" && giftAmt) return false;
+        if (giftFilter === "100" && giftAmt !== 100) return false;
+        if (giftFilter === "200" && giftAmt !== 200) return false;
+        const lc = family.living_condition ?? family.livingCondition ?? null;
+        if (livingConditionFilter && lc !== livingConditionFilter) return false;
         if (!nameQuery) return true;
         const firstLast = `${family?.father_first_name ?? ""} ${family?.father_last_name ?? ""}`.trim();
         const text = `${getFamilyDisplayName(family)} ${firstLast} ${family?.phone_number ?? ""} ${family?.phone_number_2 ?? ""}`.toLowerCase();
@@ -1113,6 +1151,8 @@ function renderFamilies() {
                         ${cv('last_dist')    ? '<th>آخر توزيع</th>' : ''}
                         ${cv('dist_count')   ? `<th class="sortable-th" onclick="sortFamiliesBy('distributions')">توزيعات ${_sortIcon('distributions')}</th>` : ''}
                         ${cv('created_at')   ? '<th>تاريخ الإضافة</th>' : ''}
+                        ${cv('gift')         ? '<th>الهدية</th>' : ''}
+                        ${cv('living_cond')  ? '<th>الوضع المعيشي</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -1216,6 +1256,16 @@ function renderFamilies() {
                                     ${cv('last_dist')    ? `<td class="needs-date-cell" id="familyLastDist_${id}">${escapeHtml(last)}</td>` : ''}
                                     ${cv('dist_count')   ? `<td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>` : ''}
                                     ${cv('created_at')   ? `<td class="needs-date-cell">${escapeHtml(createdAt)}</td>` : ''}
+                                    ${cv('gift') ? (() => {
+                                        const ga = family.gift_amount ?? family.giftAmount ?? null;
+                                        return ga ? `<td><span class="badge" style="background:#ede9fe;color:#5b21b6;">${ga}$</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
+                                    })() : ''}
+                                    ${cv('living_cond') ? (() => {
+                                        const lc = family.living_condition ?? family.livingCondition ?? null;
+                                        const lcLabel = getLivingConditionLabel(lc);
+                                        const lcStyle = getLivingConditionStyle(lc);
+                                        return lcLabel ? `<td><span class="badge" style="${lcStyle}">${lcLabel}</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
+                                    })() : ''}
                                 </tr>
                             `;
                         })
@@ -1267,6 +1317,9 @@ async function createFamily() {
     const isStopped = document.getElementById("familyIsStopped")?.checked ?? false;
     const isMoved = document.getElementById("familyIsMoved")?.checked ?? false;
     const movedToVillage = document.getElementById("familyMovedToVillage")?.value?.trim() || null;
+    const giftAmountRaw = document.getElementById("familyGiftAmount")?.value || "";
+    const giftAmount = giftAmountRaw ? Number(giftAmountRaw) : null;
+    const livingCondition = document.getElementById("familyLivingCondition")?.value || null;
 
     if (!first) return alert("أدخل اسم الأب");
     if (!last) return alert("أدخل كنية الأب");
@@ -1291,6 +1344,8 @@ async function createFamily() {
             is_stopped: isStopped,
             is_moved: isMoved,
             moved_to_village: isMoved ? movedToVillage : null,
+            gift_amount: giftAmount,
+            living_condition: livingCondition,
         });
 
         document.getElementById("fatherFirstName").value = "";
@@ -1319,6 +1374,10 @@ async function createFamily() {
         const isMovedEl = document.getElementById("familyIsMoved");
         if (isMovedEl) isMovedEl.checked = false;
         toggleMovedToVillage("familyMovedToVillage", false);
+        const giftAmountResetEl = document.getElementById("familyGiftAmount");
+        if (giftAmountResetEl) giftAmountResetEl.value = "";
+        const livingConditionResetEl = document.getElementById("familyLivingCondition");
+        if (livingConditionResetEl) livingConditionResetEl.value = "";
 
         await refreshFamilies({ silent: true });
     } catch (error) {

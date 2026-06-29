@@ -6,7 +6,7 @@ let currentNeedItems = [];
 let currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
 let currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "", notes: "" };
 let families = [];
-let currentFamilyFilters = { name: "", village: "" };
+let currentFamilyFilters = { name: "", village: "", gift: "", livingCondition: "" };
 let familiesSortCol = "";
 let familiesSortDir = "asc";
 let currentDistributionItems = [];
@@ -24,6 +24,8 @@ const FAMILY_COLUMNS = [
     { key: "last_dist",    label: "آخر توزيع" },
     { key: "dist_count",   label: "توزيعات" },
     { key: "created_at",   label: "تاريخ الإضافة" },
+    { key: "gift",         label: "الهدية" },
+    { key: "living_cond",  label: "الوضع المعيشي" },
 ];
 
 function loadFamilyColumnVisibility() {
