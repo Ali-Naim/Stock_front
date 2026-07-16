@@ -267,22 +267,19 @@
                 <input id="editFamilyIsMoved" type="checkbox" onchange="toggleMovedToVillage('editFamilyMovedToVillage', this.checked)">
                 انتقل خارج النطاق
             </label>
+            <label class="checkbox-label" style="color:#7c3aed;">
+                <input id="editFamilyGiftReceived" type="checkbox">
+                استلم هدية
+            </label>
         </div>
         <div id="editFamilyMovedToVillageRow" style="margin-top:0.5rem;display:none;">
             <input id="editFamilyMovedToVillage" type="text" placeholder="القرية المنتقل إليها" style="width:100%;max-width:280px;">
         </div>
-        <div style="margin-top:0.75rem;">
+        <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
             <select id="editFamilyHousingType" style="width:100%;max-width:280px;">
                 <option value="">نوع السكن (غير محدد)</option>
                 <option value="house">منزل</option>
                 <option value="shelter_center">مركز إيواء</option>
-            </select>
-        </div>
-        <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
-            <select id="editFamilyGiftAmount" style="max-width:200px;">
-                <option value="">لا يوجد هدية</option>
-                <option value="100">هدية 100$</option>
-                <option value="200">هدية 200$</option>
             </select>
             <select id="editFamilyLivingCondition" style="max-width:220px;">
                 <option value="">الوضع المعيشي (غير محدد)</option>
@@ -738,22 +735,19 @@
                     <input id="familyIsMoved" type="checkbox" onchange="toggleMovedToVillage('familyMovedToVillage', this.checked)">
                     انتقل خارج النطاق
                 </label>
+                <label class="checkbox-label" style="color:#7c3aed;">
+                    <input id="familyGiftReceived" type="checkbox">
+                    استلم هدية
+                </label>
             </div>
             <div id="familyMovedToVillageRow" style="margin-top:0.5rem;display:none;">
                 <input id="familyMovedToVillage" type="text" placeholder="القرية المنتقل إليها" style="width:100%;max-width:280px;">
             </div>
-            <div style="margin-top:0.75rem;">
-                <select id="familyHousingType" style="width:100%;max-width:280px;">
+            <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
+                <select id="familyHousingType" style="max-width:280px;">
                     <option value="">نوع السكن (غير محدد)</option>
                     <option value="house">منزل</option>
                     <option value="shelter_center">مركز إيواء</option>
-                </select>
-            </div>
-            <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
-                <select id="familyGiftAmount" style="max-width:200px;">
-                    <option value="">لا يوجد هدية</option>
-                    <option value="100">هدية 100$</option>
-                    <option value="200">هدية 200$</option>
                 </select>
                 <select id="familyLivingCondition" style="max-width:220px;">
                     <option value="">الوضع المعيشي (غير محدد)</option>
@@ -859,8 +853,6 @@
                         <option value="">الهدية: الكل</option>
                         <option value="yes">استلموا هدية</option>
                         <option value="no">لم يستلموا هدية</option>
-                        <option value="100">هدية 100$</option>
-                        <option value="200">هدية 200$</option>
                     </select>
                     <select id="familyLivingConditionFilter" onchange="applyFamilyFilters()" style="min-width:175px;">
                         <option value="">الوضع المعيشي: الكل</option>

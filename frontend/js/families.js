@@ -313,7 +313,7 @@ function openFamilyEditModal(familyId) {
     const isStopped = family.is_stopped ?? family.isStopped ?? false;
     const isMoved = family.is_moved ?? family.isMoved ?? false;
     const movedToVillage = family.moved_to_village ?? family.movedToVillage ?? "";
-    const giftAmount = family.gift_amount ?? family.giftAmount ?? null;
+    const giftReceived = Boolean(family.gift_received ?? family.giftReceived ?? false);
     const livingCondition = family.living_condition ?? family.livingCondition ?? "";
 
     const title = document.getElementById("familyEditModalTitle");
@@ -347,8 +347,8 @@ function openFamilyEditModal(familyId) {
     toggleMovedToVillage("editFamilyMovedToVillage", Boolean(isMoved));
     const movedToVillageEl = document.getElementById("editFamilyMovedToVillage");
     if (movedToVillageEl) movedToVillageEl.value = movedToVillage || "";
-    const giftAmountEl = document.getElementById("editFamilyGiftAmount");
-    if (giftAmountEl) giftAmountEl.value = giftAmount ? String(giftAmount) : "";
+    const giftReceivedEl = document.getElementById("editFamilyGiftReceived");
+    if (giftReceivedEl) giftReceivedEl.checked = giftReceived;
     const livingConditionEl = document.getElementById("editFamilyLivingCondition");
     if (livingConditionEl) livingConditionEl.value = livingCondition || "";
 
@@ -384,8 +384,7 @@ async function submitFamilyEdit() {
     const isStopped = document.getElementById("editFamilyIsStopped")?.checked ?? false;
     const isMoved = document.getElementById("editFamilyIsMoved")?.checked ?? false;
     const movedToVillage = document.getElementById("editFamilyMovedToVillage")?.value?.trim() || null;
-    const giftAmountRaw = document.getElementById("editFamilyGiftAmount")?.value || "";
-    const giftAmount = giftAmountRaw ? Number(giftAmountRaw) : null;
+    const giftReceived = document.getElementById("editFamilyGiftReceived")?.checked ?? false;
     const livingCondition = document.getElementById("editFamilyLivingCondition")?.value || null;
 
     if (!first) return alert("أدخل اسم الأب");
@@ -412,7 +411,7 @@ async function submitFamilyEdit() {
             is_stopped: isStopped,
             is_moved: isMoved,
             moved_to_village: isMoved ? movedToVillage : null,
-            gift_amount: giftAmount,
+            gift_received: giftReceived,
             living_condition: livingCondition,
         });
         closeFamilyEditModal();
@@ -828,11 +827,9 @@ function getFilteredFamilies() {
             if (distMin !== null && cnt < distMin) return false;
             if (distMax !== null && cnt > distMax) return false;
         }
-        const giftAmt = family.gift_amount ?? family.giftAmount ?? null;
-        if (giftFilter === "yes" && !giftAmt) return false;
-        if (giftFilter === "no" && giftAmt) return false;
-        if (giftFilter === "100" && giftAmt !== 100) return false;
-        if (giftFilter === "200" && giftAmt !== 200) return false;
+        const giftRec = Boolean(family.gift_received ?? family.giftReceived ?? false);
+        if (giftFilter === "yes" && !giftRec) return false;
+        if (giftFilter === "no" && giftRec) return false;
         const lc = family.living_condition ?? family.livingCondition ?? null;
         if (livingConditionFilter && lc !== livingConditionFilter) return false;
         if (!nameQuery) return true;
@@ -1257,8 +1254,8 @@ function renderFamilies() {
                                     ${cv('dist_count')   ? `<td class="families-count-cell" id="familyDistCount_${id}">${escapeHtml(count)}</td>` : ''}
                                     ${cv('created_at')   ? `<td class="needs-date-cell">${escapeHtml(createdAt)}</td>` : ''}
                                     ${cv('gift') ? (() => {
-                                        const ga = family.gift_amount ?? family.giftAmount ?? null;
-                                        return ga ? `<td><span class="badge" style="background:#ede9fe;color:#5b21b6;">${ga}$</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
+                                        const gr = Boolean(family.gift_received ?? family.giftReceived ?? false);
+                                        return gr ? '<td><span class="badge badge-success">نعم</span></td>' : '<td><span class="badge badge-neutral">لا</span></td>';
                                     })() : ''}
                                     ${cv('living_cond') ? (() => {
                                         const lc = family.living_condition ?? family.livingCondition ?? null;
@@ -1317,8 +1314,7 @@ async function createFamily() {
     const isStopped = document.getElementById("familyIsStopped")?.checked ?? false;
     const isMoved = document.getElementById("familyIsMoved")?.checked ?? false;
     const movedToVillage = document.getElementById("familyMovedToVillage")?.value?.trim() || null;
-    const giftAmountRaw = document.getElementById("familyGiftAmount")?.value || "";
-    const giftAmount = giftAmountRaw ? Number(giftAmountRaw) : null;
+    const giftReceived = document.getElementById("familyGiftReceived")?.checked ?? false;
     const livingCondition = document.getElementById("familyLivingCondition")?.value || null;
 
     if (!first) return alert("أدخل اسم الأب");
@@ -1344,7 +1340,7 @@ async function createFamily() {
             is_stopped: isStopped,
             is_moved: isMoved,
             moved_to_village: isMoved ? movedToVillage : null,
-            gift_amount: giftAmount,
+            gift_received: giftReceived,
             living_condition: livingCondition,
         });
 
@@ -1374,8 +1370,8 @@ async function createFamily() {
         const isMovedEl = document.getElementById("familyIsMoved");
         if (isMovedEl) isMovedEl.checked = false;
         toggleMovedToVillage("familyMovedToVillage", false);
-        const giftAmountResetEl = document.getElementById("familyGiftAmount");
-        if (giftAmountResetEl) giftAmountResetEl.value = "";
+        const giftReceivedResetEl = document.getElementById("familyGiftReceived");
+        if (giftReceivedResetEl) giftReceivedResetEl.checked = false;
         const livingConditionResetEl = document.getElementById("familyLivingCondition");
         if (livingConditionResetEl) livingConditionResetEl.value = "";
 
