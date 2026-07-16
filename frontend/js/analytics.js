@@ -23,6 +23,8 @@ function _distCount(f) {
 function _hasRelations(f) {
     return (familyRelationsSummary?.[String(f.id)] || []).length > 0;
 }
+function _stillDisplaced(f) { return f.still_displaced ?? f.stillDisplaced ?? null; }
+function _originalCondition(f) { return f.original_residence_condition ?? f.originalResidenceCondition ?? null; }
 
 function renderAnalytics() {
     const container = document.getElementById("analyticsContent");
@@ -44,6 +46,12 @@ function renderAnalytics() {
     const totalHouse       = all.filter((f) => _housingType(f) === "house").length;
     const totalShelter     = all.filter((f) => _housingType(f) === "shelter_center").length;
     const totalWithRelations = all.filter(_hasRelations).length;
+    const totalStillYes        = all.filter((f) => _stillDisplaced(f) === "yes").length;
+    const totalStillNo         = all.filter((f) => _stillDisplaced(f) === "no").length;
+    const totalStillUnsure     = all.filter((f) => _stillDisplaced(f) === "unsure").length;
+    const totalOrigNotHabitable = all.filter((f) => _originalCondition(f) === "not_habitable").length;
+    const totalOrigNeedsRepair  = all.filter((f) => _originalCondition(f) === "needs_repair").length;
+    const totalOrigGood         = all.filter((f) => _originalCondition(f) === "good").length;
 
     const filledPct    = _pct(totalFilled, total);
     const filePct      = _pct(totalFile, total);
@@ -52,6 +60,12 @@ function renderAnalytics() {
     const housePct     = _pct(totalHouse, total);
     const shelterPct   = _pct(totalShelter, total);
     const relationsPct = _pct(totalWithRelations, total);
+    const stillYesPct         = _pct(totalStillYes, total);
+    const stillNoPct          = _pct(totalStillNo, total);
+    const stillUnsurePct      = _pct(totalStillUnsure, total);
+    const origNotHabitablePct = _pct(totalOrigNotHabitable, total);
+    const origNeedsRepairPct  = _pct(totalOrigNeedsRepair, total);
+    const origGoodPct         = _pct(totalOrigGood, total);
 
     // Group by village
     const byVillage = {};
@@ -71,12 +85,19 @@ function renderAnalytics() {
             const house      = fams.filter((f) => _housingType(f) === "house").length;
             const shelter    = fams.filter((f) => _housingType(f) === "shelter_center").length;
             const withRel    = fams.filter(_hasRelations).length;
+            const stillYes    = fams.filter((f) => _stillDisplaced(f) === "yes").length;
+            const stillNo     = fams.filter((f) => _stillDisplaced(f) === "no").length;
+            const stillUnsure = fams.filter((f) => _stillDisplaced(f) === "unsure").length;
+            const origBad     = fams.filter((f) => _originalCondition(f) === "not_habitable").length;
+            const origRepair  = fams.filter((f) => _originalCondition(f) === "needs_repair").length;
+            const origGood    = fams.filter((f) => _originalCondition(f) === "good").length;
             return {
                 name: getVillageNameById(vid),
                 count: fams.length,
                 people,
                 avg: fams.length ? (people / fams.length).toFixed(1) : 0,
                 filled, fileNo, muni, withDist, house, shelter, withRel,
+                stillYes, stillNo, stillUnsure, origBad, origRepair, origGood,
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, "ar"));
@@ -132,6 +153,81 @@ function renderAnalytics() {
             </div>
         </div>
 
+        <!-- Migration / displacement info -->
+        <div class="card" style="margin-top:1.25rem;">
+            <h3 style="margin-bottom:1rem;">معلومات النزوح</h3>
+            <div class="analytics-summary-grid">
+                <div class="card analytics-summary-card">
+                    <div class="analytics-summary-value">${totalStillYes} <span class="analytics-pct-badge analytics-pct-primary">${stillYesPct}%</span></div>
+                    <div class="analytics-summary-label">ما زالوا في النزوح</div>
+                    ${analyticsProgressBar(stillYesPct, "#991b1b")}
+                </div>
+                <div class="card analytics-summary-card">
+                    <div class="analytics-summary-value">${totalStillNo} <span class="analytics-pct-badge analytics-pct-success">${stillNoPct}%</span></div>
+                    <div class="analytics-summary-label">عادوا من النزوح</div>
+                    ${analyticsProgressBar(stillNoPct, "#166534")}
+                </div>
+                <div class="card analytics-summary-card">
+                    <div class="analytics-summary-value">${totalStillUnsure} <span class="analytics-pct-badge analytics-pct-primary">${stillUnsurePct}%</span></div>
+                    <div class="analytics-summary-label">متردد بالبقاء في النزوح</div>
+                    ${analyticsProgressBar(stillUnsurePct, "#92400e")}
+                </div>
+                <div class="card analytics-summary-card">
+                    <div class="analytics-summary-value">${totalOrigNotHabitable} <span class="analytics-pct-badge analytics-pct-primary">${origNotHabitablePct}%</span></div>
+                    <div class="analytics-summary-label">سكن أصلي غير صالح كليًا</div>
+                    ${analyticsProgressBar(origNotHabitablePct, "#991b1b")}
+                </div>
+                <div class="card analytics-summary-card">
+                    <div class="analytics-summary-value">${totalOrigNeedsRepair} <span class="analytics-pct-badge analytics-pct-primary">${origNeedsRepairPct}%</span></div>
+                    <div class="analytics-summary-label">سكن أصلي يحتاج تصليح</div>
+                    ${analyticsProgressBar(origNeedsRepairPct, "#92400e")}
+                </div>
+                <div class="card analytics-summary-card">
+                    <div class="analytics-summary-value">${totalOrigGood} <span class="analytics-pct-badge analytics-pct-success">${origGoodPct}%</span></div>
+                    <div class="analytics-summary-label">سكن أصلي بحالة جيدة</div>
+                    ${analyticsProgressBar(origGoodPct, "#166534")}
+                </div>
+            </div>
+
+            <div class="dt-wrap" style="margin-top:1rem;">
+                <table class="table table-hover table-sm align-middle analytics-village-table">
+                    <thead>
+                        <tr>
+                            <th>القرية</th>
+                            <th>ما زالوا نازحين</th>
+                            <th>عادوا</th>
+                            <th>متردد</th>
+                            <th>سكن أصلي: غير صالح</th>
+                            <th>سكن أصلي: يحتاج تصليح</th>
+                            <th>سكن أصلي: جيد</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map((r) => `
+                            <tr>
+                                <td><strong>${escapeHtml(r.name)}</strong></td>
+                                <td class="analytics-num">${r.stillYes}</td>
+                                <td class="analytics-num">${r.stillNo}</td>
+                                <td class="analytics-num">${r.stillUnsure}</td>
+                                <td class="analytics-num">${r.origBad}</td>
+                                <td class="analytics-num">${r.origRepair}</td>
+                                <td class="analytics-num">${r.origGood}</td>
+                            </tr>`).join("")}
+                    </tbody>
+                    <tfoot>
+                        <tr class="analytics-total-row dt-tfoot-total">
+                            <td><strong>الإجمالي</strong></td>
+                            <td class="analytics-num">${totalStillYes}</td>
+                            <td class="analytics-num">${totalStillNo}</td>
+                            <td class="analytics-num">${totalStillUnsure}</td>
+                            <td class="analytics-num">${totalOrigNotHabitable}</td>
+                            <td class="analytics-num">${totalOrigNeedsRepair}</td>
+                            <td class="analytics-num">${totalOrigGood}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
 
         <!-- Detailed village table -->
         <div class="card" style="margin-top:1.25rem;">

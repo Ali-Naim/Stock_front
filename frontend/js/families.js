@@ -45,6 +45,34 @@ function getLivingConditionStyle(val) {
     return styles[val] || "";
 }
 
+function getStillDisplacedLabel(val) {
+    const map = { yes: "نعم", no: "لا", unsure: "متردد" };
+    return map[val] || null;
+}
+
+function getStillDisplacedStyle(val) {
+    const styles = {
+        yes:    "background:#fee2e2;color:#991b1b;",
+        no:     "background:#dcfce7;color:#166534;",
+        unsure: "background:#fef3c7;color:#92400e;",
+    };
+    return styles[val] || "";
+}
+
+function getOriginalConditionLabel(val) {
+    const map = { not_habitable: "غير صالح للسكن كليًا", needs_repair: "يحتاج إلى تصليح", good: "بحالة جيدة" };
+    return map[val] || null;
+}
+
+function getOriginalConditionStyle(val) {
+    const styles = {
+        not_habitable: "background:#fee2e2;color:#991b1b;",
+        needs_repair:  "background:#fef3c7;color:#92400e;",
+        good:          "background:#dcfce7;color:#166534;",
+    };
+    return styles[val] || "";
+}
+
 function normalizeDistributionType(value) {
     const raw = String(value ?? "").trim().toLowerCase();
     if (raw === "municipality" || raw === "baladiyeh" || raw === "بلدية") return "municipality";
@@ -702,6 +730,8 @@ function readFamilyFiltersFromUi() {
         distMax: document.getElementById("familyDistMaxFilter")?.value?.trim() || "",
         gift: document.getElementById("familyGiftFilter")?.value || "",
         livingCondition: document.getElementById("familyLivingConditionFilter")?.value || "",
+        stillDisplaced: document.getElementById("familyStillDisplacedFilter")?.value || "",
+        originalCondition: document.getElementById("familyOriginalConditionFilter")?.value || "",
     };
 }
 
@@ -749,7 +779,7 @@ function setFamilyColumnVisible(key, visible) {
 
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
-    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.houseId, f.distMin, f.distMax, f.gift, f.livingCondition]
+    const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.houseId, f.distMin, f.distMax, f.gift, f.livingCondition, f.stillDisplaced, f.originalCondition]
         .filter(Boolean).length;
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
@@ -769,9 +799,9 @@ function clearFamilyFilters() {
      "familyFileNumberFilter", "familyMunicipalityFilter", "familyDuplicateFilter",
      "familyHousingTypeFilter", "familyBlockedFilter", "familyStoppedFilter", "familyMovedFilter",
      "familyRelationsFilter", "familyHouseFilter", "familyDistMinFilter", "familyDistMaxFilter",
-     "familyGiftFilter", "familyLivingConditionFilter"]
+     "familyGiftFilter", "familyLivingConditionFilter", "familyStillDisplacedFilter", "familyOriginalConditionFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "", gift: "", livingCondition: "" };
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "", gift: "", livingCondition: "", stillDisplaced: "", originalCondition: "" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
@@ -893,6 +923,8 @@ function getFilteredFamilies() {
     const distMax = currentFamilyFilters?.distMax !== "" ? Number(currentFamilyFilters.distMax) : null;
     const giftFilter = String(currentFamilyFilters?.gift || "");
     const livingConditionFilter = String(currentFamilyFilters?.livingCondition || "");
+    const stillDisplacedFilter = String(currentFamilyFilters?.stillDisplaced || "");
+    const originalConditionFilter = String(currentFamilyFilters?.originalCondition || "");
 
     const filtered = (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
@@ -940,6 +972,10 @@ function getFilteredFamilies() {
         if (giftFilter === "no" && giftRec) return false;
         const lc = family.living_condition ?? family.livingCondition ?? null;
         if (livingConditionFilter && lc !== livingConditionFilter) return false;
+        const sd = family.still_displaced ?? family.stillDisplaced ?? null;
+        if (stillDisplacedFilter && sd !== stillDisplacedFilter) return false;
+        const oc = family.original_residence_condition ?? family.originalResidenceCondition ?? null;
+        if (originalConditionFilter && oc !== originalConditionFilter) return false;
         if (!nameQuery) return true;
         const firstLast = `${family?.father_first_name ?? ""} ${family?.father_last_name ?? ""}`.trim();
         const text = `${getFamilyDisplayName(family)} ${firstLast} ${family?.phone_number ?? ""} ${family?.phone_number_2 ?? ""}`.toLowerCase();
@@ -1258,6 +1294,13 @@ function renderFamilies() {
                         ${cv('created_at')   ? '<th>تاريخ الإضافة</th>' : ''}
                         ${cv('gift')         ? '<th>الهدية</th>' : ''}
                         ${cv('living_cond')  ? '<th>الوضع المعيشي</th>' : ''}
+                        ${cv('still_displaced')    ? '<th>ما زال في النزوح</th>' : ''}
+                        ${cv('displaced_village')  ? '<th>قرية النزوح</th>' : ''}
+                        ${cv('original_place')     ? '<th>مكان السكن الأصلي</th>' : ''}
+                        ${cv('original_building')  ? '<th>المجمع/الشارع</th>' : ''}
+                        ${cv('original_floor')     ? '<th>الطابق</th>' : ''}
+                        ${cv('original_condition') ? '<th>حالة السكن الأصلي</th>' : ''}
+                        ${cv('stay_reason')        ? '<th>سبب البقاء بالنزوح</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -1371,6 +1414,23 @@ function renderFamilies() {
                                         const lcStyle = getLivingConditionStyle(lc);
                                         return lcLabel ? `<td><span class="badge" style="${lcStyle}">${lcLabel}</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
                                     })() : ''}
+                                    ${cv('still_displaced') ? (() => {
+                                        const sd = family.still_displaced ?? family.stillDisplaced ?? null;
+                                        const sdLabel = getStillDisplacedLabel(sd);
+                                        const sdStyle = getStillDisplacedStyle(sd);
+                                        return sdLabel ? `<td><span class="badge" style="${sdStyle}">${sdLabel}</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
+                                    })() : ''}
+                                    ${cv('displaced_village')  ? `<td>${escapeHtml(getVillageNameById(family.displaced_village_id ?? family.displacedVillageId ?? ""))}</td>` : ''}
+                                    ${cv('original_place')     ? `<td>${escapeHtml((family.original_residence_place ?? family.originalResidencePlace) || "-")}</td>` : ''}
+                                    ${cv('original_building')  ? `<td>${escapeHtml((family.original_residence_building ?? family.originalResidenceBuilding) || "-")}</td>` : ''}
+                                    ${cv('original_floor')     ? `<td>${escapeHtml((family.original_residence_floor ?? family.originalResidenceFloor) || "-")}</td>` : ''}
+                                    ${cv('original_condition') ? (() => {
+                                        const oc = family.original_residence_condition ?? family.originalResidenceCondition ?? null;
+                                        const ocLabel = getOriginalConditionLabel(oc);
+                                        const ocStyle = getOriginalConditionStyle(oc);
+                                        return ocLabel ? `<td><span class="badge" style="${ocStyle}">${ocLabel}</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
+                                    })() : ''}
+                                    ${cv('stay_reason') ? `<td>${escapeHtml((family.displacement_stay_reason ?? family.displacementStayReason) || "-")}</td>` : ''}
                                 </tr>
                             `;
                         })

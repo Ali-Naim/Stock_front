@@ -6,7 +6,7 @@ let currentNeedItems = [];
 let currentFilters = { name: "", village: "", status: "", saved: "", registered: "", dateFrom: "", dateTo: "" };
 let currentNeedFilters = { name: "", phone: "", item: "", village: "", status: "", priority: "", notes: "" };
 let families = [];
-let currentFamilyFilters = { name: "", village: "", gift: "", livingCondition: "" };
+let currentFamilyFilters = { name: "", village: "", gift: "", livingCondition: "", stillDisplaced: "", originalCondition: "" };
 let familiesSortCol = "";
 let familiesSortDir = "asc";
 let currentDistributionItems = [];
@@ -26,6 +26,13 @@ const FAMILY_COLUMNS = [
     { key: "created_at",   label: "تاريخ الإضافة" },
     { key: "gift",         label: "الهدية" },
     { key: "living_cond",  label: "الوضع المعيشي" },
+    { key: "still_displaced",   label: "ما زال في النزوح" },
+    { key: "displaced_village", label: "قرية النزوح" },
+    { key: "original_place",    label: "مكان السكن الأصلي" },
+    { key: "original_building", label: "المجمع/الشارع" },
+    { key: "original_floor",    label: "الطابق" },
+    { key: "original_condition", label: "حالة السكن الأصلي" },
+    { key: "stay_reason",       label: "سبب البقاء بالنزوح" },
 ];
 
 function loadFamilyColumnVisibility() {
