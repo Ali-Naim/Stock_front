@@ -1738,6 +1738,10 @@ button {
     width: min(100%, 860px);
 }
 
+.family-migration-modal-card {
+    width: min(100%, 640px);
+}
+
 .family-edit-form-grid {
     margin-top: 10px;
 }

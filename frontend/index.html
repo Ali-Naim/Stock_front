@@ -297,6 +297,54 @@
     </div>
 </div>
 
+<div id="familyMigrationModal" class="modal-overlay" onclick="closeFamilyMigrationModal(event)">
+    <div class="modal-card family-migration-modal-card" role="dialog" aria-modal="true" aria-labelledby="familyMigrationModalTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="familyMigrationModalTitle">معلومات النزوح</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeFamilyMigrationModal()" aria-label="إغلاق">×</button>
+        </div>
+
+        <h4 class="history-heading" style="margin-top:0;">حالة النزوح</h4>
+        <div class="form-grid">
+            <select id="migrationStillDisplaced" onchange="toggleMigrationVillage(this.value)">
+                <option value="">ما زال في النزوح؟ (غير محدد)</option>
+                <option value="yes">نعم</option>
+                <option value="no">لا</option>
+                <option value="unsure">متردد</option>
+            </select>
+        </div>
+        <div id="migrationVillageRow" style="margin-top:0.5rem;display:none;">
+            <select id="migrationVillage" style="width:100%;max-width:280px;">
+                <option value="">اختر القرية</option>
+            </select>
+        </div>
+        <div id="migrationStayReasonRow" style="margin-top:0.5rem;display:none;">
+            <textarea id="migrationStayReason" rows="2" placeholder="سبب البقاء في النزوح (اختياري)" style="width:100%;"></textarea>
+        </div>
+
+        <h4 class="history-heading">حالة السكن الأصلي</h4>
+        <div class="form-grid">
+            <input id="migrationOriginalPlace" placeholder="المدينة أو القرية">
+            <input id="migrationOriginalBuilding" placeholder="المجمع أو الشارع">
+            <input id="migrationOriginalFloor" placeholder="الطابق">
+            <select id="migrationOriginalCondition">
+                <option value="">حالة السكن الأصلي (غير محدد)</option>
+                <option value="not_habitable">غير صالح للسكن كليًا</option>
+                <option value="needs_repair">يحتاج إلى تصليح</option>
+                <option value="good">بحالة جيدة</option>
+            </select>
+        </div>
+
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="submitFamilyMigration()">حفظ</button>
+            <button class="filter-clear" type="button" onclick="closeFamilyMigrationModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
 <div id="familyRelationsModal" class="modal-overlay" onclick="closeFamilyRelationsModal(event)">
     <div class="modal-card family-relations-modal-card" role="dialog" aria-modal="true" aria-labelledby="familyRelationsModalTitle" onclick="event.stopPropagation()">
         <div class="modal-header">
@@ -372,6 +420,9 @@
                 </button>
                 <button class="btn btn-warning btn-sm" type="button" onclick="familyDetailEdit()">
                     <i class="bi bi-pencil"></i> تعديل المعلومات
+                </button>
+                <button class="btn btn-info btn-sm" type="button" onclick="familyDetailMigration()">
+                    <i class="bi bi-geo-alt"></i> معلومات النزوح
                 </button>
                 <button class="btn btn-outline-danger btn-sm" type="button" onclick="familyDetailDelete()" title="حذف العائلة">
                     <i class="bi bi-trash3"></i>

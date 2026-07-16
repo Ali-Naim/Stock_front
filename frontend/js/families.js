@@ -427,6 +427,114 @@ async function submitFamilyEdit() {
     }
 }
 
+let migratingFamilyId = null;
+
+function toggleMigrationVillage(value) {
+    const showExtras = value === "yes" || value === "unsure";
+
+    const row = document.getElementById("migrationVillageRow");
+    if (row) row.style.display = showExtras ? "" : "none";
+    if (!showExtras) {
+        const el = document.getElementById("migrationVillage");
+        if (el) el.value = "";
+    }
+
+    const reasonRow = document.getElementById("migrationStayReasonRow");
+    if (reasonRow) reasonRow.style.display = showExtras ? "" : "none";
+    if (!showExtras) {
+        const reasonEl = document.getElementById("migrationStayReason");
+        if (reasonEl) reasonEl.value = "";
+    }
+}
+
+function fillMigrationVillageSelect(selectedValue = "") {
+    const select = document.getElementById("migrationVillage");
+    if (!select) return;
+    select.innerHTML = getVillageOptions(selectedValue);
+}
+
+function openFamilyMigrationModal(familyId) {
+    const id = Number(familyId);
+    if (!id) return;
+
+    const family = (families || []).find((row) => Number(row.id) === id);
+    if (!family) return alert("العائلة غير موجودة");
+
+    migratingFamilyId = id;
+
+    const stillDisplaced = family.still_displaced ?? family.stillDisplaced ?? "";
+    const displacedVillageId = family.displaced_village_id ?? family.displacedVillageId ?? "";
+    const originalPlace = family.original_residence_place ?? family.originalResidencePlace ?? "";
+    const originalBuilding = family.original_residence_building ?? family.originalResidenceBuilding ?? "";
+    const originalFloor = family.original_residence_floor ?? family.originalResidenceFloor ?? "";
+    const originalCondition = family.original_residence_condition ?? family.originalResidenceCondition ?? "";
+    const stayReason = family.displacement_stay_reason ?? family.displacementStayReason ?? "";
+
+    const title = document.getElementById("familyMigrationModalTitle");
+    if (title) title.textContent = `معلومات النزوح: ${getFamilyDisplayName(family)}`;
+
+    const stillDisplacedEl = document.getElementById("migrationStillDisplaced");
+    if (stillDisplacedEl) stillDisplacedEl.value = ["yes", "no", "unsure"].includes(stillDisplaced) ? stillDisplaced : "";
+
+    fillMigrationVillageSelect(String(displacedVillageId ?? ""));
+
+    const stayReasonEl = document.getElementById("migrationStayReason");
+    if (stayReasonEl) stayReasonEl.value = String(stayReason ?? "");
+    toggleMigrationVillage(stillDisplacedEl?.value || "");
+
+    const originalPlaceEl = document.getElementById("migrationOriginalPlace");
+    if (originalPlaceEl) originalPlaceEl.value = String(originalPlace ?? "");
+    const originalBuildingEl = document.getElementById("migrationOriginalBuilding");
+    if (originalBuildingEl) originalBuildingEl.value = String(originalBuilding ?? "");
+    const originalFloorEl = document.getElementById("migrationOriginalFloor");
+    if (originalFloorEl) originalFloorEl.value = String(originalFloor ?? "");
+    const originalConditionEl = document.getElementById("migrationOriginalCondition");
+    if (originalConditionEl) originalConditionEl.value = originalCondition || "";
+
+    document.getElementById("familyMigrationModal")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+}
+
+function closeFamilyMigrationModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("familyMigrationModal")?.classList.remove("active");
+    migratingFamilyId = null;
+    _reopenDetailModalIfNeeded();
+    restoreBodyOverflow();
+}
+
+async function submitFamilyMigration() {
+    if (!migratingFamilyId) return;
+
+    const stillDisplacedRaw = document.getElementById("migrationStillDisplaced")?.value || "";
+    const stillDisplaced = ["yes", "no", "unsure"].includes(stillDisplacedRaw) ? stillDisplacedRaw : null;
+    const showsExtras = stillDisplaced === "yes" || stillDisplaced === "unsure";
+    const displacedVillageId = document.getElementById("migrationVillage")?.value || "";
+    const stayReason = document.getElementById("migrationStayReason")?.value?.trim() || null;
+    const originalPlace = document.getElementById("migrationOriginalPlace")?.value?.trim() || null;
+    const originalBuilding = document.getElementById("migrationOriginalBuilding")?.value?.trim() || null;
+    const originalFloor = document.getElementById("migrationOriginalFloor")?.value?.trim() || null;
+    const originalCondition = document.getElementById("migrationOriginalCondition")?.value || null;
+
+    try {
+        const savedId = migratingFamilyId;
+        await api.updateFamily(savedId, {
+            still_displaced: stillDisplaced,
+            displaced_village_id: showsExtras && displacedVillageId ? Number(displacedVillageId) : null,
+            displacement_stay_reason: showsExtras ? stayReason : null,
+            original_residence_place: originalPlace,
+            original_residence_building: originalBuilding,
+            original_residence_floor: originalFloor,
+            original_residence_condition: originalCondition,
+        });
+        closeFamilyMigrationModal();
+        await refreshFamilies({ silent: true });
+    } catch (error) {
+        console.error(error);
+        alert("فشل حفظ معلومات النزوح");
+    }
+}
+
 function getDistributionPayload() {
     const type = normalizeDistributionType(document.getElementById("distributionType")?.value || "local");
     const at = document.getElementById("distributionAt")?.value || "";
@@ -1844,6 +1952,13 @@ function familyDetailEdit() {
     openFamilyEditModal(familyDetailId);
 }
 
+function familyDetailMigration() {
+    if (!familyDetailId) return;
+    _familyDetailReopenAfterClose = true;
+    document.getElementById("familyDetailModal")?.classList.remove("active");
+    openFamilyMigrationModal(familyDetailId);
+}
+
 function familyDetailDelete() {
     if (!familyDetailId) return;
     const id = familyDetailId;
@@ -1890,6 +2005,11 @@ window.importFamiliesExcel = importFamiliesExcel;
 window.openFamilyEditModal = openFamilyEditModal;
 window.closeFamilyEditModal = closeFamilyEditModal;
 window.submitFamilyEdit = submitFamilyEdit;
+window.openFamilyMigrationModal = openFamilyMigrationModal;
+window.closeFamilyMigrationModal = closeFamilyMigrationModal;
+window.submitFamilyMigration = submitFamilyMigration;
+window.toggleMigrationVillage = toggleMigrationVillage;
+window.familyDetailMigration = familyDetailMigration;
 window.openFamilyRelationsModal = openFamilyRelationsModal;
 window.closeFamilyRelationsModal = closeFamilyRelationsModal;
 window.submitFamilyRelation = submitFamilyRelation;
