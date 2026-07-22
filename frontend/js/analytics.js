@@ -23,6 +23,7 @@ function _distCount(f) {
 function _hasRelations(f) {
     return (familyRelationsSummary?.[String(f.id)] || []).length > 0;
 }
+function _hasGift(f) { return Boolean(f.gift_received ?? f.giftReceived ?? false); }
 function _stillDisplaced(f) { return f.still_displaced ?? f.stillDisplaced ?? null; }
 function _originalCondition(f) { return f.original_residence_condition ?? f.originalResidenceCondition ?? null; }
 
@@ -46,6 +47,7 @@ function renderAnalytics() {
     const totalHouse       = all.filter((f) => _housingType(f) === "house").length;
     const totalShelter     = all.filter((f) => _housingType(f) === "shelter_center").length;
     const totalWithRelations = all.filter(_hasRelations).length;
+    const totalWithGift    = all.filter(_hasGift).length;
     const totalStillYes        = all.filter((f) => _stillDisplaced(f) === "yes").length;
     const totalStillNo         = all.filter((f) => _stillDisplaced(f) === "no").length;
     const totalStillUnsure     = all.filter((f) => _stillDisplaced(f) === "unsure").length;
@@ -60,6 +62,7 @@ function renderAnalytics() {
     const housePct     = _pct(totalHouse, total);
     const shelterPct   = _pct(totalShelter, total);
     const relationsPct = _pct(totalWithRelations, total);
+    const giftPct      = _pct(totalWithGift, total);
     const stillYesPct         = _pct(totalStillYes, total);
     const stillNoPct          = _pct(totalStillNo, total);
     const stillUnsurePct      = _pct(totalStillUnsure, total);
@@ -85,6 +88,7 @@ function renderAnalytics() {
             const house      = fams.filter((f) => _housingType(f) === "house").length;
             const shelter    = fams.filter((f) => _housingType(f) === "shelter_center").length;
             const withRel    = fams.filter(_hasRelations).length;
+            const withGift   = fams.filter(_hasGift).length;
             const stillYes    = fams.filter((f) => _stillDisplaced(f) === "yes").length;
             const stillNo     = fams.filter((f) => _stillDisplaced(f) === "no").length;
             const stillUnsure = fams.filter((f) => _stillDisplaced(f) === "unsure").length;
@@ -96,7 +100,7 @@ function renderAnalytics() {
                 count: fams.length,
                 people,
                 avg: fams.length ? (people / fams.length).toFixed(1) : 0,
-                filled, fileNo, muni, withDist, house, shelter, withRel,
+                filled, fileNo, muni, withDist, house, shelter, withRel, withGift,
                 stillYes, stillNo, stillUnsure, origBad, origRepair, origGood,
             };
         })
@@ -150,6 +154,11 @@ function renderAnalytics() {
                 <div class="analytics-summary-value">${totalWithRelations} <span class="analytics-pct-badge analytics-pct-primary">${relationsPct}%</span></div>
                 <div class="analytics-summary-label">لديها علاقات</div>
                 ${analyticsProgressBar(relationsPct, "#0e7490")}
+            </div>
+            <div class="card analytics-summary-card">
+                <div class="analytics-summary-value">${totalWithGift} <span class="analytics-pct-badge analytics-pct-success">${giftPct}%</span></div>
+                <div class="analytics-summary-label">استلموا هدية</div>
+                ${analyticsProgressBar(giftPct, "#7c3aed")}
             </div>
         </div>
 
@@ -247,6 +256,7 @@ function renderAnalytics() {
                             <th>منازل</th>
                             <th>مراكز إيواء</th>
                             <th>علاقات %</th>
+                            <th>هدية %</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -256,6 +266,7 @@ function renderAnalytics() {
                             const np  = _pct(r.fileNo,   r.count);
                             const dp  = _pct(r.withDist, r.count);
                             const rp  = _pct(r.withRel,  r.count);
+                            const gp  = _pct(r.withGift, r.count);
                             return `
                             <tr>
                                 <td><strong>${escapeHtml(r.name)}</strong></td>
@@ -283,6 +294,10 @@ function renderAnalytics() {
                                 <td class="analytics-bar-cell">
                                     ${analyticsProgressBar(rp, "#0e7490")}
                                     <span class="analytics-bar-label">${r.withRel}</span>
+                                </td>
+                                <td class="analytics-bar-cell">
+                                    ${analyticsProgressBar(gp, "#7c3aed")}
+                                    <span class="analytics-bar-label">${gp}%</span>
                                 </td>
                             </tr>`;
                         }).join("")}
@@ -314,6 +329,10 @@ function renderAnalytics() {
                             <td class="analytics-bar-cell">
                                 ${analyticsProgressBar(relationsPct, "#0e7490")}
                                 <span class="analytics-bar-label">${totalWithRelations}</span>
+                            </td>
+                            <td class="analytics-bar-cell">
+                                ${analyticsProgressBar(giftPct, "#7c3aed")}
+                                <span class="analytics-bar-label">${giftPct}%</span>
                             </td>
                         </tr>
                     </tfoot>
