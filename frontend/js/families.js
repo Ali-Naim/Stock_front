@@ -1776,7 +1776,7 @@ async function exportFamiliesExcel() {
 
         const header = [
             "رقم الملف", "الاسم", "الكنية", "رقم الهاتف",
-            "القرية", "عدد الأفراد", "عدد التوزيعات",
+            "القرية", "عدد الأفراد", "عدد التوزيعات", "استلم هدية",
             ...itemNames,
         ];
 
@@ -1788,6 +1788,7 @@ async function exportFamiliesExcel() {
             r.village,
             r.people_count,
             r.total_distributions,
+            r.gift_received ? "نعم" : "لا",
             ...itemNames.map((name) => r.items[name] || 0),
         ]);
 
