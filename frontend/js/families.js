@@ -9,6 +9,95 @@ const FAMILIES_PAGE_SIZE = 100;
 let familyDetailId = null;
 let _familyDetailReopenAfterClose = false;
 
+function renderVillagesManager() {
+    const card = document.getElementById("villagesManagerCard");
+    if (!card) return;
+
+    const roles = typeof getUserRoles === "function" ? getUserRoles() : [];
+    const isAdmin = roles.includes("admin");
+
+    if (!isAdmin) {
+        card.classList.add("hidden");
+        return;
+    }
+
+    card.classList.remove("hidden");
+    card.innerHTML = `
+        <div class="item-type-manager-header">
+            <h3>القرى</h3>
+        </div>
+        <div class="item-type-add-row">
+            <input id="newVillageName" placeholder="اسم القرية الجديدة"
+                   onkeydown="if(event.key==='Enter') addVillage()">
+            <button class="done" type="button" onclick="addVillage()">
+                <i class="bi bi-plus-lg"></i> إضافة
+            </button>
+        </div>
+        <div class="item-type-list">
+            ${villages.length === 0
+                ? `<p class="muted-text">لا توجد قرى بعد — أضف أول قرية</p>`
+                : villages.map((v) => `
+                    <div class="item-type-row">
+                        <div class="item-type-row-info">
+                            <span class="item-type-name">${escapeHtml(v.name)}</span>
+                        </div>
+                        <div class="item-type-actions">
+                            <button class="item-type-btn-edit" type="button" title="تعديل الاسم"
+                                    onclick="renameVillage(${v.id}, '${escapeHtml(v.name)}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="item-type-btn-delete" type="button" title="حذف"
+                                    onclick="deleteVillage(${v.id}, '${escapeHtml(v.name)}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>`).join("")}
+        </div>`;
+}
+
+async function addVillage() {
+    const input = document.getElementById("newVillageName");
+    const name = input?.value.trim();
+    if (!name) return alert("أدخل اسم القرية");
+
+    try {
+        await api.createVillage({ name });
+        input.value = "";
+        await loadVillages();
+        fillVillageInputs();
+    } catch (err) {
+        console.error("Error creating village:", err);
+        alert(err?.message || "فشل إضافة القرية");
+    }
+}
+
+async function renameVillage(id, currentName) {
+    const newName = prompt("الاسم الجديد للقرية:", currentName);
+    if (!newName || newName.trim() === currentName.trim()) return;
+
+    try {
+        await api.updateVillage(id, { name: newName.trim() });
+        await loadVillages();
+        fillVillageInputs();
+    } catch (err) {
+        console.error("Error renaming village:", err);
+        alert(err?.message || "فشل تعديل القرية");
+    }
+}
+
+async function deleteVillage(id, name) {
+    if (!confirm(`هل تريد حذف القرية "${name}"؟`)) return;
+
+    try {
+        await api.deleteVillage(id);
+        await loadVillages();
+        fillVillageInputs();
+    } catch (err) {
+        console.error("Error deleting village:", err);
+        alert(err?.message || "فشل حذف القرية");
+    }
+}
+
 function restoreBodyOverflow() {
     if (!document.querySelector(".modal-overlay.active")) {
         document.body.style.overflow = "";
@@ -2088,6 +2177,10 @@ window.detailFilterRelationFamilies = detailFilterRelationFamilies;
 window.detailToggleCustomRelationType = detailToggleCustomRelationType;
 window.submitDetailRelation = submitDetailRelation;
 window.deleteDetailRelation = deleteDetailRelation;
+window.renderVillagesManager = renderVillagesManager;
+window.addVillage = addVillage;
+window.renameVillage = renameVillage;
+window.deleteVillage = deleteVillage;
 
 document.addEventListener("click", (e) => {
     const panel = document.getElementById("familyColumnsPanel");

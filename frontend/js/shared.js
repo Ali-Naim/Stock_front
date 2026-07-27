@@ -7,6 +7,7 @@
     reports: "التقارير",
     analytics: "الإحصاءات",
     notes: "الملاحظات",
+    teamAdmin: "الفرق والمستخدمين",
 };
 
 function toggleSidebar() {
@@ -73,6 +74,9 @@ function switchTab(tabName) {
     }
     if (tabName === "notes" && typeof loadNotes === "function") {
         loadNotes();
+    }
+    if (tabName === "teamAdmin" && typeof loadTeamAdmin === "function") {
+        loadTeamAdmin();
     }
 }
 
@@ -165,6 +169,8 @@ function fillVillageInputs() {
     if (familyVillageFilter) {
         familyVillageFilter.innerHTML = `<option value="">كل القرى</option>${villages.map((village) => `<option value="${village.id}">${escapeHtml(village.name)}</option>`).join("")}`;
     }
+
+    if (typeof renderVillagesManager === "function") renderVillagesManager();
 }
 
 function updateNeedItemPreview() {

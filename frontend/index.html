@@ -503,8 +503,12 @@
         <button class="sidebar-nav-item" data-tab-target="reports" onclick="switchTab('reports')"><i class="bi bi-file-bar-graph-fill"></i><span>التقارير</span></button>
         <button class="sidebar-nav-item" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
         <button class="sidebar-nav-item" data-tab-target="notes" onclick="switchTab('notes')"><i class="bi bi-sticky-fill"></i><span>الملاحظات</span></button>
+        <button class="sidebar-nav-item" data-tab-target="teamAdmin" onclick="switchTab('teamAdmin')"><i class="bi bi-diagram-3-fill"></i><span>الفرق والمستخدمين</span></button>
     </nav>
     <div class="sidebar-footer">
+        <div id="teamSwitcherWrap" class="hidden" style="margin-bottom:8px;">
+            <select id="teamSwitcher" onchange="onTeamSwitcherChange(this.value)" style="width:100%;font-size:0.85rem;"></select>
+        </div>
         <div class="sidebar-user">
             <i class="bi bi-person-circle"></i>
             <span id="authUserLabel" class="auth-user-label"></span>
@@ -749,6 +753,8 @@
             </div>
             <p>كل عائلة ممثلة باسم الأب (الاسم والكنية) مع عدد الأفراد والقرية، وسجل التوزيعات والمواد والكميات.</p>
         </div>
+
+        <div id="villagesManagerCard" class="card hidden"></div>
 
         <div class="card">
             <h3>إضافة عائلة</h3>
@@ -1106,6 +1112,18 @@
         </div>
         <div id="notesList" class="notes-grid"></div>
     </div>
+
+    <div id="teamAdmin" class="section hidden">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">إدارة المنصة</p>
+                <h2>الفرق والمستخدمين</h2>
+            </div>
+            <p>إنشاء فرق جديدة ومستخدمين تابعين لها — كل فريق يرى بياناته فقط.</p>
+        </div>
+        <div id="teamsManagerCard" class="card"></div>
+        <div id="usersManagerCard" class="card" style="margin-top:1rem;"></div>
+    </div>
         </div>
     </div>
 </div>
@@ -1166,6 +1184,7 @@
     <button class="mobile-tab-button" data-tab-target="reports" onclick="switchTab('reports')"><i class="bi bi-file-bar-graph-fill"></i><span>التقارير</span></button>
     <button class="mobile-tab-button" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
     <button class="mobile-tab-button" data-tab-target="notes" onclick="switchTab('notes')"><i class="bi bi-sticky-fill"></i><span>الملاحظات</span></button>
+    <button class="mobile-tab-button" data-tab-target="teamAdmin" onclick="switchTab('teamAdmin')"><i class="bi bi-diagram-3-fill"></i><span>الفرق</span></button>
 </nav>
 </div>
 
@@ -1186,6 +1205,7 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 <script src="js/analytics.js"></script>
 <script src="js/tasks.js"></script>
 <script src="js/notes.js"></script>
+<script src="js/admin.js"></script>
 <script src="js/ui-enhance.js"></script>
 <script src="js/init.js"></script>
 

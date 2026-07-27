@@ -1,11 +1,13 @@
 const AUTH_STORAGE_KEY = "stock_auth_session_v1";
+const ACTING_TEAM_KEY = "stock_acting_team_v1";
 
 const ROLE_TAB_ALLOWLIST = {
-    admin:       ["inventory", "orders", "needs", "families", "reports", "tasks", "analytics"],
-    call_center: ["inventory", "needs", "orders", "families", "tasks", "analytics"],
-    data_entry:  ["inventory", "needs", "orders", "families", "tasks", "analytics"],
-    stock:       ["inventory", "orders", "families", "reports", "tasks", "analytics"],
-    interaction: ["inventory", "orders", "families", "tasks", "analytics"],
+    admin:       ["inventory", "orders", "needs", "families", "reports", "tasks", "analytics", "notes"],
+    call_center: ["inventory", "needs", "orders", "families", "tasks", "analytics", "notes"],
+    data_entry:  ["inventory", "needs", "orders", "families", "tasks", "analytics", "notes"],
+    stock:       ["inventory", "orders", "families", "reports", "tasks", "analytics", "notes"],
+    interaction: ["inventory", "orders", "families", "tasks", "analytics", "notes"],
+    super_admin: ["inventory", "orders", "needs", "families", "reports", "tasks", "analytics", "notes", "teamAdmin"],
 };
 
 function getApiBase() {
@@ -46,6 +48,27 @@ function getUserRoles() {
         [];
     if (Array.isArray(roles)) return roles.map((role) => String(role).trim()).filter(Boolean);
     return [String(roles).trim()].filter(Boolean);
+}
+
+function isSuperAdmin() {
+    return Boolean(readSession()?.is_super_admin);
+}
+
+function getCurrentTeamId() {
+    return readSession()?.team_id ?? null;
+}
+
+function getCurrentTeamName() {
+    return readSession()?.team_name || "";
+}
+
+function getActingTeamId() {
+    return localStorage.getItem(ACTING_TEAM_KEY) || "";
+}
+
+function setActingTeamId(id) {
+    if (id) localStorage.setItem(ACTING_TEAM_KEY, String(id));
+    else localStorage.removeItem(ACTING_TEAM_KEY);
 }
 
 function getExplicitAllowedTabs() {
@@ -117,19 +140,51 @@ function updateAuthBar() {
     const roles = getUserRoles();
     const label = document.getElementById("authUserLabel");
     const logoutBtn = document.getElementById("logoutBtn");
+    const teamSwitcherWrap = document.getElementById("teamSwitcherWrap");
     if (!label) return;
 
     if (!getAuthToken()) {
         label.textContent = "";
         logoutBtn?.classList.add("hidden");
+        teamSwitcherWrap?.classList.add("hidden");
         return;
     }
 
     const name = user?.name || user?.username || user?.email || "مستخدم";
     const rolesText = roles.length ? `(${roles.join(" / ")})` : "";
-    label.textContent = `${name} ${rolesText}`.trim();
+    const teamName = getCurrentTeamName();
+    const teamText = teamName ? ` — ${teamName}` : "";
+    label.textContent = `${name} ${rolesText}${teamText}`.trim();
     logoutBtn?.classList.remove("hidden");
     updateOrderCreatorLabel();
+
+    if (teamSwitcherWrap) {
+        teamSwitcherWrap.classList.toggle("hidden", !isSuperAdmin());
+        if (isSuperAdmin()) loadTeamSwitcher();
+    }
+}
+
+async function loadTeamSwitcher() {
+    const select = document.getElementById("teamSwitcher");
+    if (!select || typeof api === "undefined" || typeof api.getTeams !== "function") return;
+    try {
+        const teams = await api.getTeams();
+        const acting = getActingTeamId();
+        select.innerHTML = (teams || [])
+            .map((t) => `<option value="${t.id}" ${String(t.id) === String(acting) ? "selected" : ""}>${escapeHtml(t.name)}</option>`)
+            .join("");
+        if (!acting && teams?.length) {
+            setActingTeamId(teams[0].id);
+            select.value = String(teams[0].id);
+        }
+    } catch (error) {
+        console.error("Failed to load teams for switcher:", error);
+    }
+}
+
+function onTeamSwitcherChange(value) {
+    setActingTeamId(value);
+    location.reload();
 }
 
 function applyRoleVisibility() {
@@ -184,12 +239,16 @@ async function login(username, password) {
     const user = payload?.user || payload?.data?.user || payload?.account || null;
     const roles = payload?.roles || user?.roles || user?.role || null;
     const allowedTabs = payload?.allowedTabs || payload?.allowed_pages || user?.allowedTabs || user?.allowed_pages || null;
+    const teamId = payload?.team_id ?? null;
+    const teamName = payload?.team_name || "";
+    const isSuperAdminFlag = Boolean(payload?.is_super_admin);
 
     if (!token) {
         throw new Error("Login response missing token");
     }
 
-    writeSession({ token, user, roles, allowedTabs });
+    writeSession({ token, user, roles, allowedTabs, team_id: teamId, team_name: teamName, is_super_admin: isSuperAdminFlag });
+    if (!isSuperAdminFlag) setActingTeamId("");
     updateAuthBar();
     applyRoleVisibility();
     window.dispatchEvent(new Event("auth:login"));
@@ -197,6 +256,7 @@ async function login(username, password) {
 
 function logout() {
     writeSession(null);
+    setActingTeamId("");
     location.reload();
 }
 
@@ -258,3 +318,9 @@ window.getAllowedTabs = getAllowedTabs;
 window.canAccessTab = canAccessTab;
 window.setupAuthUi = setupAuthUi;
 window.requireAuth = requireAuth;
+window.isSuperAdmin = isSuperAdmin;
+window.getCurrentTeamId = getCurrentTeamId;
+window.getCurrentTeamName = getCurrentTeamName;
+window.getActingTeamId = getActingTeamId;
+window.setActingTeamId = setActingTeamId;
+window.onTeamSwitcherChange = onTeamSwitcherChange;

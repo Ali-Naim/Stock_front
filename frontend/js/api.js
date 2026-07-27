@@ -2,10 +2,14 @@ const API_BASE = window.STOCK_API_BASE || "https://stockback-production-dfa8.up.
 
 async function apiRequest(path, options = {}) {
     const token = typeof getAuthToken === "function" ? getAuthToken() : "";
+    const actingTeamId = typeof isSuperAdmin === "function" && isSuperAdmin() && typeof getActingTeamId === "function"
+        ? getActingTeamId()
+        : "";
     const response = await fetch(`${API_BASE}${path}`, {
         headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(actingTeamId ? { "X-Team-Id": actingTeamId } : {}),
             ...(options.headers || {}),
         },
         ...options,
@@ -34,6 +38,10 @@ const api = {
     login: (payload) => apiRequest("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
 
     getVillages: () => apiRequest("/villages"),
+    createVillage: (payload) => apiRequest("/villages", { method: "POST", body: JSON.stringify(payload) }),
+    updateVillage: (id, payload) => apiRequest(`/villages/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    deleteVillage: (id) => apiRequest(`/villages/${id}`, { method: "DELETE" }),
+
     getInventory: () => apiRequest("/inventory"),
     createInventoryItem: (payload) => apiRequest("/inventory", { method: "POST", body: JSON.stringify(payload) }),
     updateInventoryItem: (id, payload) => apiRequest(`/inventory/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
@@ -92,5 +100,16 @@ const api = {
 
     getRangeReport: (from, to) => apiRequest(`/reports/orders-by-range${toQueryString({ from, to })}`),
     getDistributionsDetail: (from, to) => apiRequest(`/reports/distributions-detail${toQueryString({ from, to })}`),
-    getInventoryLogs: (itemId) => apiRequest(`/reports/inventory-logs${toQueryString({ item_id: itemId || "" })}`)
+    getInventoryLogs: (itemId) => apiRequest(`/reports/inventory-logs${toQueryString({ item_id: itemId || "" })}`),
+
+    getTeams: () => apiRequest("/teams"),
+    createTeam: (payload) => apiRequest("/teams", { method: "POST", body: JSON.stringify(payload) }),
+    updateTeam: (id, payload) => apiRequest(`/teams/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+
+    getRoles: () => apiRequest("/roles"),
+    getUsers: (teamId) => apiRequest(`/users${toQueryString({ team_id: teamId || "" })}`),
+    createUser: (payload) => apiRequest("/users", { method: "POST", body: JSON.stringify(payload) }),
+    updateUser: (id, payload) => apiRequest(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    resetUserPassword: (id, newPassword) =>
+        apiRequest(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ new_password: newPassword }) }),
 };
