@@ -29,9 +29,8 @@ const FAMILY_COLUMNS = [
     { key: "still_displaced",   label: "ما زال في النزوح" },
     { key: "displaced_village", label: "قرية النزوح" },
     { key: "original_place",    label: "مكان السكن الأصلي" },
-    { key: "original_building", label: "المجمع/الشارع" },
-    { key: "original_floor",    label: "الطابق" },
     { key: "original_condition", label: "حالة السكن الأصلي" },
+    { key: "damage_type",       label: "نوع الأضرار" },
     { key: "stay_reason",       label: "سبب البقاء بالنزوح" },
 ];
 

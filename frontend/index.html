@@ -328,14 +328,25 @@
         <h4 class="history-heading">حالة السكن الأصلي</h4>
         <div class="form-grid">
             <input id="migrationOriginalPlace" placeholder="المدينة أو القرية">
-            <input id="migrationOriginalBuilding" placeholder="المجمع أو الشارع">
-            <input id="migrationOriginalFloor" placeholder="الطابق">
             <select id="migrationOriginalCondition">
                 <option value="">حالة السكن الأصلي (غير محدد)</option>
                 <option value="not_habitable">غير صالح للسكن كليًا</option>
                 <option value="needs_repair">يحتاج إلى تصليح</option>
                 <option value="good">بحالة جيدة</option>
             </select>
+            <select id="migrationDamageType" onchange="toggleMigrationDamageOther(this.value)">
+                <option value="">نوع الأضرار (غير محدد)</option>
+                <option value="structural">أضرار هيكلية</option>
+                <option value="roof">أضرار في السقف</option>
+                <option value="glass_windows">كسر الزجاج والنوافذ</option>
+                <option value="facilities">أضرار في المرافق</option>
+                <option value="fire">حريق</option>
+                <option value="multiple">أضرار متعددة</option>
+                <option value="other">أخرى</option>
+            </select>
+        </div>
+        <div id="migrationDamageOtherRow" style="margin-top:0.5rem;display:none;">
+            <input id="migrationDamageOther" type="text" placeholder="حدد نوع الضرر" style="width:100%;max-width:280px;">
         </div>
 
         <div class="modal-actions">

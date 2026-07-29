@@ -162,6 +162,32 @@ function getOriginalConditionStyle(val) {
     return styles[val] || "";
 }
 
+function getDamageTypeLabel(val, other) {
+    const map = {
+        structural: "أضرار هيكلية",
+        roof: "أضرار في السقف",
+        glass_windows: "كسر الزجاج والنوافذ",
+        facilities: "أضرار في المرافق",
+        fire: "حريق",
+        multiple: "أضرار متعددة",
+        other: other ? `أخرى: ${other}` : "أخرى",
+    };
+    return map[val] || null;
+}
+
+function getDamageTypeStyle(val) {
+    const styles = {
+        structural: "background:#fee2e2;color:#991b1b;",
+        roof: "background:#fef3c7;color:#92400e;",
+        glass_windows: "background:#dbeafe;color:#1e40af;",
+        facilities: "background:#ede9fe;color:#5b21b6;",
+        fire: "background:#fee2e2;color:#991b1b;",
+        multiple: "background:#fef3c7;color:#92400e;",
+        other: "background:#f3f4f6;color:#374151;",
+    };
+    return styles[val] || "";
+}
+
 function normalizeDistributionType(value) {
     const raw = String(value ?? "").trim().toLowerCase();
     if (raw === "municipality" || raw === "baladiyeh" || raw === "بلدية") return "municipality";
@@ -570,6 +596,15 @@ function fillMigrationVillageSelect(selectedValue = "") {
     select.innerHTML = getVillageOptions(selectedValue);
 }
 
+function toggleMigrationDamageOther(value) {
+    const row = document.getElementById("migrationDamageOtherRow");
+    if (row) row.style.display = value === "other" ? "" : "none";
+    if (value !== "other") {
+        const el = document.getElementById("migrationDamageOther");
+        if (el) el.value = "";
+    }
+}
+
 function openFamilyMigrationModal(familyId) {
     const id = Number(familyId);
     if (!id) return;
@@ -582,9 +617,9 @@ function openFamilyMigrationModal(familyId) {
     const stillDisplaced = family.still_displaced ?? family.stillDisplaced ?? "";
     const displacedVillageId = family.displaced_village_id ?? family.displacedVillageId ?? "";
     const originalPlace = family.original_residence_place ?? family.originalResidencePlace ?? "";
-    const originalBuilding = family.original_residence_building ?? family.originalResidenceBuilding ?? "";
-    const originalFloor = family.original_residence_floor ?? family.originalResidenceFloor ?? "";
     const originalCondition = family.original_residence_condition ?? family.originalResidenceCondition ?? "";
+    const damageType = family.damage_type ?? family.damageType ?? "";
+    const damageTypeOther = family.damage_type_other ?? family.damageTypeOther ?? "";
     const stayReason = family.displacement_stay_reason ?? family.displacementStayReason ?? "";
 
     const title = document.getElementById("familyMigrationModalTitle");
@@ -601,12 +636,14 @@ function openFamilyMigrationModal(familyId) {
 
     const originalPlaceEl = document.getElementById("migrationOriginalPlace");
     if (originalPlaceEl) originalPlaceEl.value = String(originalPlace ?? "");
-    const originalBuildingEl = document.getElementById("migrationOriginalBuilding");
-    if (originalBuildingEl) originalBuildingEl.value = String(originalBuilding ?? "");
-    const originalFloorEl = document.getElementById("migrationOriginalFloor");
-    if (originalFloorEl) originalFloorEl.value = String(originalFloor ?? "");
     const originalConditionEl = document.getElementById("migrationOriginalCondition");
     if (originalConditionEl) originalConditionEl.value = originalCondition || "";
+
+    const damageTypeEl = document.getElementById("migrationDamageType");
+    if (damageTypeEl) damageTypeEl.value = damageType || "";
+    const damageOtherEl = document.getElementById("migrationDamageOther");
+    if (damageOtherEl) damageOtherEl.value = String(damageTypeOther ?? "");
+    toggleMigrationDamageOther(damageTypeEl?.value || "");
 
     document.getElementById("familyMigrationModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -629,9 +666,10 @@ async function submitFamilyMigration() {
     const displacedVillageId = document.getElementById("migrationVillage")?.value || "";
     const stayReason = document.getElementById("migrationStayReason")?.value?.trim() || null;
     const originalPlace = document.getElementById("migrationOriginalPlace")?.value?.trim() || null;
-    const originalBuilding = document.getElementById("migrationOriginalBuilding")?.value?.trim() || null;
-    const originalFloor = document.getElementById("migrationOriginalFloor")?.value?.trim() || null;
     const originalCondition = document.getElementById("migrationOriginalCondition")?.value || null;
+    const damageTypeRaw = document.getElementById("migrationDamageType")?.value || "";
+    const damageType = damageTypeRaw || null;
+    const damageTypeOther = document.getElementById("migrationDamageOther")?.value?.trim() || null;
 
     try {
         const savedId = migratingFamilyId;
@@ -640,9 +678,9 @@ async function submitFamilyMigration() {
             displaced_village_id: showsExtras && displacedVillageId ? Number(displacedVillageId) : null,
             displacement_stay_reason: showsExtras ? stayReason : null,
             original_residence_place: originalPlace,
-            original_residence_building: originalBuilding,
-            original_residence_floor: originalFloor,
             original_residence_condition: originalCondition,
+            damage_type: damageType,
+            damage_type_other: damageType === "other" ? damageTypeOther : null,
         });
         closeFamilyMigrationModal();
         await refreshFamilies({ silent: true });
@@ -1386,9 +1424,8 @@ function renderFamilies() {
                         ${cv('still_displaced')    ? '<th>ما زال في النزوح</th>' : ''}
                         ${cv('displaced_village')  ? '<th>قرية النزوح</th>' : ''}
                         ${cv('original_place')     ? '<th>مكان السكن الأصلي</th>' : ''}
-                        ${cv('original_building')  ? '<th>المجمع/الشارع</th>' : ''}
-                        ${cv('original_floor')     ? '<th>الطابق</th>' : ''}
                         ${cv('original_condition') ? '<th>حالة السكن الأصلي</th>' : ''}
+                        ${cv('damage_type')        ? '<th>نوع الأضرار</th>' : ''}
                         ${cv('stay_reason')        ? '<th>سبب البقاء بالنزوح</th>' : ''}
                     </tr>
                 </thead>
@@ -1511,13 +1548,18 @@ function renderFamilies() {
                                     })() : ''}
                                     ${cv('displaced_village')  ? `<td>${escapeHtml(getVillageNameById(family.displaced_village_id ?? family.displacedVillageId ?? ""))}</td>` : ''}
                                     ${cv('original_place')     ? `<td>${escapeHtml((family.original_residence_place ?? family.originalResidencePlace) || "-")}</td>` : ''}
-                                    ${cv('original_building')  ? `<td>${escapeHtml((family.original_residence_building ?? family.originalResidenceBuilding) || "-")}</td>` : ''}
-                                    ${cv('original_floor')     ? `<td>${escapeHtml((family.original_residence_floor ?? family.originalResidenceFloor) || "-")}</td>` : ''}
                                     ${cv('original_condition') ? (() => {
                                         const oc = family.original_residence_condition ?? family.originalResidenceCondition ?? null;
                                         const ocLabel = getOriginalConditionLabel(oc);
                                         const ocStyle = getOriginalConditionStyle(oc);
                                         return ocLabel ? `<td><span class="badge" style="${ocStyle}">${ocLabel}</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
+                                    })() : ''}
+                                    ${cv('damage_type') ? (() => {
+                                        const dt = family.damage_type ?? family.damageType ?? null;
+                                        const dtOther = family.damage_type_other ?? family.damageTypeOther ?? "";
+                                        const dtLabel = getDamageTypeLabel(dt, dtOther);
+                                        const dtStyle = getDamageTypeStyle(dt);
+                                        return dtLabel ? `<td><span class="badge" style="${dtStyle}">${escapeHtml(dtLabel)}</span></td>` : '<td><span style="color:var(--muted);font-size:0.8rem;">—</span></td>';
                                     })() : ''}
                                     ${cv('stay_reason') ? `<td>${escapeHtml((family.displacement_stay_reason ?? family.displacementStayReason) || "-")}</td>` : ''}
                                 </tr>
@@ -2159,6 +2201,7 @@ window.openFamilyMigrationModal = openFamilyMigrationModal;
 window.closeFamilyMigrationModal = closeFamilyMigrationModal;
 window.submitFamilyMigration = submitFamilyMigration;
 window.toggleMigrationVillage = toggleMigrationVillage;
+window.toggleMigrationDamageOther = toggleMigrationDamageOther;
 window.familyDetailMigration = familyDetailMigration;
 window.openFamilyRelationsModal = openFamilyRelationsModal;
 window.closeFamilyRelationsModal = closeFamilyRelationsModal;
