@@ -1956,7 +1956,89 @@ async function exportFamiliesExcel() {
         console.error("Export failed:", err);
         alert("فشل التصدير");
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "تصدير Excel"; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-file-earmark-excel me-1"></i>تصدير التوزيعات'; }
+    }
+}
+
+function exportFamilyMigrationExcel() {
+    const btn = document.getElementById("exportFamilyMigrationBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "جارٍ التصدير..."; }
+
+    try {
+        const rows = getFilteredFamilies();
+        if (!rows.length) {
+            alert("لا توجد بيانات للتصدير");
+            return;
+        }
+
+        const f = currentFamilyFilters || {};
+        const filterParts = [];
+        if (f.village) {
+            const vname = getVillageNameById(f.village);
+            if (vname) filterParts.push(`القرية: ${vname}`);
+        }
+        if (f.name) filterParts.push(`الاسم: ${f.name}`);
+        if (f.fileNumberSearch) filterParts.push(`رقم الملف: ${f.fileNumberSearch}`);
+        if (f.stillDisplaced) filterParts.push(`ما زال في النزوح: ${getStillDisplacedLabel(f.stillDisplaced) || f.stillDisplaced}`);
+        if (f.originalCondition) filterParts.push(`حالة السكن الأصلي: ${getOriginalConditionLabel(f.originalCondition) || f.originalCondition}`);
+
+        const titleText = `تصدير حالة النزوح${filterParts.length ? `  |  ${filterParts.join(" ، ")}` : ""}`;
+        const countText = `عدد العائلات: ${rows.length}`;
+
+        const header = [
+            "رقم الملف", "الاسم الأول", "الاسم الأوسط", "الكنية", "القرية",
+            "ما زال في النزوح", "قرية النزوح", "سبب البقاء في النزوح",
+            "مكان السكن الأصلي", "حالة السكن الأصلي", "نوع الأضرار",
+        ];
+
+        const dataRows = rows.map((r) => {
+            const stillDisplaced = r.still_displaced ?? r.stillDisplaced ?? null;
+            const showsExtras = stillDisplaced === "yes" || stillDisplaced === "unsure";
+            const damageType = r.damage_type ?? r.damageType ?? null;
+            const damageTypeOther = r.damage_type_other ?? r.damageTypeOther ?? "";
+            return [
+                r.file_number ?? r.fileNumber ?? "",
+                r.father_first_name ?? r.fatherFirstName ?? "",
+                r.father_middle_name ?? r.fatherMiddleName ?? "",
+                r.father_last_name ?? r.fatherLastName ?? "",
+                getVillageNameById(r.village_id ?? r.villageId ?? ""),
+                getStillDisplacedLabel(stillDisplaced) || "-",
+                showsExtras ? getVillageNameById(r.displaced_village_id ?? r.displacedVillageId ?? "") : "-",
+                (showsExtras && (r.displacement_stay_reason ?? r.displacementStayReason)) || "-",
+                (r.original_residence_place ?? r.originalResidencePlace) || "-",
+                getOriginalConditionLabel(r.original_residence_condition ?? r.originalResidenceCondition ?? null) || "-",
+                getDamageTypeLabel(damageType, damageTypeOther) || "-",
+            ];
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([[titleText], [countText], [], header, ...dataRows]);
+        ws["!views"] = [{ rightToLeft: true }];
+
+        const colCount = header.length - 1;
+        ws["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: colCount } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: colCount } },
+        ];
+
+        ws["!cols"] = header.map((_, ci) => {
+            const vals = [header[ci], ...dataRows.map((r) => r[ci])];
+            return { wch: Math.max(...vals.map((v) => String(v ?? "").length)) + 2 };
+        });
+
+        const range = XLSX.utils.decode_range(ws["!ref"]);
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const headerCell = XLSX.utils.encode_cell({ r: 3, c: C });
+            if (ws[headerCell]) ws[headerCell].s = { font: { bold: true } };
+        }
+
+        XLSX.utils.book_append_sheet(wb, ws, "حالة النزوح");
+        XLSX.writeFile(wb, `حالة_النزوح_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+        console.error("Export failed:", err);
+        alert("فشل التصدير");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-file-earmark-excel me-1"></i>تصدير حالة النزوح'; }
     }
 }
 
@@ -2191,6 +2273,7 @@ window.deleteDistribution = deleteDistribution;
 window.openDistributionsHistoryModal = openDistributionsHistoryModal;
 window.closeDistributionsHistoryModal = closeDistributionsHistoryModal;
 window.exportFamiliesExcel = exportFamiliesExcel;
+window.exportFamilyMigrationExcel = exportFamilyMigrationExcel;
 window.openFamiliesExcelImportModal = openFamiliesExcelImportModal;
 window.closeFamiliesExcelImportModal = closeFamiliesExcelImportModal;
 window.importFamiliesExcel = importFamiliesExcel;
