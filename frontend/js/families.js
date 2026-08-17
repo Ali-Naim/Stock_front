@@ -1731,6 +1731,29 @@ function closeFamiliesExcelImportModal(event) {
     document.body.style.overflow = "";
 }
 
+function downloadFamiliesImportTemplate() {
+    if (!window.XLSX) return setFamiliesImportResult("مكتبة قراءة Excel غير متوفرة", "error");
+
+    const header = ["first_name", "father_middle_name", "last_name", "village", "phone_number", "people_count", "notes", "distribution_type"];
+    const sampleRow = ["أحمد", "محمد", "الشريف", "اسم القرية", "0912345678", 5, "", "local"];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([header, sampleRow]);
+    ws["!views"] = [{ rightToLeft: true }];
+    ws["!cols"] = header.map((_, ci) => ({
+        wch: Math.max(String(header[ci]).length, String(sampleRow[ci] ?? "").length) + 2,
+    }));
+
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    for (let C = range.s.c; C <= range.e.c; C++) {
+        const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (ws[headerCell]) ws[headerCell].s = { font: { bold: true } };
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, "نموذج الاستيراد");
+    XLSX.writeFile(wb, "نموذج_استيراد_عائلات.xlsx");
+}
+
 async function importFamiliesExcel() {
     try {
         const input = document.getElementById("familiesExcelFile");
@@ -1755,7 +1778,7 @@ async function importFamiliesExcel() {
         }
 
         const headerMap = Object.fromEntries(headers.map((h) => [normalizeHeader(h), h]));
-        const coreHeaders = new Set(["first_name", "last_name", "phone_number", "village", "people_count", "notes", "distribution_type"]);
+        const coreHeaders = new Set(["first_name", "last_name", "father_middle_name", "phone_number", "village", "people_count", "notes", "distribution_type"]);
         const itemHeaders = headers.filter((h) => !coreHeaders.has(normalizeHeader(h)));
 
         const villageMap = new Map((villages || []).map((v) => [v.name.trim().toLowerCase(), v]));
@@ -1766,6 +1789,7 @@ async function importFamiliesExcel() {
 
         rows.forEach((row, idx) => {
             const firstName = String(row[headerMap.first_name] ?? "").trim();
+            const middleName = String(row[headerMap.father_middle_name] ?? "").trim();
             const lastName = String(row[headerMap.last_name] ?? "").trim();
             const phone = String(row[headerMap.phone_number] ?? "").trim();
             const villageName = String(row[headerMap.village] ?? "").trim();
@@ -1804,7 +1828,7 @@ async function importFamiliesExcel() {
             }
             if (itemError) return;
 
-            validatedRows.push({ firstName, lastName, phone, village, people, notes, distType, items });
+            validatedRows.push({ firstName, middleName, lastName, phone, village, people, notes, distType, items });
         });
 
         if (errors.length) return setFamiliesImportResult(errors.slice(0, 8).join(" | "), "error");
@@ -1817,6 +1841,7 @@ async function importFamiliesExcel() {
             try {
                 const created = await api.createFamily({
                     father_first_name: r.firstName,
+                    father_middle_name: r.middleName || null,
                     father_last_name: r.lastName,
                     phone_number: r.phone || null,
                     people_count: r.people,

@@ -403,9 +403,12 @@
         </div>
         <p class="modal-copy">
             الأعمدة المطلوبة: <strong>first_name</strong> و<strong>last_name</strong> و<strong>village</strong>.
-            الاختيارية: <strong>phone_number</strong>، <strong>people_count</strong>، <strong>notes</strong>، <strong>distribution_type</strong> (local أو municipality).
+            الاختيارية: <strong>father_middle_name</strong>، <strong>phone_number</strong>، <strong>people_count</strong>، <strong>notes</strong>، <strong>distribution_type</strong> (local أو municipality).
             أي عمود آخر يُعامَل كاسم مادة من المخزون والقيمة هي الكمية الموزعة.
         </p>
+        <div class="import-needs-box">
+            <button class="filter-clear" type="button" onclick="downloadFamiliesImportTemplate()"><i class="bi bi-download me-1"></i>تنزيل نموذج Excel</button>
+        </div>
         <div class="import-needs-box">
             <input id="familiesExcelFile" type="file" accept=".xlsx,.xls,.csv">
             <button class="done" type="button" onclick="importFamiliesExcel()">استيراد الملف</button>
