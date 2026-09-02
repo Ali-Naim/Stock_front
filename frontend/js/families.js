@@ -2011,7 +2011,7 @@ function exportFamilyMigrationExcel() {
         const countText = `عدد العائلات: ${rows.length}`;
 
         const header = [
-            "رقم الملف", "الاسم الأول", "الاسم الأوسط", "الكنية", "القرية",
+            "رقم الملف", "الاسم الأول", "الاسم الأوسط", "الكنية", "رقم الهاتف", "القرية",
             "ما زال في النزوح", "قرية النزوح", "سبب البقاء في النزوح",
             "مكان السكن الأصلي", "حالة السكن الأصلي", "نوع الأضرار",
         ];
@@ -2026,6 +2026,7 @@ function exportFamilyMigrationExcel() {
                 r.father_first_name ?? r.fatherFirstName ?? "",
                 r.father_middle_name ?? r.fatherMiddleName ?? "",
                 r.father_last_name ?? r.fatherLastName ?? "",
+                r.phone_number ?? r.phoneNumber ?? "",
                 getVillageNameById(r.village_id ?? r.villageId ?? ""),
                 getStillDisplacedLabel(stillDisplaced) || "-",
                 showsExtras ? getVillageNameById(r.displaced_village_id ?? r.displacedVillageId ?? "") : "-",
