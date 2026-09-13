@@ -8,6 +8,7 @@
     analytics: "الإحصاءات",
     notes: "الملاحظات",
     teamAdmin: "الفرق والمستخدمين",
+    familyStatusReview: "ردود العائلات",
 };
 
 function toggleSidebar() {
@@ -77,6 +78,9 @@ function switchTab(tabName) {
     }
     if (tabName === "teamAdmin" && typeof loadTeamAdmin === "function") {
         loadTeamAdmin();
+    }
+    if (tabName === "familyStatusReview" && typeof loadFamilyStatusSubmissions === "function") {
+        loadFamilyStatusSubmissions();
     }
 }
 

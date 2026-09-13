@@ -112,4 +112,13 @@ const api = {
     updateUser: (id, payload) => apiRequest(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     resetUserPassword: (id, newPassword) =>
         apiRequest(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ new_password: newPassword }) }),
+
+    getFamilyStatusSubmissions: (params = {}) => apiRequest(`/family-status-submissions${toQueryString(params)}`),
+    approveFamilyStatusSubmission: (id) => apiRequest(`/family-status-submissions/${id}/approve`, { method: "POST" }),
+    rejectFamilyStatusSubmission: (id, note) =>
+        apiRequest(`/family-status-submissions/${id}/reject`, { method: "POST", body: JSON.stringify({ note: note || null }) }),
+
+    getWhatsappTemplates: () => apiRequest("/whatsapp/templates"),
+    createWhatsappTemplate: (payload) => apiRequest("/whatsapp/templates", { method: "POST", body: JSON.stringify(payload) }),
+    sendWhatsappMessages: (payload) => apiRequest("/whatsapp/send", { method: "POST", body: JSON.stringify(payload) }),
 };

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#123a7a">
+<title>تحديث حالة النزوح</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+    .fs-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 32px 16px;
+    }
+    .fs-card {
+        width: 100%;
+        max-width: 520px;
+    }
+    .fs-card h2 {
+        margin-top: 0;
+        color: var(--primary-strong);
+    }
+    .fs-card p {
+        color: var(--muted);
+        line-height: 1.8;
+    }
+    .fs-step { display: none; }
+    .fs-step.active { display: block; }
+    .fs-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+    }
+    .fs-actions button { width: auto; padding: 13px 22px; }
+    .fs-match-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 12px 0;
+    }
+    .fs-match-list button {
+        text-align: right;
+        background: var(--surface-soft);
+        border: 1px solid var(--border-strong);
+        color: var(--text);
+        font-weight: 700;
+    }
+    .fs-match-list button:hover { border-color: var(--primary); }
+    .fs-error {
+        margin-top: 12px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: #fdecec;
+        color: #a02020;
+        font-weight: 700;
+    }
+    .fs-error.hidden { display: none; }
+    .fs-name {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--primary-strong);
+        margin: 10px 0 4px;
+    }
+    .fs-field-group { margin-top: 14px; }
+    .fs-field-group label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: var(--text);
+    }
+</style>
+</head>
+<body>
+
+<div class="fs-page">
+    <div class="fs-card card">
+
+        <div id="fsStepIntro" class="fs-step active">
+            <p class="section-kicker">التحقق من حالة العائلة</p>
+            <h2>من نحن</h2>
+            <p>
+                نحن فريق تنسيق الإغاثة في المنطقة، ونعمل على متابعة أوضاع العائلات النازحة لتقديم الدعم المناسب.
+                من خلال هذه الصفحة يمكنكم التأكد من بياناتكم المسجّلة لدينا وتحديث حالة نزوحكم بأنفسكم بكل سهولة.
+            </p>
+            <div class="fs-actions">
+                <button class="done" type="button" onclick="fsGoToPhoneStep()">ابدأ</button>
+            </div>
+        </div>
+
+        <div id="fsStepPhone" class="fs-step">
+            <p class="section-kicker">التحقق من الهوية</p>
+            <h2>رقم الهاتف</h2>
+            <p>الرجاء إدخال رقم الهاتف المسجّل لدى عائلتكم.</p>
+            <input id="fsPhoneInput" type="tel" placeholder="رقم الهاتف" inputmode="tel">
+            <div class="fs-actions">
+                <button class="done" type="button" onclick="fsSubmitPhone()">تحقق</button>
+            </div>
+            <div id="fsPhoneError" class="fs-error hidden"></div>
+        </div>
+
+        <div id="fsStepPick" class="fs-step">
+            <p class="section-kicker">التحقق من الهوية</p>
+            <h2>اختر عائلتكم</h2>
+            <p>تم العثور على أكثر من عائلة بهذا الرقم. الرجاء اختيار الاسم الصحيح.</p>
+            <div id="fsMatchList" class="fs-match-list"></div>
+            <div class="fs-actions">
+                <button class="filter-clear" type="button" onclick="fsGoToPhoneStep()">رجوع</button>
+            </div>
+        </div>
+
+        <div id="fsStepConfirm" class="fs-step">
+            <p class="section-kicker">التحقق من الهوية</p>
+            <h2>هل هذا اسمكم؟</h2>
+            <div id="fsConfirmName" class="fs-name"></div>
+            <div class="fs-actions">
+                <button class="done" type="button" onclick="fsConfirmIdentity(true)">نعم، هذا صحيح</button>
+                <button class="filter-clear" type="button" onclick="fsConfirmIdentity(false)">لا</button>
+            </div>
+        </div>
+
+        <div id="fsStepNotFound" class="fs-step">
+            <p class="section-kicker">تعذّر التحقق</p>
+            <h2>لم نتمكن من التأكد من بياناتكم</h2>
+            <p>
+                الرجاء التواصل معنا مباشرةً على الرقم التالي لمتابعة طلبكم:
+            </p>
+            <p class="fs-name" id="fsContactPhone"></p>
+            <div class="fs-actions">
+                <button class="filter-clear" type="button" onclick="fsGoToPhoneStep()">إعادة المحاولة</button>
+            </div>
+        </div>
+
+        <div id="fsStepForm" class="fs-step">
+            <p class="section-kicker">حالة النزوح</p>
+            <h2>مراجعة البيانات</h2>
+            <p>راجعوا بياناتكم الحالية وعدّلوا ما يلزم، ثم أرسلوا التحديث ليتم اعتماده من قبل الفريق.</p>
+
+            <div class="fs-field-group">
+                <label>هل ما زلتم في النزوح؟</label>
+                <select id="fsStillDisplaced" onchange="fsToggleDisplacedFields(this.value)">
+                    <option value="">غير محدد</option>
+                    <option value="yes">نعم</option>
+                    <option value="no">لا</option>
+                    <option value="unsure">متردد</option>
+                </select>
+            </div>
+
+            <div id="fsDisplacedVillageGroup" class="fs-field-group" style="display:none;">
+                <label>قرية النزوح الحالية</label>
+                <select id="fsDisplacedVillage">
+                    <option value="">اختر القرية</option>
+                </select>
+            </div>
+
+            <div id="fsStayReasonGroup" class="fs-field-group" style="display:none;">
+                <label>سبب البقاء في النزوح (اختياري)</label>
+                <textarea id="fsStayReason" rows="2"></textarea>
+            </div>
+
+            <div class="fs-field-group">
+                <label>مكان السكن الأصلي (المدينة أو القرية)</label>
+                <input id="fsOriginalPlace" type="text">
+            </div>
+
+            <div class="fs-field-group">
+                <label>حالة السكن الأصلي</label>
+                <select id="fsOriginalCondition">
+                    <option value="">غير محدد</option>
+                    <option value="not_habitable">غير صالح للسكن كليًا</option>
+                    <option value="needs_repair">يحتاج إلى تصليح</option>
+                    <option value="good">بحالة جيدة</option>
+                </select>
+            </div>
+
+            <div class="fs-field-group">
+                <label>نوع الأضرار</label>
+                <select id="fsDamageType" onchange="fsToggleDamageOther(this.value)">
+                    <option value="">غير محدد</option>
+                    <option value="structural">أضرار هيكلية</option>
+                    <option value="roof">أضرار في السقف</option>
+                    <option value="glass_windows">كسر الزجاج والنوافذ</option>
+                    <option value="facilities">أضرار في المرافق</option>
+                    <option value="fire">حريق</option>
+                    <option value="multiple">أضرار متعددة</option>
+                    <option value="other">أخرى</option>
+                </select>
+            </div>
+
+            <div id="fsDamageOtherGroup" class="fs-field-group" style="display:none;">
+                <label>حدد نوع الضرر</label>
+                <input id="fsDamageOther" type="text">
+            </div>
+
+            <div class="fs-actions">
+                <button class="done" type="button" onclick="fsSubmitStatus()">إرسال التحديث</button>
+            </div>
+            <div id="fsFormError" class="fs-error hidden"></div>
+        </div>
+
+        <div id="fsStepThanks" class="fs-step">
+            <p class="section-kicker">تم الإرسال</p>
+            <h2>شكرًا لكم</h2>
+            <p>تم استلام ردّكم بنجاح، وسيتم مراجعته واعتماده من قبل الفريق قريبًا.</p>
+        </div>
+
+    </div>
+</div>
+
+<script>window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";</script>
+<script src="js/family-status.js"></script>
+</body>
+</html>

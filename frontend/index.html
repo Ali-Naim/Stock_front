@@ -418,7 +418,73 @@
             <button class="filter-clear" type="button" onclick="closeFamiliesExcelImportModal()">إغلاق</button>
         </div>
     </div>
-</div>  
+</div>
+
+<div id="whatsappTemplatesModal" class="modal-overlay" onclick="closeWhatsappTemplatesModal(event)">
+    <div class="modal-card families-import-modal-card" role="dialog" aria-modal="true" aria-labelledby="whatsappTemplatesTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="whatsappTemplatesTitle">قوالب رسائل واتساب</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeWhatsappTemplatesModal()" aria-label="إغلاق">×</button>
+        </div>
+
+        <h4 class="history-heading" style="margin-top:0;">القوالب الحالية</h4>
+        <div id="whatsappTemplatesList"><p class="modal-copy">جارٍ التحميل...</p></div>
+
+        <h4 class="history-heading">قالب جديد</h4>
+        <p class="modal-copy">
+            سيتم إرسال القالب إلى ميتا للمراجعة، وقد يستغرق الاعتماد من دقائق إلى يوم. اسم القالب بأحرف إنجليزية صغيرة وأرقام و"_" فقط.
+        </p>
+        <div class="form-grid">
+            <input id="whatsappTplName" placeholder="اسم القالب (بالإنجليزية، مثال: family_update)">
+            <select id="whatsappTplCategory">
+                <option value="UTILITY">UTILITY</option>
+                <option value="MARKETING">MARKETING</option>
+                <option value="AUTHENTICATION">AUTHENTICATION</option>
+            </select>
+            <select id="whatsappTplLanguage">
+                <option value="ar">العربية (ar)</option>
+                <option value="ar_LB">العربية - لبنان (ar_LB)</option>
+                <option value="en_US">English (en_US)</option>
+            </select>
+        </div>
+        <input id="whatsappTplHeader" placeholder="نص العنوان (اختياري)" style="margin-top:0.5rem;">
+        <textarea id="whatsappTplBody" rows="3" placeholder="نص الرسالة (ثابت، بدون متغيرات)" style="width:100%;margin-top:0.5rem;"></textarea>
+        <input id="whatsappTplFooter" placeholder="نص التذييل (اختياري)" style="margin-top:0.5rem;">
+
+        <div class="modal-actions">
+            <button class="done" type="button" onclick="createWhatsappTemplate()">إرسال للمراجعة</button>
+            <button class="filter-clear" type="button" onclick="closeWhatsappTemplatesModal()">إغلاق</button>
+        </div>
+        <div id="whatsappTplResult" class="needs-import-result hidden"></div>
+    </div>
+</div>
+
+<div id="whatsappSendModal" class="modal-overlay" onclick="closeWhatsappSendModal(event)">
+    <div class="modal-card families-import-modal-card" role="dialog" aria-modal="true" aria-labelledby="whatsappSendTitle" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="whatsappSendTitle">إرسال رسالة واتساب</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeWhatsappSendModal()" aria-label="إغلاق">×</button>
+        </div>
+        <p class="modal-copy">
+            سيتم الإرسال إلى العائلات الظاهرة حاليًا في القائمة (حسب الفلاتر المطبّقة) والتي لديها رقم هاتف مسجّل.
+        </p>
+        <p class="modal-copy"><strong id="whatsappSendRecipientCount"></strong></p>
+        <select id="whatsappSendTemplateSelect">
+            <option value="">اختر قالبًا معتمدًا</option>
+        </select>
+        <div class="modal-actions">
+            <button id="whatsappSendConfirmBtn" class="done" type="button" onclick="sendWhatsappBulkMessage()">إرسال</button>
+            <button class="filter-clear" type="button" onclick="closeWhatsappSendModal()">إغلاق</button>
+        </div>
+        <div id="whatsappSendResult" class="needs-import-result hidden"></div>
+    </div>
+</div>
 
 <!-- Family Detail Modal (click-row) -->
 <div id="familyDetailModal" class="modal-overlay" onclick="closeFamilyDetailModal(event)">
@@ -518,6 +584,7 @@
         <button class="sidebar-nav-item" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
         <button class="sidebar-nav-item" data-tab-target="notes" onclick="switchTab('notes')"><i class="bi bi-sticky-fill"></i><span>الملاحظات</span></button>
         <button class="sidebar-nav-item" data-tab-target="teamAdmin" onclick="switchTab('teamAdmin')"><i class="bi bi-diagram-3-fill"></i><span>الفرق والمستخدمين</span></button>
+        <button class="sidebar-nav-item" data-tab-target="familyStatusReview" onclick="switchTab('familyStatusReview')"><i class="bi bi-clipboard2-check-fill"></i><span>ردود العائلات</span></button>
     </nav>
     <div class="sidebar-footer">
         <div id="teamSwitcherWrap" class="hidden" style="margin-bottom:8px;">
@@ -867,6 +934,8 @@
                     <button id="exportFamiliesBtn" onclick="exportFamiliesExcel()" class="filter-clear" type="button"><i class="bi bi-file-earmark-excel me-1"></i>تصدير التوزيعات</button>
                     <button id="exportFamilyMigrationBtn" onclick="exportFamilyMigrationExcel()" class="filter-clear" type="button"><i class="bi bi-file-earmark-excel me-1"></i>تصدير حالة النزوح</button>
                     <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button"><i class="bi bi-upload me-1"></i>استيراد</button>
+                    <button id="whatsappTemplatesBtn" onclick="openWhatsappTemplatesModal()" class="filter-clear hidden" type="button"><i class="bi bi-whatsapp me-1"></i>قوالب واتساب</button>
+                    <button id="whatsappSendBtn" onclick="openWhatsappSendModal()" class="filter-clear hidden" type="button"><i class="bi bi-whatsapp me-1"></i>إرسال رسالة واتساب</button>
                 </div>
             </div>
 
@@ -1139,6 +1208,26 @@
         <div id="teamsManagerCard" class="card"></div>
         <div id="usersManagerCard" class="card" style="margin-top:1rem;"></div>
     </div>
+
+    <div id="familyStatusReview" class="section hidden">
+        <div class="section-intro">
+            <div>
+                <p class="section-kicker">إدارة المنصة</p>
+                <h2>ردود العائلات على حالة النزوح</h2>
+            </div>
+            <p>مراجعة الردود المرسلة من العائلات عبر صفحة التحقق العامة، واعتمادها أو رفضها قبل تطبيقها على بيانات العائلة.</p>
+        </div>
+        <div class="filter-container" style="margin-bottom:1rem;">
+            <select id="familyStatusReviewFilter" onchange="loadFamilyStatusSubmissions()">
+                <option value="pending">قيد المراجعة</option>
+                <option value="approved">تم الاعتماد</option>
+                <option value="rejected">تم الرفض</option>
+                <option value="all">الكل</option>
+            </select>
+            <button class="filter-clear" type="button" onclick="loadFamilyStatusSubmissions()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+        </div>
+        <div id="familyStatusReviewList"></div>
+    </div>
         </div>
     </div>
 </div>
@@ -1200,6 +1289,7 @@
     <button class="mobile-tab-button" data-tab-target="analytics" onclick="switchTab('analytics')"><i class="bi bi-graph-up-arrow"></i><span>الإحصاءات</span></button>
     <button class="mobile-tab-button" data-tab-target="notes" onclick="switchTab('notes')"><i class="bi bi-sticky-fill"></i><span>الملاحظات</span></button>
     <button class="mobile-tab-button" data-tab-target="teamAdmin" onclick="switchTab('teamAdmin')"><i class="bi bi-diagram-3-fill"></i><span>الفرق</span></button>
+    <button class="mobile-tab-button" data-tab-target="familyStatusReview" onclick="switchTab('familyStatusReview')"><i class="bi bi-clipboard2-check-fill"></i><span>ردود العائلات</span></button>
 </nav>
 </div>
 
@@ -1221,6 +1311,8 @@ window.STOCK_API_BASE = "https://stockback-production-dfa8.up.railway.app/api";
 <script src="js/tasks.js"></script>
 <script src="js/notes.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/family-status-review.js"></script>
+<script src="js/whatsapp.js"></script>
 <script src="js/ui-enhance.js"></script>
 <script src="js/init.js"></script>
 

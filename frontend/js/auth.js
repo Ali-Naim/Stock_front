@@ -7,7 +7,7 @@ const ROLE_TAB_ALLOWLIST = {
     data_entry:  ["inventory", "needs", "orders", "families", "tasks", "analytics", "notes"],
     stock:       ["inventory", "orders", "families", "reports", "tasks", "analytics", "notes"],
     interaction: ["inventory", "orders", "families", "tasks", "analytics", "notes"],
-    super_admin: ["inventory", "orders", "needs", "families", "reports", "tasks", "analytics", "notes", "teamAdmin"],
+    super_admin: ["inventory", "orders", "needs", "families", "reports", "tasks", "analytics", "notes", "teamAdmin", "familyStatusReview"],
 };
 
 function getApiBase() {
