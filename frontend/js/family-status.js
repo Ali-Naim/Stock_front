@@ -4,8 +4,8 @@
 
 const FS_API_BASE = window.STOCK_API_BASE || "https://stockback-production-dfa8.up.railway.app/api";
 
-// If this number is a placeholder, update it here.
-const FS_CONTACT_PHONE = "03000000";
+// If this number changes, update it here.
+const FS_CONTACT_PHONE = "79064131";
 
 let fsPhone = "";
 let fsFamilyId = null;
