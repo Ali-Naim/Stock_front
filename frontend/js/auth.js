@@ -89,11 +89,19 @@ function getExplicitAllowedTabs() {
 
 function getAllowedTabs() {
     const explicit = getExplicitAllowedTabs();
-    if (explicit?.length) return new Set(explicit);
+    if (explicit?.length) {
+        const allowed = new Set(explicit);
+        // Super admin is a session-level flag, not a seeded page — always
+        // grant it regardless of what the DB-seeded allowed_pages list has.
+        if (isSuperAdmin()) allowed.add("familyStatusReview");
+        return allowed;
+    }
 
     const roles = getUserRoles();
     if (!roles.length) {
-        return new Set(["inventory", "orders", "needs", "families", "reports"]);
+        const allowed = new Set(["inventory", "orders", "needs", "families", "reports"]);
+        if (isSuperAdmin()) allowed.add("familyStatusReview");
+        return allowed;
     }
 
     const allowed = new Set();
@@ -102,7 +110,12 @@ function getAllowedTabs() {
         (list || []).forEach((tab) => allowed.add(tab));
     });
 
-    if (!allowed.size) return new Set(["inventory", "orders", "needs", "families", "reports", "tasks"]);
+    if (!allowed.size) {
+        const fallback = new Set(["inventory", "orders", "needs", "families", "reports", "tasks"]);
+        if (isSuperAdmin()) fallback.add("familyStatusReview");
+        return fallback;
+    }
+    if (isSuperAdmin()) allowed.add("familyStatusReview");
     return allowed;
 }
 
