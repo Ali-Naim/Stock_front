@@ -11,10 +11,41 @@ function applyWhatsappVisibility() {
     const canManage = whatsappCanManage();
     document.getElementById("whatsappTemplatesBtn")?.classList.toggle("hidden", !canManage);
     document.getElementById("whatsappSendBtn")?.classList.toggle("hidden", !canManage);
+    document.getElementById("whatsappLogsBtn")?.classList.toggle("hidden", !canManage);
+    document.getElementById("familyWaTemplateFilterDetails")?.classList.toggle("hidden", !canManage);
+    if (canManage) loadWaTemplateFilterOptions();
 }
 
 document.addEventListener("DOMContentLoaded", applyWhatsappVisibility);
 document.addEventListener("auth:login", applyWhatsappVisibility);
+
+// family_id (number) -> Set(template_name) of templates successfully sent to that family.
+// Read by families.js's getFilteredFamilies() for the "received template X" filter.
+let waFamilyTemplatesMap = new Map();
+
+async function loadWaTemplateFilterOptions() {
+    const container = document.getElementById("familyWaTemplateCheckboxes");
+    if (!container) return;
+    try {
+        const summary = await api.getWhatsappLogsSummary();
+        waFamilyTemplatesMap = new Map(summary.map((row) => [Number(row.family_id), new Set(row.templates)]));
+
+        const allTemplateNames = Array.from(new Set(summary.flatMap((row) => row.templates))).sort();
+        if (!allTemplateNames.length) {
+            container.innerHTML = `<p class="modal-copy" style="margin:0;">لم يتم إرسال أي رسائل بعد.</p>`;
+            return;
+        }
+        container.innerHTML = allTemplateNames.map((name) => `
+            <label class="wa-filter-checkbox-row">
+                <input type="checkbox" value="${escapeHtml(name)}" onchange="applyFamilyFilters()">
+                <span>${escapeHtml(name)}</span>
+            </label>
+        `).join("");
+    } catch (error) {
+        console.error("Failed to load WhatsApp logs summary:", error);
+        container.innerHTML = `<p class="modal-copy" style="margin:0;">فشل تحميل القوالب.</p>`;
+    }
+}
 
 function whatsappStatusLabel(status) {
     const map = { APPROVED: "معتمد", PENDING: "قيد المراجعة", REJECTED: "مرفوض" };
@@ -183,6 +214,7 @@ async function sendWhatsappBulkMessage() {
         });
         resultEl.textContent = `تم الإرسال إلى ${result.sent} عائلة${result.failed ? `، فشل الإرسال لـ ${result.failed}` : ""}.`;
         resultEl.className = result.failed ? "needs-import-result error" : "needs-import-result success";
+        await loadWaTemplateFilterOptions();
     } catch (error) {
         console.error("Failed to send WhatsApp messages:", error);
         resultEl.textContent = error.message || "فشل إرسال الرسائل";
@@ -190,4 +222,87 @@ async function sendWhatsappBulkMessage() {
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = "إرسال"; }
     }
+}
+
+let waLogsCache = [];
+
+function openWhatsappLogsModal() {
+    document.getElementById("whatsappLogsModal")?.classList.add("active");
+    document.body.style.overflow = "hidden";
+    loadWhatsappLogs();
+}
+
+function closeWhatsappLogsModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("whatsappLogsModal")?.classList.remove("active");
+    document.body.style.overflow = "";
+}
+
+function waFullFamilyName(family) {
+    if (!family) return "عائلة محذوفة";
+    return [family.father_first_name, family.father_middle_name, family.father_last_name]
+        .filter((part) => part && String(part).trim())
+        .join(" ");
+}
+
+async function loadWhatsappLogs() {
+    const container = document.getElementById("whatsappLogsList");
+    if (!container) return;
+    container.innerHTML = `<p class="modal-copy">جارٍ التحميل...</p>`;
+    try {
+        waLogsCache = await api.getWhatsappLogs();
+
+        const templateSelect = document.getElementById("whatsappLogsTemplateFilter");
+        const currentValue = templateSelect?.value || "";
+        const names = Array.from(new Set(waLogsCache.map((l) => l.template_name))).sort();
+        if (templateSelect) {
+            templateSelect.innerHTML = ['<option value="">كل القوالب</option>']
+                .concat(names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`))
+                .join("");
+            templateSelect.value = names.includes(currentValue) ? currentValue : "";
+        }
+
+        renderWhatsappLogs();
+    } catch (error) {
+        console.error("Failed to load WhatsApp logs:", error);
+        container.innerHTML = `<p class="modal-copy">فشل تحميل السجل.</p>`;
+    }
+}
+
+function renderWhatsappLogs() {
+    const container = document.getElementById("whatsappLogsList");
+    if (!container) return;
+
+    const search = document.getElementById("whatsappLogsSearch")?.value?.trim().toLowerCase() || "";
+    const templateFilter = document.getElementById("whatsappLogsTemplateFilter")?.value || "";
+    const statusFilter = document.getElementById("whatsappLogsStatusFilter")?.value || "";
+
+    const rows = waLogsCache.filter((log) => {
+        if (templateFilter && log.template_name !== templateFilter) return false;
+        if (statusFilter && log.status !== statusFilter) return false;
+        if (search && !waFullFamilyName(log.family).toLowerCase().includes(search)) return false;
+        return true;
+    });
+
+    if (!rows.length) {
+        container.innerHTML = `<p class="modal-copy">لا توجد سجلات مطابقة.</p>`;
+        return;
+    }
+
+    container.innerHTML = rows.map((log) => `
+        <div class="wa-log-row">
+            <div>
+                <strong>${escapeHtml(waFullFamilyName(log.family))}</strong>
+                ${log.family?.file_number ? ` — ${escapeHtml(log.family.file_number)}` : ""}
+                <div style="color:var(--muted);">${escapeHtml(log.template_name)} (${escapeHtml(log.language || "")})</div>
+                ${log.status === "failed" ? `<div class="wa-log-error">${escapeHtml(log.error_message || "فشل الإرسال")}</div>` : ""}
+            </div>
+            <div style="text-align:left;white-space:nowrap;">
+                <span class="badge" style="${log.status === "sent" ? "background:#dcfce7;color:#166534;" : "background:#fee2e2;color:#991b1b;"}">
+                    ${log.status === "sent" ? "تم الإرسال" : "فشل"}
+                </span>
+                <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${escapeHtml(new Date(log.sent_at).toLocaleString("ar"))}</div>
+            </div>
+        </div>
+    `).join("");
 }

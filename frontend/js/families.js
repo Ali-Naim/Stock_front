@@ -859,6 +859,8 @@ function readFamilyFiltersFromUi() {
         livingCondition: document.getElementById("familyLivingConditionFilter")?.value || "",
         stillDisplaced: document.getElementById("familyStillDisplacedFilter")?.value || "",
         originalCondition: document.getElementById("familyOriginalConditionFilter")?.value || "",
+        waTemplates: Array.from(document.querySelectorAll("#familyWaTemplateCheckboxes input[type=checkbox]:checked")).map((el) => el.value),
+        waTemplatesMode: document.getElementById("familyWaTemplateModeAll")?.checked ? "all" : "any",
     };
 }
 
@@ -907,7 +909,7 @@ function setFamilyColumnVisible(key, visible) {
 function updateAdvancedFilterBadge() {
     const f = currentFamilyFilters || {};
     const count = [f.village, f.formFilled, f.fileNumber, f.municipality, f.duplicate, f.housingType, f.blocked, f.stopped, f.moved, f.relations, f.houseId, f.distMin, f.distMax, f.gift, f.livingCondition, f.stillDisplaced, f.originalCondition]
-        .filter(Boolean).length;
+        .filter(Boolean).length + (f.waTemplates?.length ? 1 : 0);
     const badge = document.getElementById("familyAdvancedBadge");
     if (!badge) return;
     badge.textContent = count > 0 ? String(count) : "";
@@ -928,7 +930,10 @@ function clearFamilyFilters() {
      "familyRelationsFilter", "familyHouseFilter", "familyDistMinFilter", "familyDistMaxFilter",
      "familyGiftFilter", "familyLivingConditionFilter", "familyStillDisplacedFilter", "familyOriginalConditionFilter"]
         .forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
-    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "", gift: "", livingCondition: "", stillDisplaced: "", originalCondition: "" };
+    document.querySelectorAll("#familyWaTemplateCheckboxes input[type=checkbox]").forEach((el) => { el.checked = false; });
+    const waModeEl = document.getElementById("familyWaTemplateModeAll");
+    if (waModeEl) waModeEl.checked = false;
+    currentFamilyFilters = { name: "", fileNumberSearch: "", village: "", formFilled: "", fileNumber: "", municipality: "", duplicate: "", housingType: "", blocked: "", stopped: "", moved: "", relations: "", houseId: "", distMin: "", distMax: "", gift: "", livingCondition: "", stillDisplaced: "", originalCondition: "", waTemplates: [], waTemplatesMode: "any" };
     familiesSortCol = "";
     familiesSortDir = "asc";
     updateAdvancedFilterBadge();
@@ -1052,6 +1057,8 @@ function getFilteredFamilies() {
     const livingConditionFilter = String(currentFamilyFilters?.livingCondition || "");
     const stillDisplacedFilter = String(currentFamilyFilters?.stillDisplaced || "");
     const originalConditionFilter = String(currentFamilyFilters?.originalCondition || "");
+    const waTemplatesFilter = Array.isArray(currentFamilyFilters?.waTemplates) ? currentFamilyFilters.waTemplates : [];
+    const waTemplatesModeAll = currentFamilyFilters?.waTemplatesMode === "all";
 
     const filtered = (families || []).filter((family) => {
         if (villageId && String(family.village_id ?? family.villageId ?? "") !== villageId) return false;
@@ -1110,6 +1117,13 @@ function getFilteredFamilies() {
             return false;
         }
         if (originalConditionFilter && oc !== originalConditionFilter) return false;
+        if (waTemplatesFilter.length) {
+            const received = (typeof waFamilyTemplatesMap !== "undefined" && waFamilyTemplatesMap.get(Number(family.id))) || new Set();
+            const matches = waTemplatesModeAll
+                ? waTemplatesFilter.every((tpl) => received.has(tpl))
+                : waTemplatesFilter.some((tpl) => received.has(tpl));
+            if (!matches) return false;
+        }
         if (!nameQuery) return true;
         const firstLast = `${family?.father_first_name ?? ""} ${family?.father_last_name ?? ""}`.trim();
         const text = `${getFamilyDisplayName(family)} ${firstLast} ${family?.phone_number ?? ""} ${family?.phone_number_2 ?? ""}`.toLowerCase();

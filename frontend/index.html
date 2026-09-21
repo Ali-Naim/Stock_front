@@ -486,6 +486,31 @@
     </div>
 </div>
 
+<div id="whatsappLogsModal" class="modal-overlay" onclick="closeWhatsappLogsModal(event)">
+    <div class="modal-card family-detail-modal-card" role="dialog" aria-modal="true" aria-labelledby="whatsappLogsTitle" onclick="event.stopPropagation()">
+        <div class="modal-header" style="flex-shrink:0;">
+            <div>
+                <p class="section-kicker">العائلات</p>
+                <h3 id="whatsappLogsTitle">سجل رسائل واتساب</h3>
+            </div>
+            <button class="close-btn" type="button" onclick="closeWhatsappLogsModal()" aria-label="إغلاق">×</button>
+        </div>
+        <div class="filter-container" style="margin-bottom:0.75rem;flex-shrink:0;">
+            <input id="whatsappLogsSearch" placeholder="بحث باسم العائلة" oninput="renderWhatsappLogs()">
+            <select id="whatsappLogsTemplateFilter" onchange="renderWhatsappLogs()">
+                <option value="">كل القوالب</option>
+            </select>
+            <select id="whatsappLogsStatusFilter" onchange="renderWhatsappLogs()">
+                <option value="">كل الحالات</option>
+                <option value="sent">تم الإرسال</option>
+                <option value="failed">فشل الإرسال</option>
+            </select>
+            <button class="filter-clear" type="button" onclick="loadWhatsappLogs()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+        </div>
+        <div id="whatsappLogsList" style="flex:1;min-height:0;overflow-y:auto;"></div>
+    </div>
+</div>
+
 <!-- Family Detail Modal (click-row) -->
 <div id="familyDetailModal" class="modal-overlay" onclick="closeFamilyDetailModal(event)">
     <div class="modal-card family-detail-modal-card" role="dialog" aria-modal="true" aria-labelledby="familyDetailModalTitle" onclick="event.stopPropagation()">
@@ -936,6 +961,7 @@
                     <button onclick="openFamiliesExcelImportModal()" class="filter-clear" type="button"><i class="bi bi-upload me-1"></i>استيراد</button>
                     <button id="whatsappTemplatesBtn" onclick="openWhatsappTemplatesModal()" class="filter-clear hidden" type="button"><i class="bi bi-whatsapp me-1"></i>قوالب واتساب</button>
                     <button id="whatsappSendBtn" onclick="openWhatsappSendModal()" class="filter-clear hidden" type="button"><i class="bi bi-whatsapp me-1"></i>إرسال رسالة واتساب</button>
+                    <button id="whatsappLogsBtn" onclick="openWhatsappLogsModal()" class="filter-clear hidden" type="button"><i class="bi bi-clock-history me-1"></i>سجل واتساب</button>
                 </div>
             </div>
 
@@ -1020,6 +1046,16 @@
                         <span class="dt-filter-sep">—</span>
                         <input id="familyDistMaxFilter" type="number" min="0" placeholder="توزيعات ≤" oninput="applyFamilyFilters()" style="width:105px;">
                     </div>
+                    <details class="wa-filter-details" id="familyWaTemplateFilterDetails">
+                        <summary class="filter-clear">قوالب واتساب المرسلة</summary>
+                        <div class="wa-filter-panel">
+                            <div id="familyWaTemplateCheckboxes"><p class="modal-copy" style="margin:0;">جارٍ التحميل...</p></div>
+                            <label class="wa-filter-mode-label">
+                                <input type="checkbox" id="familyWaTemplateModeAll" onchange="applyFamilyFilters()">
+                                <span>يجب أن تحتوي على كل القوالب المحددة (وإلا: أي منها)</span>
+                            </label>
+                        </div>
+                    </details>
                 </div>
             </div>
         </div>
