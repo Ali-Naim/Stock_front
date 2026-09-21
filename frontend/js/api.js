@@ -117,6 +117,8 @@ const api = {
     approveFamilyStatusSubmission: (id) => apiRequest(`/family-status-submissions/${id}/approve`, { method: "POST" }),
     rejectFamilyStatusSubmission: (id, note) =>
         apiRequest(`/family-status-submissions/${id}/reject`, { method: "POST", body: JSON.stringify({ note: note || null }) }),
+    investigateFamilyStatusSubmission: (id, note) =>
+        apiRequest(`/family-status-submissions/${id}/investigate`, { method: "POST", body: JSON.stringify({ note: note || null }) }),
 
     getWhatsappTemplates: () => apiRequest("/whatsapp/templates"),
     createWhatsappTemplate: (payload) => apiRequest("/whatsapp/templates", { method: "POST", body: JSON.stringify(payload) }),

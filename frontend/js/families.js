@@ -1100,8 +1100,15 @@ function getFilteredFamilies() {
         const lc = family.living_condition ?? family.livingCondition ?? null;
         if (livingConditionFilter && lc !== livingConditionFilter) return false;
         const sd = family.still_displaced ?? family.stillDisplaced ?? null;
-        if (stillDisplacedFilter && sd !== stillDisplacedFilter) return false;
         const oc = family.original_residence_condition ?? family.originalResidenceCondition ?? null;
+        if (stillDisplacedFilter === "none") {
+            const orp = family.original_residence_place ?? family.originalResidencePlace ?? null;
+            const dt = family.damage_type ?? family.damageType ?? null;
+            const hasAnyMigrationData = Boolean(sd || oc || (orp && String(orp).trim()) || dt);
+            if (hasAnyMigrationData) return false;
+        } else if (stillDisplacedFilter && sd !== stillDisplacedFilter) {
+            return false;
+        }
         if (originalConditionFilter && oc !== originalConditionFilter) return false;
         if (!nameQuery) return true;
         const firstLast = `${family?.father_first_name ?? ""} ${family?.father_last_name ?? ""}`.trim();
@@ -2004,7 +2011,8 @@ function exportFamilyMigrationExcel() {
         }
         if (f.name) filterParts.push(`الاسم: ${f.name}`);
         if (f.fileNumberSearch) filterParts.push(`رقم الملف: ${f.fileNumberSearch}`);
-        if (f.stillDisplaced) filterParts.push(`ما زال في النزوح: ${getStillDisplacedLabel(f.stillDisplaced) || f.stillDisplaced}`);
+        if (f.stillDisplaced === "none") filterParts.push("بدون حالة نزوح");
+        else if (f.stillDisplaced) filterParts.push(`ما زال في النزوح: ${getStillDisplacedLabel(f.stillDisplaced) || f.stillDisplaced}`);
         if (f.originalCondition) filterParts.push(`حالة السكن الأصلي: ${getOriginalConditionLabel(f.originalCondition) || f.originalCondition}`);
 
         const titleText = `تصدير حالة النزوح${filterParts.length ? `  |  ${filterParts.join(" ، ")}` : ""}`;

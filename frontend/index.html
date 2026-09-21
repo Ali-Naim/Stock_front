@@ -1007,6 +1007,7 @@
                         <option value="yes">نعم</option>
                         <option value="no">لا</option>
                         <option value="unsure">متردد</option>
+                        <option value="none">بدون حالة نزوح</option>
                     </select>
                     <select id="familyOriginalConditionFilter" onchange="applyFamilyFilters()" style="min-width:190px;">
                         <option value="">حالة السكن الأصلي: الكل</option>
@@ -1217,14 +1218,13 @@
             </div>
             <p>مراجعة الردود المرسلة من العائلات عبر صفحة التحقق العامة، واعتمادها أو رفضها قبل تطبيقها على بيانات العائلة.</p>
         </div>
-        <div class="filter-container" style="margin-bottom:1rem;">
-            <select id="familyStatusReviewFilter" onchange="loadFamilyStatusSubmissions()">
-                <option value="pending">قيد المراجعة</option>
-                <option value="approved">تم الاعتماد</option>
-                <option value="rejected">تم الرفض</option>
-                <option value="all">الكل</option>
-            </select>
-            <button class="filter-clear" type="button" onclick="loadFamilyStatusSubmissions()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+        <div class="fsr-tabs">
+            <button class="fsr-tab active" data-status="pending" onclick="setFamilyStatusReviewFilter('pending')">قيد المراجعة<span class="fsr-tab-count" id="fsrCount-pending">0</span></button>
+            <button class="fsr-tab" data-status="to_investigate" onclick="setFamilyStatusReviewFilter('to_investigate')">بحاجة للتحقق<span class="fsr-tab-count" id="fsrCount-to_investigate">0</span></button>
+            <button class="fsr-tab" data-status="approved" onclick="setFamilyStatusReviewFilter('approved')">معتمدة<span class="fsr-tab-count" id="fsrCount-approved">0</span></button>
+            <button class="fsr-tab" data-status="rejected" onclick="setFamilyStatusReviewFilter('rejected')">مرفوضة<span class="fsr-tab-count" id="fsrCount-rejected">0</span></button>
+            <button class="fsr-tab" data-status="all" onclick="setFamilyStatusReviewFilter('all')">الكل<span class="fsr-tab-count" id="fsrCount-all">0</span></button>
+            <button class="fsr-refresh-btn" type="button" onclick="loadFamilyStatusSubmissions()" title="تحديث"><i class="bi bi-arrow-clockwise"></i></button>
         </div>
         <div id="familyStatusReviewList"></div>
     </div>

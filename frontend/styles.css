@@ -972,6 +972,82 @@ button {
 }
 
 /* ── Family status submissions review ──────────────────── */
+.fsr-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+}
+
+.fsr-tab {
+    width: auto;
+    min-height: 40px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-soft);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.fsr-tab.active {
+    background: linear-gradient(135deg, var(--primary), #215ebe);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.fsr-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.1);
+    font-size: 0.72rem;
+}
+
+.fsr-tab.active .fsr-tab-count {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.fsr-refresh-btn {
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-soft);
+    color: var(--text);
+    margin-inline-start: auto;
+}
+
+.fsr-no-changes {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.fsr-review-info {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--surface-soft);
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.fsr-investigate-btn {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff;
+}
+
 .fsr-card-header {
     display: flex;
     align-items: flex-start;
