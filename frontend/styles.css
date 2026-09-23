@@ -1138,6 +1138,59 @@ button {
     font-size: 0.78rem;
 }
 
+/* ── Family supporting documents (edit modal) ──────────── */
+.fam-doc-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.fam-doc-row:last-of-type {
+    border-bottom: none;
+}
+
+.fam-doc-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.fam-doc-controls input[type="file"] {
+    width: auto;
+    min-height: unset;
+    padding: 6px;
+    font-size: 0.78rem;
+}
+
+.fam-doc-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.fam-doc-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--border-strong);
+}
+
+.fam-doc-status button {
+    width: auto;
+    min-height: unset;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-radius: 8px;
+}
+
 .fsr-card-header {
     display: flex;
     align-items: flex-start;

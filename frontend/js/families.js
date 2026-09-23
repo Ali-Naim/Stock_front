@@ -457,6 +457,9 @@ function openFamilyEditModal(familyId) {
     const isMoved = family.is_moved ?? family.isMoved ?? false;
     const movedToVillage = family.moved_to_village ?? family.movedToVillage ?? "";
     const giftReceived = Boolean(family.gift_received ?? family.giftReceived ?? false);
+    const destructionPaper = Boolean(family.destruction_paper ?? family.destructionPaper ?? false);
+    const rentalPaper = Boolean(family.rental_paper ?? family.rentalPaper ?? false);
+    const idCard = Boolean(family.id_card ?? family.idCard ?? false);
     const livingCondition = family.living_condition ?? family.livingCondition ?? "";
 
     const title = document.getElementById("familyEditModalTitle");
@@ -492,12 +495,19 @@ function openFamilyEditModal(familyId) {
     if (movedToVillageEl) movedToVillageEl.value = movedToVillage || "";
     const giftReceivedEl = document.getElementById("editFamilyGiftReceived");
     if (giftReceivedEl) giftReceivedEl.checked = giftReceived;
+    const destructionPaperEl = document.getElementById("editFamilyDoc_destruction_paper");
+    if (destructionPaperEl) destructionPaperEl.checked = destructionPaper;
+    const rentalPaperEl = document.getElementById("editFamilyDoc_rental_paper");
+    if (rentalPaperEl) rentalPaperEl.checked = rentalPaper;
+    const idCardEl = document.getElementById("editFamilyDoc_id_card");
+    if (idCardEl) idCardEl.checked = idCard;
     const livingConditionEl = document.getElementById("editFamilyLivingCondition");
     if (livingConditionEl) livingConditionEl.value = livingCondition || "";
 
     document.getElementById("familyEditModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
     setTimeout(() => document.getElementById("editFatherFirstName")?.focus(), 0);
+    loadFamilyDocumentsForEdit(id);
 }
 
 function closeFamilyEditModal(event) {
@@ -528,6 +538,9 @@ async function submitFamilyEdit() {
     const isMoved = document.getElementById("editFamilyIsMoved")?.checked ?? false;
     const movedToVillage = document.getElementById("editFamilyMovedToVillage")?.value?.trim() || null;
     const giftReceived = document.getElementById("editFamilyGiftReceived")?.checked ?? false;
+    const destructionPaper = document.getElementById("editFamilyDoc_destruction_paper")?.checked ?? false;
+    const rentalPaper = document.getElementById("editFamilyDoc_rental_paper")?.checked ?? false;
+    const idCard = document.getElementById("editFamilyDoc_id_card")?.checked ?? false;
     const livingCondition = document.getElementById("editFamilyLivingCondition")?.value || null;
 
     if (!first) return alert("أدخل اسم الأب");
@@ -555,6 +568,9 @@ async function submitFamilyEdit() {
             is_moved: isMoved,
             moved_to_village: isMoved ? movedToVillage : null,
             gift_received: giftReceived,
+            destruction_paper: destructionPaper,
+            rental_paper: rentalPaper,
+            id_card: idCard,
             living_condition: livingCondition,
         });
         closeFamilyEditModal();
@@ -567,6 +583,125 @@ async function submitFamilyEdit() {
     } catch (error) {
         console.error(error);
         alert("فشل حفظ التعديل");
+    }
+}
+
+const FAMILY_DOCUMENT_LABELS = {
+    destruction_paper: "ورقة الهدم",
+    rental_paper: "ورقة الإيجار",
+    id_card: "الهوية الشخصية",
+};
+
+let familyDocumentsCache = {};
+
+// Resizes/re-encodes an image client-side before upload so phone-camera
+// photos (often several MB) stay well within the API's body-size limit.
+function compressImageFile(file, maxDim = 1600, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("فشل قراءة الملف"));
+        reader.onload = () => {
+            img.onerror = () => reject(new Error("صيغة الصورة غير مدعومة"));
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                    const scale = maxDim / Math.max(width, height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL("image/jpeg", quality));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderFamilyDocumentStatus(type) {
+    const container = document.getElementById(`editFamilyDocStatus_${type}`);
+    if (!container) return;
+    const doc = familyDocumentsCache[type];
+
+    if (!doc?.uploaded) {
+        container.innerHTML = `<span>لا توجد صورة مرفوعة</span>`;
+        return;
+    }
+
+    container.innerHTML = `
+        ${doc.signed_url ? `<img class="fam-doc-thumb" src="${doc.signed_url}" alt="${escapeHtml(FAMILY_DOCUMENT_LABELS[type] || type)}">` : ""}
+        <button type="button" onclick="viewFamilyDocumentImage('${type}')">عرض</button>
+        <button type="button" onclick="removeFamilyDocumentImage('${type}')">حذف الصورة</button>
+    `;
+}
+
+async function loadFamilyDocumentsForEdit(familyId) {
+    Object.keys(FAMILY_DOCUMENT_LABELS).forEach((type) => {
+        const container = document.getElementById(`editFamilyDocStatus_${type}`);
+        if (container) container.innerHTML = `<span>جارٍ التحميل...</span>`;
+    });
+    try {
+        familyDocumentsCache = await api.getFamilyDocuments(familyId);
+    } catch (error) {
+        console.error("Failed to load family documents:", error);
+        familyDocumentsCache = {};
+    }
+    Object.keys(FAMILY_DOCUMENT_LABELS).forEach(renderFamilyDocumentStatus);
+}
+
+async function handleFamilyDocumentFileChange(type, inputEl) {
+    const file = inputEl?.files?.[0];
+    if (!file || !editingFamilyId) return;
+
+    const container = document.getElementById(`editFamilyDocStatus_${type}`);
+    if (container) container.innerHTML = `<span>جارٍ الرفع...</span>`;
+
+    try {
+        const dataUrl = await compressImageFile(file);
+        const result = await api.uploadFamilyDocument(editingFamilyId, type, dataUrl);
+        familyDocumentsCache[type] = { has: true, uploaded: true, signed_url: result.signed_url };
+        const checkboxEl = document.getElementById(`editFamilyDoc_${type}`);
+        if (checkboxEl) checkboxEl.checked = true;
+        renderFamilyDocumentStatus(type);
+    } catch (error) {
+        console.error("Failed to upload document:", error);
+        alert(error.message || "فشل رفع الصورة");
+        if (container) container.innerHTML = `<span>لا توجد صورة مرفوعة</span>`;
+    } finally {
+        inputEl.value = "";
+    }
+}
+
+async function viewFamilyDocumentImage(type) {
+    if (!editingFamilyId) return;
+    try {
+        // Signed URLs expire quickly; refresh before opening in case the
+        // cached one is stale.
+        familyDocumentsCache = await api.getFamilyDocuments(editingFamilyId);
+        renderFamilyDocumentStatus(type);
+        const url = familyDocumentsCache[type]?.signed_url;
+        if (url) window.open(url, "_blank", "noopener");
+        else alert("لا توجد صورة مرفوعة");
+    } catch (error) {
+        console.error("Failed to load document link:", error);
+        alert("فشل فتح الصورة");
+    }
+}
+
+async function removeFamilyDocumentImage(type) {
+    if (!editingFamilyId) return;
+    if (!confirm("هل تريد حذف هذه الصورة؟")) return;
+    try {
+        await api.deleteFamilyDocument(editingFamilyId, type);
+        familyDocumentsCache[type] = { has: false, uploaded: false, signed_url: null };
+        renderFamilyDocumentStatus(type);
+    } catch (error) {
+        console.error("Failed to delete document:", error);
+        alert("فشل حذف الصورة");
     }
 }
 
@@ -1635,6 +1770,9 @@ async function createFamily() {
     const isMoved = document.getElementById("familyIsMoved")?.checked ?? false;
     const movedToVillage = document.getElementById("familyMovedToVillage")?.value?.trim() || null;
     const giftReceived = document.getElementById("familyGiftReceived")?.checked ?? false;
+    const destructionPaper = document.getElementById("familyDestructionPaper")?.checked ?? false;
+    const rentalPaper = document.getElementById("familyRentalPaper")?.checked ?? false;
+    const idCard = document.getElementById("familyIdCard")?.checked ?? false;
     const livingCondition = document.getElementById("familyLivingCondition")?.value || null;
 
     if (!first) return alert("أدخل اسم الأب");
@@ -1661,6 +1799,9 @@ async function createFamily() {
             is_moved: isMoved,
             moved_to_village: isMoved ? movedToVillage : null,
             gift_received: giftReceived,
+            destruction_paper: destructionPaper,
+            rental_paper: rentalPaper,
+            id_card: idCard,
             living_condition: livingCondition,
         });
 
@@ -1692,6 +1833,10 @@ async function createFamily() {
         toggleMovedToVillage("familyMovedToVillage", false);
         const giftReceivedResetEl = document.getElementById("familyGiftReceived");
         if (giftReceivedResetEl) giftReceivedResetEl.checked = false;
+        ["familyDestructionPaper", "familyRentalPaper", "familyIdCard"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = false;
+        });
         const livingConditionResetEl = document.getElementById("familyLivingCondition");
         if (livingConditionResetEl) livingConditionResetEl.value = "";
 

@@ -290,6 +290,38 @@
             </select>
         </div>
 
+        <h4 class="history-heading">المستندات</h4>
+        <div class="fam-doc-row">
+            <label class="checkbox-label">
+                <input id="editFamilyDoc_destruction_paper" type="checkbox">
+                ورقة تثبت أن المنزل مهدوم
+            </label>
+            <div class="fam-doc-controls">
+                <input id="editFamilyDocFile_destruction_paper" type="file" accept="image/*" onchange="handleFamilyDocumentFileChange('destruction_paper', this)">
+                <div id="editFamilyDocStatus_destruction_paper" class="fam-doc-status"></div>
+            </div>
+        </div>
+        <div class="fam-doc-row">
+            <label class="checkbox-label">
+                <input id="editFamilyDoc_rental_paper" type="checkbox">
+                ورقة تثبت الإيجار في منطقة النزوح
+            </label>
+            <div class="fam-doc-controls">
+                <input id="editFamilyDocFile_rental_paper" type="file" accept="image/*" onchange="handleFamilyDocumentFileChange('rental_paper', this)">
+                <div id="editFamilyDocStatus_rental_paper" class="fam-doc-status"></div>
+            </div>
+        </div>
+        <div class="fam-doc-row">
+            <label class="checkbox-label">
+                <input id="editFamilyDoc_id_card" type="checkbox">
+                الهوية الشخصية / إثبات شخصي رسمي
+            </label>
+            <div class="fam-doc-controls">
+                <input id="editFamilyDocFile_id_card" type="file" accept="image/*" onchange="handleFamilyDocumentFileChange('id_card', this)">
+                <div id="editFamilyDocStatus_id_card" class="fam-doc-status"></div>
+            </div>
+        </div>
+
         <div class="modal-actions">
             <button class="done" type="button" onclick="submitFamilyEdit()">حفظ التعديل</button>
             <button class="filter-clear" type="button" onclick="closeFamilyEditModal()">إلغاء</button>
@@ -902,7 +934,20 @@
                     <input id="familyGiftReceived" type="checkbox">
                     استلم هدية
                 </label>
+                <label class="checkbox-label">
+                    <input id="familyDestructionPaper" type="checkbox">
+                    ورقة تثبت أن المنزل مهدوم
+                </label>
+                <label class="checkbox-label">
+                    <input id="familyRentalPaper" type="checkbox">
+                    ورقة تثبت الإيجار في منطقة النزوح
+                </label>
+                <label class="checkbox-label">
+                    <input id="familyIdCard" type="checkbox">
+                    الهوية الشخصية / إثبات شخصي رسمي
+                </label>
             </div>
+            <p class="modal-copy" style="margin-top:0.5rem;">يمكن رفع صور المستندات بعد حفظ العائلة، من نافذة التعديل.</p>
             <div id="familyMovedToVillageRow" style="margin-top:0.5rem;display:none;">
                 <input id="familyMovedToVillage" type="text" placeholder="القرية المنتقل إليها" style="width:100%;max-width:280px;">
             </div>

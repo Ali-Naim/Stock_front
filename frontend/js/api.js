@@ -71,6 +71,11 @@ const api = {
     updateFamily: (id, payload) => apiRequest(`/families/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteFamily: (id) => apiRequest(`/families/${id}`, { method: "DELETE" }),
 
+    getFamilyDocuments: (familyId) => apiRequest(`/families/${familyId}/documents`),
+    uploadFamilyDocument: (familyId, type, imageDataUrl) =>
+        apiRequest(`/families/${familyId}/documents/${type}`, { method: "POST", body: JSON.stringify({ image: imageDataUrl }) }),
+    deleteFamilyDocument: (familyId, type) => apiRequest(`/families/${familyId}/documents/${type}`, { method: "DELETE" }),
+
     getFamilyDistributions: (familyId, params = {}) => apiRequest(`/families/${familyId}/distributions${toQueryString(params)}`),
     createFamilyDistribution: (familyId, payload) =>
         apiRequest(`/families/${familyId}/distributions`, { method: "POST", body: JSON.stringify(payload) }),
