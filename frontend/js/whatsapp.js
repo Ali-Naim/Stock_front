@@ -148,6 +148,58 @@ function whatsappFamiliesWithPhone() {
     return rows.filter((f) => (f.phone_number ?? f.phoneNumber ?? "").toString().trim());
 }
 
+let whatsappCurrentLimit = null;
+
+async function loadWhatsappLimitBanner() {
+    const banner = document.getElementById("whatsappLimitBanner");
+    if (!banner) return;
+    banner.textContent = "جارٍ تحميل الحد المسموح...";
+    banner.classList.remove("wa-limit-warning");
+    try {
+        whatsappCurrentLimit = await api.getWhatsappLimit();
+        const qualityLabel = { GREEN: "ممتاز", YELLOW: "متوسط", RED: "منخفض" }[whatsappCurrentLimit.quality_rating] || whatsappCurrentLimit.quality_rating || "غير معروف";
+        banner.textContent = `الحد المسموح حاليًا: ${whatsappCurrentLimit.limit} مستلم كل 24 ساعة (تقييم الجودة: ${qualityLabel}). عند تجاوز العدد، يتم الإرسال تلقائيًا على دفعات يوميًا حتى اكتمال القائمة.`;
+    } catch (error) {
+        console.error("Failed to load WhatsApp messaging limit:", error);
+        whatsappCurrentLimit = null;
+        banner.textContent = "تعذّر تحميل الحد المسموح حاليًا من واتساب.";
+        banner.classList.add("wa-limit-warning");
+    }
+}
+
+function whatsappCampaignProgressHtml(c) {
+    const pct = c.total ? Math.round((c.sent_count / c.total) * 100) : 0;
+    const statusLabel = c.status === "completed" ? "مكتملة" : "قيد التنفيذ";
+    const nextBatch = c.status === "running" && c.sent_count < c.total
+        ? `<div class="wa-campaign-meta">الدفعة التالية: ${escapeHtml(new Date(c.next_batch_at).toLocaleString("ar"))}</div>`
+        : "";
+    return `
+        <div class="wa-campaign-card">
+            <div class="wa-campaign-card-header">
+                <strong>${escapeHtml(c.template_name)}</strong>
+                <span class="badge" style="${c.status === "completed" ? "background:#dcfce7;color:#166534;" : "background:#fef3c7;color:#92400e;"}">${statusLabel}</span>
+            </div>
+            <div class="wa-progress-bar"><div class="wa-progress-fill" style="width:${pct}%;"></div></div>
+            <div class="wa-campaign-meta">${c.sent_count} من ${c.total} (${pct}%)${nextBatch}</div>
+        </div>`;
+}
+
+async function loadWhatsappCampaignsList() {
+    const container = document.getElementById("whatsappCampaignsList");
+    if (!container) return;
+    try {
+        const campaigns = await api.getWhatsappCampaigns();
+        if (!campaigns?.length) {
+            container.innerHTML = `<p class="modal-copy">لا توجد حملات بعد.</p>`;
+            return;
+        }
+        container.innerHTML = campaigns.map(whatsappCampaignProgressHtml).join("");
+    } catch (error) {
+        console.error("Failed to load WhatsApp campaigns:", error);
+        container.innerHTML = `<p class="modal-copy">فشل تحميل الحملات.</p>`;
+    }
+}
+
 async function openWhatsappSendModal() {
     const recipients = whatsappFamiliesWithPhone();
     document.getElementById("whatsappSendRecipientCount").textContent =
@@ -159,6 +211,9 @@ async function openWhatsappSendModal() {
     document.getElementById("whatsappSendResult")?.classList.add("hidden");
     document.getElementById("whatsappSendModal")?.classList.add("active");
     document.body.style.overflow = "hidden";
+
+    loadWhatsappLimitBanner();
+    loadWhatsappCampaignsList();
 
     try {
         const templates = await api.getWhatsappTemplates();
@@ -199,7 +254,11 @@ async function sendWhatsappBulkMessage() {
         return;
     }
 
-    if (!confirm(`هل تريد إرسال الرسالة إلى ${recipients.length} عائلة؟`)) return;
+    const limit = whatsappCurrentLimit?.limit;
+    const confirmMsg = limit && recipients.length > limit
+        ? `العدد المحدد (${recipients.length}) أكبر من الحد المسموح حاليًا (${limit} كل 24 ساعة). سيتم إرسال أول ${limit} الآن، والباقي تلقائيًا على دفعات يومية حتى اكتمال القائمة. متابعة؟`
+        : `هل تريد إرسال الرسالة إلى ${recipients.length} عائلة؟`;
+    if (!confirm(confirmMsg)) return;
 
     const btn = document.getElementById("whatsappSendConfirmBtn");
     if (btn) { btn.disabled = true; btn.textContent = "جارٍ الإرسال..."; }
@@ -207,16 +266,19 @@ async function sendWhatsappBulkMessage() {
     resultEl.className = "needs-import-result info";
 
     try {
-        const result = await api.sendWhatsappMessages({
+        const result = await api.createWhatsappCampaign({
             template_name: templateName,
             language,
             family_ids: recipients.map((f) => f.id),
         });
-        resultEl.textContent = `تم الإرسال إلى ${result.sent} عائلة${result.failed ? `، فشل الإرسال لـ ${result.failed}` : ""}.`;
-        resultEl.className = result.failed ? "needs-import-result error" : "needs-import-result success";
+        const batchMsg = `تم إرسال الدفعة الأولى: ${result.sent} نجحت${result.failed ? `، ${result.failed} فشلت` : ""} (من أصل ${result.total}).`;
+        const remainingMsg = result.done ? " اكتملت الحملة." : ` سيتم إرسال الباقي (${result.remaining}) تلقائيًا على دفعات يومية.`;
+        resultEl.textContent = batchMsg + remainingMsg;
+        resultEl.className = result.failed && result.done ? "needs-import-result error" : "needs-import-result success";
         await loadWaTemplateFilterOptions();
+        await loadWhatsappCampaignsList();
     } catch (error) {
-        console.error("Failed to send WhatsApp messages:", error);
+        console.error("Failed to start WhatsApp campaign:", error);
         resultEl.textContent = error.message || "فشل إرسال الرسائل";
         resultEl.className = "needs-import-result error";
     } finally {

@@ -127,7 +127,9 @@ const api = {
 
     getWhatsappTemplates: () => apiRequest("/whatsapp/templates"),
     createWhatsappTemplate: (payload) => apiRequest("/whatsapp/templates", { method: "POST", body: JSON.stringify(payload) }),
-    sendWhatsappMessages: (payload) => apiRequest("/whatsapp/send", { method: "POST", body: JSON.stringify(payload) }),
+    getWhatsappLimit: () => apiRequest("/whatsapp/limit"),
+    createWhatsappCampaign: (payload) => apiRequest("/whatsapp/campaigns", { method: "POST", body: JSON.stringify(payload) }),
+    getWhatsappCampaigns: () => apiRequest("/whatsapp/campaigns"),
     getWhatsappLogs: (params = {}) => apiRequest(`/whatsapp/logs${toQueryString(params)}`),
     getWhatsappLogsSummary: () => apiRequest("/whatsapp/logs/summary"),
 };

@@ -1191,6 +1191,57 @@ button {
     border-radius: 8px;
 }
 
+/* ── WhatsApp send limit + campaigns ───────────────────── */
+.wa-limit-banner {
+    margin: 10px 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.wa-limit-banner.wa-limit-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.wa-campaign-card {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+
+.wa-campaign-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.wa-progress-bar {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    overflow: hidden;
+}
+
+.wa-progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, var(--accent), #15ba8d);
+}
+
+.wa-campaign-meta {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
 .fsr-card-header {
     display: flex;
     align-items: flex-start;
