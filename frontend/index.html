@@ -1311,6 +1311,39 @@
             <button class="fsr-tab" data-status="all" onclick="setFamilyStatusReviewFilter('all')">الكل<span class="fsr-tab-count" id="fsrCount-all">0</span></button>
             <button class="fsr-refresh-btn" type="button" onclick="loadFamilyStatusSubmissions()" title="تحديث"><i class="bi bi-arrow-clockwise"></i></button>
         </div>
+
+        <div class="fsr-toolbar">
+            <div class="fsr-range">
+                <span class="fsr-range-title"><i class="bi bi-hash"></i>رقم الرد</span>
+                <div class="fsr-range-fields">
+                    <label class="fsr-range-field">
+                        <span>من</span>
+                        <input id="fsrMinId" type="number" min="1" step="1" inputmode="numeric" placeholder="—"
+                               oninput="onFsrIdRangeInput()" onkeydown="onFsrFilterKeydown(event)" aria-label="من رقم الرد">
+                    </label>
+                    <span class="fsr-range-sep" aria-hidden="true">←</span>
+                    <label class="fsr-range-field">
+                        <span>إلى</span>
+                        <input id="fsrMaxId" type="number" min="1" step="1" inputmode="numeric" placeholder="—"
+                               oninput="onFsrIdRangeInput()" onkeydown="onFsrFilterKeydown(event)" aria-label="إلى رقم الرد">
+                    </label>
+                </div>
+            </div>
+            <div class="fsr-search-wrap">
+                <i class="bi bi-search"></i>
+                <input id="fsrSearch" type="search" placeholder="بحث بالاسم أو رقم الملف أو الهاتف"
+                       oninput="onFsrSearchInput()" onkeydown="onFsrFilterKeydown(event)" aria-label="بحث في الردود">
+            </div>
+            <select id="fsrSort" onchange="setFamilyStatusReviewSort(this.value)" aria-label="ترتيب الردود">
+                <option value="id_desc">الأحدث أولًا</option>
+                <option value="id_asc">الأقدم أولًا</option>
+            </select>
+            <button id="fsrClearBtn" class="filter-clear" type="button" onclick="clearFamilyStatusReviewFilters()" disabled>
+                <i class="bi bi-x-circle me-1"></i>مسح التصفية
+            </button>
+        </div>
+        <div id="fsrFilterHint" class="fsr-filter-hint"></div>
+
         <div id="familyStatusReviewList"></div>
     </div>
         </div>
